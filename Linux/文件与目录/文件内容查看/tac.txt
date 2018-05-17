@@ -1,0 +1,17 @@
+/**
+* @defgroup 文件内容查看
+* @{
+*/
+
+/**
+@verbatim
+tac与cat相反，从最后一行到第一行，反向显示。
+@endverbatim
+@see cat
+*/
+tac;
+
+
+
+/** @} */
+

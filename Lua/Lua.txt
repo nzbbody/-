@@ -1,0 +1,217 @@
+﻿/**
+* @defgroup Lua
+* @{
+*/
+
+
+/**
+@verbatim
+1、hello.lua，如下：
+	niuzibin@ubuntu:~/work/test1$ vi hello.lua 
+	str = "I am so cool"
+	tbl = {name = "shun", id = 20114442}
+	function add(a,b)
+		return a + b
+	end
+2、test.cpp，如下：
+	niuzibin@ubuntu:~/work/test1$ vi test.cpp 
+	#include <iostream>
+	#include <string.h>
+	using namespace std;
+	
+	extern "C"
+	{
+		#include "lua.h"
+		#include "lauxlib.h"
+		#include "lualib.h"
+	}
+	int main()
+	{
+		//1.创建Lua状态  
+		lua_State *L = luaL_newstate();
+		if (L == NULL)
+		{
+			return 0 ;
+		}
+	
+		//2.加载Lua文件  
+		int bRet = luaL_loadfile(L,"hello.lua");
+		if(bRet)
+		{
+			cout<<"load file error"<<endl;
+			return 0 ;
+		}
+	
+		//3.运行Lua文件  
+		bRet = lua_pcall(L,0,0,0);
+		if(bRet)
+		{
+			cout<<"pcall error"<<endl;
+			return 0 ;
+		}
+	
+		//4.读取变量  
+		lua_getglobal(L,"str");
+		string str = lua_tostring(L,-1);
+		cout<<"str = "<<str.c_str()<<endl;        //str = I am so cool~  
+	
+		//5.读取table  
+		lua_getglobal(L,"tbl");
+		lua_getfield(L,-1,"name");
+		str = lua_tostring(L,-1);
+		cout<<"tbl:name = "<<str.c_str()<<endl; //tbl:name = shun  
+	
+		//6.读取函数  
+		lua_getglobal(L, "add");        // 获取函数，压入栈中  
+		lua_pushnumber(L, 10);          // 压入第一个参数  
+		lua_pushnumber(L, 20);          // 压入第二个参数  
+		int iRet= lua_pcall(L, 2, 1, 0);// 调用函数，调用完成以后，会将返回值压入栈中，2表示参数个数，1表示返回结果个数。  
+		if (iRet)                       // 调用出错  
+		{
+			const char *pErrorMsg = lua_tostring(L, -1);
+			cout << pErrorMsg << endl;
+			lua_close(L);
+			return 0 ;
+		}
+		if (lua_isnumber(L, -1))        //取值输出  
+		{
+			double fValue = lua_tonumber(L, -1);
+			cout << "Result is " << fValue << endl;
+		}
+	
+		//至此，栈中的情况是：  
+		//=================== 栈顶 ===================   
+		//  索引  类型      值  
+		//   4   int：      30   
+		//   3   string：   shun   
+		//   2   table:     tbl  
+		//   1   string:    I am so cool~  
+		//=================== 栈底 ===================   
+	
+		//7.关闭state  
+		lua_close(L);
+		return 0 ;
+	}
+3、构建，运行：
+	niuzibin@ubuntu:~/work/test1$ g++ -o test test.cpp -I/usr/include/lua5.1 /usr/lib/x86_64-linux-gnu/liblua5.1.a
+	niuzibin@ubuntu:~/work/test1$ ./test 
+	str = I am so cool
+	tbl:name = shun
+	Result is 30
+@endverbatim
+*/
+CPP调用lua;
+
+/**
+@verbatim
+1、h文件
+	hello world!niuzibin@ubuntu:~/work/test2$ vi aaa.h
+	#pragma once  
+	extern "C" {
+	#include "lua.h"
+	#include "lualib.h"
+	#include "lauxlib.h"
+	}
+	extern "C" LUA_API int luaopen_aaa(lua_State *L);//定义导出函数
+2、cpp文件
+	niuzibin@ubuntu:~/work/test2$ vi aaa.cpp 
+	#include <stdio.h>
+	#include "aaa.h"
+	static int averageFunc(lua_State *L)
+	{
+		int n = lua_gettop(L);
+		double sum = 0;
+		int i;
+	
+		/* 循环求参数之和 */
+		for (i = 1; i <= n; i++)
+			sum += lua_tonumber(L, i);
+	
+		lua_pushnumber(L, sum / n);     //压入平均值  
+		lua_pushnumber(L, sum);         //压入和  
+	
+		return 2;                       //返回两个结果  
+	}
+	
+	static int sayHelloFunc(lua_State* L)
+	{
+		printf("hello world!");
+		return 0;
+	}
+	
+	static const struct luaL_Reg myLib[] =
+	{
+		{"average", averageFunc},
+		{"sayHello", sayHelloFunc},
+		{NULL, NULL}       //数组中最后一对必须是{NULL, NULL}，用来表示结束      
+	};
+	
+	int luaopen_aaa(lua_State *L)
+	{
+		luaL_register(L, "ss", myLib);
+		return 1;       // 把myLib表压入了栈中，所以就需要返回1  
+	}
+3、lua文件
+	niuzibin@ubuntu:~/work/test2$ vi test.lua 
+	require "aaa"
+	local ave,sum = ss.average(1,2,3,4,5) -- 参数对应堆栈中的数据  
+	print(ave,sum)  -- 3 15  
+	ss.sayHello()   -- hello world!
+4、构建，运行
+	niuzibin@ubuntu:~/work/test2$ g++ -fPIC -shared -o aaa.so aaa.cpp -I/usr/include/lua5.1
+	niuzibin@ubuntu:~/work/test2$ lua test.lua 
+	3       15
+	特别注意：这里的动态库名称，不带lib，因为要和luaopen_aaa对应。
+@endverbatim
+*/
+lua调用CPP;
+
+/**
+@verbatim
+1、解决什么问题？
+	考虑下面的应用场景，在车间加工一个产品，分为多个步骤，每个步骤需要从外面拿原料进行处理，每次进来接着上一次的步骤继续向下做。
+2、示例代码
+	niuzibin@ubuntu:~/work/lua$ vi coroutine.lua 
+	function foo (a)
+			print("foo", a)
+			return coroutine.yield(2*a)
+	end
+	co = coroutine.create(function (a,b)
+	print("co-body1", a, b)
+	local r = foo(a+1)
+	print("co-body2", r)
+	local r, s = coroutine.yield(a+b, a-b)
+	print("co-body3", r, s)
+	return b, "end"
+	end)
+	
+	print("1----")
+	print("main", coroutine.resume(co, 1, 10))
+	print("2----")
+	print("main", coroutine.resume(co, "r"))
+	print("3----")
+	print("main", coroutine.resume(co, "x", "y"))
+	print("4----")
+	print("main", coroutine.resume(co, "x", "y"))
+3、运行
+	niuzibin@ubuntu:~/work/lua$ lua coroutine.lua 
+	1----
+	co-body1        1       10
+	foo     2
+	main    true    4
+	2----
+	co-body2        r
+	main    true    11      -9
+	3----
+	co-body3        x       y
+	main    true    10      end
+	4----
+	main    false   cannot resume dead coroutine
+4、代码分析
+	resume 多次进来，每次进来，拿着数据，在现场继续处理。
+	yield 返回当前步骤的处理结果。
+@endverbatim
+*/
+lua协程;
+
+/** @} */

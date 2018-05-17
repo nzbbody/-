@@ -1,0 +1,24 @@
+/**
+* @defgroup 工具软件
+* @{
+*/
+
+/**
+* @defgroup clion
+* @{
+*/
+
+/**
+@verbatim
+1、CLion操作完全不反应，这是因为选择了vim编辑，只要取消即可
+	Tools --> Vim Emulator 取消
+@endverbatim
+*/
+CLion操作的问题;
+
+
+
+
+/** @} */
+
+/** @} */

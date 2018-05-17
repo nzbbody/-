@@ -1,0 +1,85 @@
+/**
+* @defgroup MySQL
+* @{
+*/
+
+/**
+* @defgroup 视图
+* @{
+*/
+
+
+/**
+@verbatim
+1、视图是一个虚拟表，可以认为对原表封装了一下，一般情况下，可以把视图当做表来对待。
+2、视图的实现由两种策略：临时表算法与合并算法。临时表算法：把视图对原表的查询结果放在一个临时表中，以后对视图的操作就是对临时表的操作。合并算法：把对试图的操作转化为对原表的操作。
+3、举例来说，mysql> create view bigAgeStuView as select * from stu where age>25;
+	对于查询 mysql> select * from bigAgeStuView where age<28;
+	如果采用临时表算法，Mysql会把select * from stu where age>25的结果放入一张临时表，再操作临时表，查找age>28
+	如果采用合并算法，Mysql会把对视图的查询转化为select * from bigAgeStuView where 25<age and age<28;
+	显然，临时表算法会存在严重的性能问题。
+4、对于create view bigAgeStuView as select * from stu where age>25; 可以指定视图的算法，格式如下：
+	mysql> create algorithm=temptable view bigAgeStuView as select * from stu where age>25;
+	Query OK, 0 rows affected
+	
+	mysql> desc extended select * from bigAgeStuView;
+	+----+-------------+------------+------+---------------+------+---------+------+------+----------+-------------+
+	| id | select_type | table      | type | possible_keys | key  | key_len | ref  | rows | filtered | Extra       |
+	+----+-------------+------------+------+---------------+------+---------+------+------+----------+-------------+
+	|  1 | PRIMARY     | <derived2> | ALL  | NULL          | NULL | NULL    | NULL |    6 |      100 |             |
+	|  2 | DERIVED     | stu        | ALL  | NULL          | NULL | NULL    | NULL | 1138 |      100 | Using where |
+	+----+-------------+------------+------+---------------+------+---------+------+------+----------+-------------+
+	2 rows in set
+	temptable 执行计划显示，使用了派生表（临时表）
+	
+	mysql> create algorithm=merge view bigAgeStuView as select * from stu where age>25;
+	Query OK, 0 rows affected
+	
+	mysql> desc extended select * from bigAgeStuView;
+	+----+-------------+-------+------+---------------+------+---------+------+------+----------+-------------+
+	| id | select_type | table | type | possible_keys | key  | key_len | ref  | rows | filtered | Extra       |
+	+----+-------------+-------+------+---------------+------+---------+------+------+----------+-------------+
+	|  1 | SIMPLE      | stu   | ALL  | NULL          | NULL | NULL    | NULL | 1138 |      100 | Using where |
+	+----+-------------+-------+------+---------------+------+---------+------+------+----------+-------------+
+	1 row in set
+	merge 执行计划显示，没有使用派生表
+	
+	mysql> create algorithm=undefined view bigAgeStuView as select * from stu where age>25;
+	Query OK, 0 rows affected
+	
+	mysql> desc extended select * from bigAgeStuView;
+	+----+-------------+-------+------+---------------+------+---------+------+------+----------+-------------+
+	| id | select_type | table | type | possible_keys | key  | key_len | ref  | rows | filtered | Extra       |
+	+----+-------------+-------+------+---------------+------+---------+------+------+----------+-------------+
+	|  1 | SIMPLE      | stu   | ALL  | NULL          | NULL | NULL    | NULL | 1138 |      100 | Using where |
+	+----+-------------+-------+------+---------------+------+---------+------+------+----------+-------------+
+	1 row in set
+	undefined（由Mysql决定使用合适的算法）执行计划显示，没有使用派生表
+
+5、需要注意的是，临时表算法存在性能问题，因此我们倾向于使用合并算法。但是，并不是每个视图都能使用合并算法，比如建立视图使用了group by, distinct,聚合函数,组合查询union,子查询，不能使用合并算法，因为视图记录无法与原表记录建立一一映射的关系。如下：
+	mysql> create algorithm=merge view bigAgeStuView as select max(age) from stu;
+	Query OK, 0 rows affected
+	
+	mysql> show warnings;
+	+---------+------+-------------------------------------------------------------------------------+
+	| Level   | Code | Message                                                                       |
+	+---------+------+-------------------------------------------------------------------------------+
+	| Warning | 1354 | View merge algorithm can't be used here for now (assumed undefined algorithm) |
+	+---------+------+-------------------------------------------------------------------------------+
+	1 row in set
+	
+	mysql> desc extended select * from bigAgeStuView;
+	+----+-------------+------------+--------+---------------+------+---------+------+------+----------+-------+
+	| id | select_type | table      | type   | possible_keys | key  | key_len | ref  | rows | filtered | Extra |
+	+----+-------------+------------+--------+---------------+------+---------+------+------+----------+-------+
+	|  1 | PRIMARY     | <derived2> | system | NULL          | NULL | NULL    | NULL |    1 |      100 |       |
+	|  2 | DERIVED     | stu        | ALL    | NULL          | NULL | NULL    | NULL | 1138 |      100 |       |
+	+----+-------------+------------+--------+---------------+------+---------+------+------+----------+-------+
+6、使用临时表算法，没有办法更新原表的记录，这个很好理解，因为临时表算法，操作的是临时表。 
+@endverbatim
+*/
+视图;
+
+/** @} */
+
+/** @} */

@@ -1,0 +1,277 @@
+﻿/**
+* @defgroup 架构和设计
+* @{
+*/
+
+
+/**
+@verbatim
+1、new ibpSocket的时候，创建peParser，然后peParser创建dhParser
+2、dhParser在构造方法中，加载动态库new_dhtp_protocold.dll，
+	定位到方法 void* pFun = pMa->dllsym(fileName, "protocol_factory");
+	方法原型为 DLL_EXPORT ibpProtocol* protocol_factory(t_int32 command, enumIbpCmdType etype)
+	放入集合vecICreate
+3、发送数据，打包的时候调用dhParser::createCopyProtocol(ibpProtocol* protocol)
+	obj = ((i_protocol_factory)m_vecICreate[i])(protocol->_cmd, protocol->GetType());
+	根据协议的命令码和类型（请求、回复、通知）创建出dhtp协议
+	m_vecICreate[i] 就是dhtpProtocol.cpp中的方法protocol_factory
+	强转为方法i_protocol_factory，然后调用，传入参数(protocol->_cmd, protocol->GetType())
+4、在方法protocol_factory中，
+	ibpProtocol*   retPdu = NULL;
+	const size_t count = sizeof(DHCP_ALL_PROTOCOL_UNITS)/sizeof(DHCP_OPERATION_UNIT);
+	const DHCP_OPERATION_UNIT* opUnit;
+	for(size_t i = 1; count > i; ++i)
+	{
+		opUnit = &DHCP_ALL_PROTOCOL_UNITS[i];
+		if(opUnit->_opType == command)
+		{
+			if(eIbpCmdType_Request == etype)
+				retPdu = opUnit->_reqFactory();
+			else if(eIbpCmdType_Response == etype)
+				retPdu = opUnit->_resFactory();
+			else if(eIbpCmdType_Notify == etype)
+				retPdu = opUnit->_notifyFactory();
+			break;
+		}
+	}
+	在这里遍历数组DHCP_ALL_PROTOCOL_UNITS，数组DHCP_ALL_PROTOCOL_UNITS的元素是：
+	struct DHCP_OPERATION_UNIT
+	{
+		enumIbpCmd                          _opType;
+		const char*   						_opStr;
+		FunDHCPProtocolRequestFatcory		_reqFactory;
+		FunDHCPProtocolResponseFatcory		_resFactory;
+		FunDHCPProtocolNotifyFatcory        _notifyFactory;
+	};
+	后面三个字段都是模板方法，如下：
+	template<class T>
+	ibpProtocolRequset* dhcpProtocolRequestFatcory()
+	{
+		return new T;
+	}
+	初始化DHCP_ALL_PROTOCOL_UNITS指定模板参数
+	{eIbpCmd_HeartBeat,	"HeartBeat",dhcpProtocolRequestFatcory<dhcpHeartBeatRequest>,dhcpProtocolResponseFatcory<dhcpHeartBeatResponse>,NULL},
+	retPdu = opUnit->_reqFactory(); 就可以new出dhtp协议
+5、从网络上收到数据，是如何解析的？如下：
+	t_int32 dhParser::onPacket(prtlParserI *parser, prtlPeerI *peer, smartPrtlPacketI packet, void *arg)
+	{
+		//版本
+		//t_int32	packVersion = packet->getVersion();			
+		//命令
+		stringI packMethod = "";
+		packet->getMethod(packMethod);
+		//命令类型 请求 应答 回复
+		//t_int32 packType = packet->getPacketType();
+		//包序号
+		t_uint32 packSeq = 0;
+		packet->getSequence(packSeq);
+		//模块名称
+		stringI packMode = "";
+		packet->getModule(packMode);
+		t_uint32 packSession = 0;
+		packet->getSession(packSession);
+		//包内容
+		int packBodyLen = 0;
+		char* packBody = packet->getBody(packBodyLen);
+	
+		if (parser == NULL || peer == NULL)
+		{
+			LogErr(IBP_UTILS, "parser or peer is null cmd=[%s]", packMethod.c_str());
+			return E_FAIL;
+		}
+		
+		LogDebug(IBP_UTILS, "onPacket method=[%s] netseq=[%d]", packMethod.c_str(), packSeq);
+	
+		ibpProtocol* protocol = NULL;	
+	
+		try 
+		{			
+			char* buffer = NULL;
+			rapidxml::xml_document<>  obj;
+			if((t_uint32)packBodyLen > m_nMaxLenBody)
+			{
+				delete[] m_pBodyBuffer;
+	
+				m_pBodyBuffer = new char[packBodyLen+1];
+				m_nMaxLenBody = packBodyLen+1;
+			}
+				
+			t_int32 nCmd = -1;
+			t_int32 nUnit = -1;
+			for (size_t i = 0; i < m_vecINameToInt.size(); i++)
+			{
+				if(0 == ((i_cmd_str_to_int)m_vecINameToInt[i])(packMethod.c_str(), nCmd))
+				{
+					break;
+				}
+			}
+			for (size_t i = 0; i < m_vecINameToUnit.size(); i++)
+			{
+				if(0 == ((i_unit_str_to_int)m_vecINameToUnit[i])(packMode.c_str(), nUnit))
+				{
+					break;
+				}
+			}
+	
+			for (size_t i = 0; i < m_vecICreate.size(); i++)
+			{
+				protocol = ((i_protocol_factory)m_vecICreate[i])(nCmd, (enumIbpCmdType)packet->getPacketType());
+				if(protocol)
+				{
+					//多个命令，共享协议体时，需要再次赋值
+					protocol->_cmd = nCmd;
+					break;
+				}			
+			}
+			if(protocol != NULL)
+			{
+				protocol->setBody(packBody, packBodyLen);
+				protocol->_sequence = packSeq;
+				protocol->_unit = nUnit;
+				protocol->_session = packSession;
+	
+				buffer = (char*)protocol->getBody();
+				if (buffer != NULL && packBodyLen > 0)
+				{
+					memset(m_pBodyBuffer, 0, m_nMaxLenBody);
+					char* end = strstr(buffer + sizeof(XML_HEAD_RAPID_EX), XML_HEAD_RAPID_EX);
+					if (end == NULL)
+					{
+						end = strstr(buffer + sizeof(XML_HEAD_RAPID_EX), XML_HEAD_RAPID_EXT);
+					}
+	
+					if (end == NULL)
+					{
+						end = strstr(buffer + sizeof(XML_HEAD_RAPID_EX), XML_HEAD_RAPID_EXX);
+					}
+	
+					if(end != NULL)
+					{
+						memcpy(m_pBodyBuffer, buffer, end - buffer);				
+						obj.parse<0>(m_pBodyBuffer);	
+						rapidxml::xml_node<>* pbody = obj.first_node();
+						if (pbody != NULL)
+						{
+							rapidxml::xml_attribute<>  *head = pbody->first_attribute(IBP_TAG_TAKE_LEN);
+							if(head != NULL)
+							{
+								protocol->_takeLen = atoi(head->value());
+							}
+						}
+					}
+					else
+					{
+						memcpy(m_pBodyBuffer, buffer, packBodyLen);
+						//如果下面没有xml直接调用xml.parse会出错
+						t_uint32 takeLen = 0;
+						{
+							char tag[64] = {0};
+							sprintf(tag, "%s=", IBP_TAG_TAKE_LEN);
+							char* pTakenLen = strstr(m_pBodyBuffer, tag);
+							if(pTakenLen != NULL)
+							{
+								pTakenLen += strlen(tag);
+								if(pTakenLen)
+								{
+									char* pStart = pTakenLen + 1;
+									char* pEnd = strstr(pStart, "\"");
+									char szLen[32] = {0};
+									if(pStart != NULL && pEnd != NULL)
+									{
+										memcpy(szLen, pStart, pEnd - pStart);
+										takeLen = atoi(szLen);
+									}							
+								}
+							}
+						}
+						if(takeLen == 0)
+						{
+							obj.parse<0>(m_pBodyBuffer);
+						}
+						else
+						{
+							char* tmpBuffer = obj.allocate_string(0,packBodyLen - takeLen + 1);
+							memset(tmpBuffer, 0, packBodyLen - takeLen + 1);
+							memcpy(tmpBuffer, m_pBodyBuffer, packBodyLen - takeLen);
+							obj.parse<0>(tmpBuffer);
+						}				
+	
+						rapidxml::xml_node<>* pbody = obj.first_node();
+	
+						if (pbody != NULL)
+						{
+							rapidxml::xml_attribute<>  *head = pbody->first_attribute(IBP_TAG_TAKE_LEN);
+	
+							if(head != NULL)
+							{
+								protocol->_takeLen = atoi(head->value());
+							}
+						}	
+						if(takeLen != protocol->_takeLen)
+						{
+							protocol->release();
+							protocol = NULL;
+	
+							onPacketError(parser, peer, packet, arg);
+	
+							LogErr(IBP_UTILS, "protocol takelen error！ cmd=[%s]", packMethod.c_str());
+							return  E_FAIL;
+						}
+					}	
+				}
+				
+				int ret = protocol->deserialize(obj);
+				if(ret < 0)
+				{
+					protocol->release();
+					protocol = NULL;
+	
+					onPacketError(parser, peer, packet, arg);
+	
+					LogErr(IBP_UTILS, "protocol deserialize failed！ cmd=[%s]", packMethod.c_str());
+					return  E_FAIL;
+				}
+			}
+			else
+			{
+				onPacketError(parser, peer, packet, arg);
+				LogErr(IBP_UTILS, "create the protocol failed! cmd=[%s]", packMethod.c_str());
+			}
+	
+			if(m_pIbpProtocol != NULL && protocol != NULL)
+			{
+				protocol->_peer = (t_uint32)peer;
+				protocol->_transId = packet->getTransId();
+				
+				protocol->addRef();
+				m_pIbpProtocol->onPDU(parser, peer, protocol, arg);
+	
+				LogDebug(IBP_UTILS, "onPDU ok cmd=[%s]", packMethod.c_str());
+	
+				protocol->release();
+			}
+			obj.clear();
+		}
+		catch (...)
+		{
+			if(protocol)
+			{
+				protocol->release();
+			}
+			LogErr(IBP_UTILS, "exception occur! cmd=[%s]", packMethod.c_str());
+			return  -1;
+		}
+	
+		return   E_OK;
+	}
+6、收到数据，首先解析出来命令码，然后和包的类型（请求、回复、通知），根据工厂方法创建出dhtp协议
+	protocol = ((i_protocol_factory)m_vecICreate[i])(nCmd, (enumIbpCmdType)packet->getPacketType());
+	设置protocol->setBody(packBody, packBodyLen); 然后调用dhtp协议的解析接口int ret = protocol->deserialize(obj);
+@endverbatim
+*/
+为什么new出来pe协议，打包的时候调用dhtp协议的serialize方法;
+
+
+
+
+/** @} */

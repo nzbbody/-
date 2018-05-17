@@ -1,0 +1,16 @@
+/**
+* @defgroup 文件内容查看
+* @{
+*/
+
+/**
+@verbatim
+显示文件内容，并显示行号，等价于 cat -n
+@endverbatim
+@see cat
+*/
+nl;
+
+
+/** @} */
+

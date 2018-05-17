@@ -1,0 +1,59 @@
+﻿/**
+ * Copyright (c) 2015~2016, Andy Niu All rights reserved.
+ * \file		Shell.txt
+ * \brief		Shell
+ * \author		牛自宾
+ * \date		2015年7月5日
+ * \note		Shell帮助文档
+ */
+
+/**
+* @defgroup Shell脚本
+* @{
+*/
+
+/**
+@verbatim
+1、交互式bash与非交互式bash
+	交互式模式就是在终端上执行，shell等待你的输入，并且立即执行你提交的命令。
+	这种模式被称作交互式是因为shell与用户进行交互。这种模式也是大多数用户非常熟悉的：登录、执行一些命令、退出。
+	当你退出后，shell也终止了。
+	shell也可以运行在另外一种模式：非交互式模式，以shell script(非交互)方式执行。
+	在这种模式 下，shell不与你进行交互，而是读取存放在文件中的命令,并且执行它们。当它读到文件的结尾EOF，shell也就终止了。
+	区别：读取的配置文件不同，交互式bash必然读取~/.bashrc文件。
+	非交互式bash读取的是环境变量BASH_ENV（通常情况下）所指定的配置文件。
+2、登录bash与非登录bash
+	登陆shell是指：
+	（1）用户登陆时，输入用户名和密码后启动的shell（例如使用ssh登录远程主机等）。
+	（2）通过带--login参数的命令：bash --login而启动的shell。
+	非登录bash：登录以后所打开的bash，比如通过Ctrl+Alt+T组合键打开的bash环境，直接通过bash命令打开的环境。
+	对于用户来说，登陆shell和非登陆shell的主要区别是：启动shell时所执行的startup文件不同。
+	登陆shell执行startup文件为：/etc/profile、~/.bash_profile、~/.bashrc（这里只是从现象上得出的推论），
+	而非登陆shell执行的startup文件仅为：~/.bashrc。
+3、bash中解析命令的次序
+	在bash中输入一个命令，首先会从which所指定的路径中进行命令寻找（有先后顺序）。
+	然后从配置文件的命令别名中寻找。注意，配置文件的修改不会立即影响到bash的环境。
+@endverbatim
+*/
+shell的交互式和登录;
+
+
+/**
+@verbatim
+1、/etc/profile、/etc/bashrc、~/.bash_profile、~/.bashrc很容易混淆，他们之间有什么区别？它们的作用到底是什么？
+2、/etc/profile: 用来设置系统环境参数，比如$PATH. 这里面的环境变量是对系统内所有用户生效的。
+3、/etc/bashrc:  这个文件设置系统bash shell相关的东西，对系统内所有用户生效。
+	只要用户运行bash命令，那么这里面的东西就在起作用。
+4、~/.bash_profile: 用来设置一些环境变量，功能和/etc/profile 类似，但是这个是针对用户来设定的，
+	也就是说，你在/home/user1/.bash_profile 中设定了环境变量，那么这个环境变量只针对 user1 这个用户生效。
+5、~/.bashrc: 作用类似于/etc/bashrc, 只是针对用户自己而言，不对其他用户生效。
+6、另外/etc/profile中设定的变量(全局)的可以作用于任何用户，
+	而~/.bashrc等中设定的变量(局部)只能继承/etc/profile中的变量，他们是父子关系。
+7、~/.bash_profile 是交互式、login 方式进入 bash 运行的，意思是只有用户登录时才会生效。
+	~/.bashrc 是交互式 non-login 方式进入 bash 运行的，用户不一定登录，只要以该用户身份运行命令行就会读取该文件。
+@endverbatim
+*/
+profile和bashrc;
+
+
+/** @} */

@@ -1,0 +1,18 @@
+/**
+* @defgroup Linux
+* @{
+*/
+
+
+/**
+@verbatim
+1、dmesg【dmessage】显示内核缓冲区信息，包括设备启动，系统架构，cpu，挂载的硬件，网线连接等重要系统信息。
+2、通过dmesg常常诊断设备的故障，dmesg常常结合管道和其它命令一起使用，比如more，less，head，tail
+@endverbatim
+@see
+*/
+dmesg;
+
+
+
+/** @} */

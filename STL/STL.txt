@@ -1,0 +1,709 @@
+﻿/**
+* @defgroup STL
+* @{
+*/
+
+
+/**
+@verbatim
+1、迭代器是对指针的封装，具备指针语义
+2、迭代器内部关联一个指针ptr，指向Item，*与->操作符实现如下：
+	Item& operator*() const {return *ptr;}
+	Item* operator->() const {return ptr;}
+	特别注意：空指针是判断 ptr == NULL ，而迭代器不行，迭代器是判断 iter == end()
+@endverbatim
+*/
+理解迭代器;
+
+/**
+@verbatim
+1、map是用红黑树实现的，要比较大小，要求元素重载了操作符<
+	方法<的两个参数都是const引用，因此如果是是用成员方法重载<，方法必须是const，
+	也就是在方法之后加上const
+@endverbatim
+*/
+map的元素重载小于符号;
+
+
+/**
+@verbatim
+1、示例代码如下：
+	int main()
+	{
+		vector<int> aVec;
+		aVec.push_back(1);
+		aVec.push_back(2);
+		aVec.push_back(3);
+	
+		vector<int>::iterator iter = aVec.begin();
+		aVec.erase(iter);
+	
+		if(iter == aVec.end())
+		{
+	
+		}
+	
+		return 0;
+	}
+	if(iter == aVec.end())运行崩溃，错误信息Expression: vector iterators incompatible
+2、示例代码如下：
+	int main()
+	{
+		vector<int> aVec;
+		aVec.push_back(1);
+		aVec.push_back(2);
+		aVec.push_back(3);
+	
+		vector<int>::iterator iter = aVec.begin();
+		aVec.erase(iter);
+	
+		int aa = *iter;
+	
+		return 0;
+	}
+	int aa = *iter;运行崩溃，错误信息Expression: vector iterator not dereferencable
+3、对于map和set也是同样的问题，错误原因是：迭代器失效。
+4、思考，迭代器失效到底是什么意思？
+	无论是基于连续内存的容器，还是基于节点的容器，保存的元素都是原对象的一个副本，这个元素占用一定的内存空间。
+	迭代器是对指针的封装，这个指针就是指向容器元素的内存地址。
+	当容器删除一个元素，或者元素发生移动，容器会对这个元素进行析构，也就是调用对象的析构方法，但是元素指针不会修改。
+5、但是对于分配的内存空间呢？
+	详见 迭代器失效的测试
+6、注意：如果容器保存的元素是指针，必须手动对指针进行delete，为什么？
+	因为容器是对元素析构，就是对指针析构，而对指针析构是不做任何事情，必须对指针delete才能释放内存。
+@endverbatim
+*/
+迭代器失效;
+
+/**
+@verbatim
+1、当对迭代器删除或者移动的时候，会导致迭代器失效，迭代器失效到底意味着什么？
+	迭代器是对指针的封装，取指针值的方法是：
+	vector<int>::iterator iter = aContainer.begin(); int* pp = &*iter;
+	当对迭代器删除或者移动的时候，会对迭代器关联的对象进行析构，但是对元素指针并不进行任何操作。
+2、测试场景可以分为如下：
+	int
+			连续内存
+					WinDebug
+					WinRelease
+					Linux
+			基于节点
+					WinDebug
+					WinRelease
+					Linux
+	Person
+			连续内存
+					WinDebug
+					WinRelease
+					Linux
+			基于节点
+					WinDebug
+					WinRelease
+					Linux
+3、先看 int	连续内存，测试代码如下：
+	#include <stdio.h>
+	#include <string>
+	#include <vector>
+	#include <list>
+	using namespace std;
+	
+	int main()
+	{
+		vector<int> aContainer;
+		aContainer.push_back(1);
+		aContainer.push_back(2);
+		aContainer.push_back(3);
+	
+		vector<int>::iterator iter = aContainer.begin();
+		int* pp = &*iter;
+		int aa = *iter;
+		printf("Int addr[%p] value[%d]\n",
+			pp,
+			aa);
+	
+		aContainer.erase(iter);
+	
+		pp = &*iter;
+		aa = *iter;
+		printf("Int addr[%p] value[%d]\n",
+			pp,
+			aa);
+	
+		getchar();
+		return 0;
+	}
+	a、WinDebug下 pp = &*iter; 会崩溃，调试可以发现，原因是：
+		迭代器会关联容器的指针，在WinDebug下，会检查迭代器关联的容器。
+		在删除迭代器之后，迭代器关联容器指针为空，导致断言失败。
+	b、WinRelease下，打印如下：
+		Int addr[007C2478] value[1]
+		Int addr[007C2478] value[2]
+		原因是：release正常，因为没有断言进行检查。
+		删除迭代器，迭代器关联的元素指针不变，对int值1的内存析构，这块内存取值应该为垃圾，
+		但是基于连续内存，删除一个元素，后面的元素会逐一补上来，因此这块垃圾内存被设置为2
+	c、Linux下，和WinRelease结果一样。
+4、看 int	基于节点，测试代码如下：
+	#include <stdio.h>
+	#include <string>
+	#include <vector>
+	#include <list>
+	using namespace std;
+	
+	int main()
+	{
+		list<int> aContainer;
+		aContainer.push_back(1);
+		aContainer.push_back(2);
+		aContainer.push_back(3);
+	
+		list<int>::iterator iter = aContainer.begin();
+		int* pp = &*iter;
+		int aa = *iter;
+		printf("Int addr[%p] value[%d]\n",
+			pp,
+			aa);
+	
+		aContainer.erase(iter);
+	
+		pp = &*iter;
+		aa = *iter;
+		printf("Int addr[%p] value[%d]\n",
+			pp,
+			aa);
+	
+		getchar();
+		return 0;
+	}
+	a、WinDebug下，和基于连续内存一样，会崩溃。
+	b、WinRelease下，打印如下：
+		Int addr[00552468] value[1]
+		Int addr[00552468] value[-17891602]
+		原因是：release正常，因为没有断言进行检查。
+		删除迭代器，迭代器关联的元素指针不变，对int值1的内存析构，导致这块内存取值为垃圾，
+		基于节点，后面的元素并不移动。
+	c、Linux下，打印如下：
+		[root@localhost niu]# ./main
+		Int addr[0x9c16010] value[1]
+		Int addr[0x9c16010] value[1]
+		为什么？
+		可以这样认为，windows析构，会对这块内存取值重置为无效的值，而linux析构，对这块内存的取值不处理，
+		但是标识这块内存可以被使用，在运行一段时间后，这块内存被重新使用，会导致取值为垃圾，导致未定义的行为。
+		也就是说，没有被析构，这块内存不能被使用。当析构时，windows会重置为无效值，被标识为可用。
+		而linux对原来的取值不处理，仅仅标识这块内存可用。不知道什么时候被使用，总之，继续使用很危险。
+5、再看 Person	连续内存，测试代码如下：
+	#include <stdio.h>
+	#include <string>
+	#include <vector>
+	#include <list>
+	using namespace std;
+	struct Person
+	{
+		int     _Age;
+		string  _Name;
+	
+		Person()
+		{
+	
+		}
+	
+		Person(int age,string name)
+		{
+			_Age = age;
+			_Name = name;   
+		}
+	
+		Person(const Person& p)
+		{
+			_Age = p._Age;
+			_Name = p._Name;
+		}
+	
+	};
+	
+	
+	int main()
+	{
+		list<Person> aContainer;
+		aContainer.push_back(Person(1,"Andy"));
+		aContainer.push_back(Person(2,"Bill"));
+		aContainer.push_back(Person(3,"Caroline"));
+	
+		list<Person>::iterator iter = aContainer.begin();
+		Person* pp = &*iter;
+		Person aa = *iter;
+		printf("Person addr[%p] value[%d:%s]\n",
+			pp,
+			aa._Age,
+			aa._Name.c_str());
+	
+		aContainer.erase(iter);
+	
+		pp = &*iter;
+		aa = *iter;
+		printf("Person addr[%p] value[%d:%s]\n",
+			pp,
+			aa._Age,
+			aa._Name.c_str());
+	
+		getchar();
+		return 0;
+	}
+	测试结果，道理和int	连续内存一样。
+6、再看 Person	连续节点。
+	测试结果，道理和int	连续节点一样。		
+7、无论集合中的元素是基本类型还是用户定义的类型，集合都会对动态内存进行自动管理。
+	但是如果集合元素是指针本身，需要手动管理。
+@endverbatim
+*/
+迭代器失效的测试;
+
+
+/**
+@verbatim
+1、考虑下面的需求，函数接受一个int参数，返回这个参数加上100，如下：
+	int add(int a)
+	{
+		return a+100;
+	}
+	
+	int main()
+	{
+		int b = add(1);
+		return 0;
+	}
+2、这里add是一个函数，但是sum也可以是一个对象，如下：
+	class Add
+	{
+	public:
+		int operator() (int a)
+		{
+			return a+100;
+		}
+	};
+	
+	int main()
+	{
+		Add add;
+		int b = add(1);
+		return 0;
+	}
+3、在上面的示例中，add是一个对象。可以把add当成一个函数来使用，是因为Add类重载了小括号。
+	Add类重载了小括号，小括号就是一个方法名称，换个方式调用，看看它的真面目，如下：
+	int main()
+	{
+		Add add;
+		int b = add.operator()(1);
+		return 0;
+	}
+	operator()就是一个方法名，只不过可以省略（连同点号），如下：int b = add(1);
+4、当然也可以把一个匿名对象当成函数使用，如下：
+	int main()
+	{
+		int b = Add()(1);
+		return 0;
+	}
+5、再扩展一下，可以使用模板类，如下：
+	template<typename T>
+	class Add
+	{
+	public:
+		T operator() (T a)
+		{
+			return a+100;
+		}
+	};
+	
+	int main()
+	{
+		int	   b = Add<int>()(1);
+		double d = Add<double>()(1.0);
+		return 0;
+	}
+6、那么问题来了，使用函数挺好的，也可以创建模板函数，为什么还要使用函数对象呢？使用函数对象有必要吗？
+	考虑下面的需求，有另一个客户，要求对函数的参数加上200，而原来的客户还是要求对函数的参数加上100
+	因此，不能修改函数的实现，必须增加一个函数。
+	问题的根源在于：函数只能使用形参，而这里的只有一个形参。
+	而对象却很容易解决这个问题，因为对象可以包含字段。如下：
+	class Add
+	{
+	public:
+		Add(int delta):_Delta(delta)
+		{
+	
+		}
+	
+		int operator() (int a)
+		{
+			return a+_Delta;
+		}
+	
+	public:
+		int _Delta;
+	};
+	
+	int main()
+	{
+		int clientA = Add(100)(1);
+		int clientB = Add(200)(1);
+	
+		return 0;
+	}
+7、还有一点很重要，函数对象还可以适配。
+@endverbatim
+*/
+理解函数对象;
+
+/**
+@verbatim
+1、先看vector，示例代码如下：
+	int main(int argc, char* argv[])
+	{
+		vector<int> intVec;
+		intVec.push_back(1);
+		intVec.push_back(2);
+		intVec.push_back(3);
+		intVec.push_back(4);
+	
+		for(vector<int>::iterator iter = intVec.begin(); iter != intVec.end();)
+		{
+			if(*iter > 2)
+			{
+				intVec.erase(iter);
+			}
+			else
+			{
+				++iter;
+			}
+		}
+	
+		getchar();
+		return 0;
+	}
+2、特别注意：intVec.erase(iter); 操作导致iter失效，正确的做法是 iter = intVec.erase(iter);
+3、对于map存在同样的问题，因此解决办法也是一样，如下：
+	int main(int argc, char* argv[])
+	{
+		map<int,string> intStrMap;
+		intStrMap[1] = "Andy";
+		intStrMap[2] = "Bill";
+		intStrMap[3] = "Caroline";
+		intStrMap[4] = "David";
+	
+		for(map<int,string>::iterator iter = intStrMap.begin(); iter != intStrMap.end();)
+		{
+			if(iter->first > 2)
+			{
+				iter = intStrMap.erase(iter);
+			}
+			else
+			{
+				++iter;
+			}
+		}
+	
+		getchar();
+		return 0;
+	}
+4、需要注意的是，在linux平台，map的erase方法并不返回下一个迭代器，
+	因此，跨平台的解决办法是 intStrMap.erase(iter++); 但是vector却不能这样用。
+5、总结如下：
+	对于vector，必须使用 iter = vector.erase(iter); 
+	对于map，   必须使用 map.erase(iter++);
+	对于list，	上面的两种方式都可以
+@endverbatim
+*/
+容器删除迭代器;
+
+/**
+@verbatim
+1、vector删除元素
+	int main(int argc, char* argv[])
+	{
+		vector<int> intArray;
+		intArray.push_back(1);
+		intArray.push_back(2);
+		intArray.push_back(3);
+		intArray.push_back(2);
+		intArray.push_back(4);
+		intArray.push_back(5);
+		intArray.push_back(2);
+	
+		/*
+			vector删除元素
+			remove不能真正删除元素，因为：
+				要删除元素，必须知道是哪一种容器，调用容器的成员方法删除元素。
+				但是remove只接收一对迭代器，不知道是哪一种容器。
+			remove做的事情是：
+				一种压缩，被删除的值挖掉，后面保留的值补充上来。操作之后，删除的值可能不在区间。
+				remove返回新的逻辑终点。
+		*/
+		intArray.erase(remove(intArray.begin(),intArray.end(),2),intArray.end());
+	
+		return 0;
+	}
+2、list删除元素，也可以使用上面的方法，但是有更好的方法，如下：
+	intArray.remove(2);
+3、map直接erase关键字，如下：
+	int main(int argc, char* argv[])
+	{
+		map<int,string> aMap;
+		aMap[1] = "Andy";
+		aMap[2] = "Bill";
+		aMap[3] = "Caroline";
+		
+		aMap.erase(2);
+		
+		return 0;
+	}
+@endverbatim
+*/
+容器删除元素;
+
+/**
+@verbatim
+示例代码如下：
+#include <string>
+#include <vector>
+using namespace std;
+
+struct Person
+{
+public:
+	int _Age;
+
+	Person(int age)
+	{
+		_Age = age;
+	}
+};
+
+int main(int argc,char* argv[])
+{
+	Person p1(5);	
+	Person p2(2);
+	Person p3(4);
+	Person p4(1);
+	Person p5(3);
+
+	vector<Person> pVec;
+	pVec.push_back(p1);
+	pVec.push_back(p2);
+	pVec.push_back(p3);
+	pVec.push_back(p4);
+	pVec.push_back(p5);
+
+	return 0;
+}
+@endverbatim
+
+@verbatim
+第一种办法，添加重载<操作符的成员方法，调用sort(first,last)，如下：
+struct Person
+{
+public:
+	int _Age;
+
+	Person(int age)
+	{
+		_Age = age;
+	}
+
+	bool operator< (const Person& rhs)
+	{
+		return this->_Age < rhs._Age;
+	}
+};
+
+int main(int argc,char* argv[])
+{
+	Person p1(5);	
+	Person p2(2);
+	Person p3(4);
+	Person p4(1);
+	Person p5(3);
+
+	vector<Person> pVec;
+	pVec.push_back(p1);
+	pVec.push_back(p2);
+	pVec.push_back(p3);
+	pVec.push_back(p4);
+	pVec.push_back(p5);
+
+	sort(pVec.begin(),pVec.end());
+
+	return 0;
+}
+@endverbatim
+
+@verbatim
+第二种办法，添加重载<操作符的普通方法，调用sort(first,last)，如下：
+struct Person
+{
+public:
+	int _Age;
+
+	Person(int age)
+	{
+		_Age = age;
+	}
+};
+
+bool operator< (const Person& lhs,const Person& rhs)
+{
+	return lhs._Age < rhs._Age;
+}
+
+int main(int argc,char* argv[])
+{
+	Person p1(5);	
+	Person p2(2);
+	Person p3(4);
+	Person p4(1);
+	Person p5(3);
+
+	vector<Person> pVec;
+	pVec.push_back(p1);
+	pVec.push_back(p2);
+	pVec.push_back(p3);
+	pVec.push_back(p4);
+	pVec.push_back(p5);
+
+	sort(pVec.begin(),pVec.end());
+
+	return 0;
+}
+@endverbatim
+
+@verbatim
+第三种办法，添加普通方法，比较大小，调用sort(first,last,pred)，如下：
+struct Person
+{
+public:
+	int _Age;
+
+	Person(int age)
+	{
+		_Age = age;
+	}
+};
+
+bool PersonLess(const Person& lhs,const Person& rhs)
+{
+	return lhs._Age < rhs._Age;
+}
+
+int main(int argc,char* argv[])
+{
+	Person p1(5);	
+	Person p2(2);
+	Person p3(4);
+	Person p4(1);
+	Person p5(3);
+
+	vector<Person> pVec;
+	pVec.push_back(p1);
+	pVec.push_back(p2);
+	pVec.push_back(p3);
+	pVec.push_back(p4);
+	pVec.push_back(p5);
+
+	sort(pVec.begin(),pVec.end(),PersonLess);
+
+	return 0;
+}
+@endverbatim
+
+@verbatim
+第四种办法，使用函数对象，比较大小，调用sort(first,last,pred)，如下：
+struct Person
+{
+public:
+	int _Age;
+
+	Person(int age)
+	{
+		_Age = age;
+	}
+};
+
+class PersonCompare
+{
+public:
+	bool operator()(const Person& lhs,const Person& rhs)
+	{
+		return lhs._Age < rhs._Age;
+	}
+};
+
+int main(int argc,char* argv[])
+{
+	Person p1(5);	
+	Person p2(2);
+	Person p3(4);
+	Person p4(1);
+	Person p5(3);
+
+	vector<Person> pVec;
+	pVec.push_back(p1);
+	pVec.push_back(p2);
+	pVec.push_back(p3);
+	pVec.push_back(p4);
+	pVec.push_back(p5);
+
+	sort(pVec.begin(),pVec.end(),PersonCompare());
+
+	return 0;
+}
+@endverbatim
+
+@verbatim
+特别注意：上述的解决方法都是在windows下使用的，在linux也有对应的解决方法。
+但是在linux下，用于比较大小的函数，两个参数要求都是const引用。而在windows下可以不是const引用。
+因此，在linux下，第一种方法对应的代码实现分别为：
+struct Person
+{
+public:
+	int _Age;
+
+	Person(int age)
+	{
+		_Age = age;
+	}
+
+	bool operator< (const Person& rhs) const
+	{
+		return this->_Age < rhs._Age;
+	}
+};
+可以认为linux的要求更加严格，也非常合理，为了兼容，都应该使用const引用
+@endverbatim
+
+@verbatim
+如果是要求按年龄逆序，只需要修改一下比较的地方就好了。如下：
+return this->_Age > rhs._Age;
+@endverbatim
+*/
+对序列容器的元素排序;
+
+/**
+@verbatim
+1、考虑下面的需求，在vector集合中保存一组Dog对象，可以使用vector<Dog>，也可以使用vector<Dog*>
+	二者的区别是：
+	vector<Dog>在vector分配的内存上，直接存放Dog对象。
+	vector<Dog*>在vector分配的内存上，存放Dog指针，Dog对象存放在new出来的动态内存上。
+2、优先考虑使用vector<Dog>？
+	a、vector<Dog>更节省内存，vector分配的内存也在动态内存上，相对于vector<Dog*>，每个元素节省一个指针的开销。
+	b、vector<Dog>管理起来更简单，vector存放的是对象的副本，删除或者移动一个元素的时候，会调用这个对象析构方法。
+		（注：这个时候对应的内存是一堆垃圾，还指向这块内存的迭代器就失效了）。
+		但是对于指针需要手动管理，这增加内存管理的负担。没有释放，重复释放，或者野指针的问题。
+3、但是有些场景下，需要使用vector<Dog*>
+4、第一种情况，对象的copy构造成本很大，或者不具备copy构造的语义。
+5、第二种情况，包含一组类型不同但是相关联的对象，也就是继承关系，要求具备多态语义。
+	这个时候必须使用vector<Dog*>，否则保存副本，对象切割，不具备多态行为。
+6、使用vector<Dog*>增加内存管理的负担，解决办法是：使用代理，栈上对象管理动态分配的内存。
+	也就是智能指针。
+@endverbatim
+*/
+集合保存对象和保存指针;
+
+/** @} */

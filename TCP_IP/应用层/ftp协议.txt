@@ -1,0 +1,261 @@
+﻿/**
+* @defgroup 应用层
+* @{
+*/
+
+/**
+* @defgroup ftp协议
+* @{
+*/
+
+
+/**
+@verbatim
+1、创建一个用户，用于访问ftp服务。
+	我的电脑右键->管理->本地用户和组－>用户->“右键”新建用户－>输入用户名和密码再点创建就行了
+	niu niu
+2、创建ftp服务的目录，E:\FtpDirectory
+	共享目录E:\FtpDirectory，使用户niu具备读写权限。
+	注：如果不共享，ftp客户端niu登录不能访问。
+3、打开ftp服务的功能
+	控制面板（快捷键 ctrl+r 输入control）-->程序-->程序和功能-->打开或关闭Windows功能-->Internet信息服务
+	选中FTP服务，然后确定。
+4、打开IIS管理控制台，用于配置ftp服务器
+	控制面板（快捷键 ctrl+r 输入control）-->程序-->程序和功能-->打开或关闭Windows功能-->Internet信息服务
+	选中IIS管理控制台，然后确定
+5、配置ftp服务器
+	控制面板-->系统和安全-->管理工具，找到 Internet 信息服务(IIS)管理器
+	双击打开，找到左侧的网站，右击，添加FTP站点
+	输入站点名称，填写内容目录的物理路径 E:\FtpDirectory
+	下一步 SSL选无
+	下一步 选上匿名 基本 允许访问：所有用户 权限：读取 写入
+6、访问 ftp://10.36.65.80/，输入用户名和密码
+@endverbatim
+*/
+Windows下搭建ftp服务;
+
+/**
+@verbatim
+1、linux系统下常用的ftp软件是vsftp（Very Security File Transfer Protocol），linux发行版默认都有安装，如下：
+	[root@localhost vru]# rpm -qa|grep vsftpd
+	vsftpd-2.2.2-11.el6_3.1.i686
+	如果没有安装，使用yum安装，如下：
+	yum install vsftpd -y
+2、vsftpd作为服务，和其它类似，操作命令如下：
+	[root@localhost vru]# service vsftpd
+	Usage: /etc/init.d/vsftpd {start|stop|restart|try-restart|force-reload|status}
+	[root@localhost vru]# service vsftpd status
+	vsftpd is stopped
+3、vsftp提供3种远程的登录方式：
+	a、匿名登录方式
+		就是不需要用户名，密码。就能登录到服务器电脑里面
+	b、本地用户方式
+		需要帐户名和密码才能登录。而且，这个帐户名和密码，都是在你linux系统里面，已经有的用户。
+	c、虚拟用户方式
+		同样需要用户名和密码才能登录。但是和上面的区别就是，这个用户名和密码，在你linux系统中是没有的(没有该用户帐号)
+4、vsftpd使用黑名单策略，以邮箱为例，简单说就是：
+	白名单就是愿意接收的邮箱地址，黑名单就是拒绝接收的邮箱地址。
+5、ftp的配置文件主要有三个，位于/etc/vsftpd/目录下，分别是：
+	ftpusers		指定哪些用户不能访问FTP服务器
+	user_list		指定的用户是否可以访问ftp服务器由vsftpd.conf文件中的userlist_deny的取值来决定
+					默认 userlist_deny=YES (default), 拒绝访问
+	vsftpd.conf		主配置文件
+6、vsftpd启动之后，在windows资源管理访问ftp失败，抓包看到报错：
+	not found: directory given in 'secure_chroot_dir':/usr/share/empty
+	解决办法：
+	创建目录 /usr/share/empty
+	同时在vsftpd.conf中，增加配置选项 secure_chroot_dir=/usr/share/empty
+	然后重启vsftpd 
+7、在Windows资源管理器中打开FTP站点，ftp://172.16.2.31:1802/ 注意要加上端口1802，因为vsftpd的监听端口是1802
+	然后输入用户名和密码，就是登录linux的用户名和密码。
+	这个时候进入root的用户目录，也就是/root
+8、在linux的/root目录下增加一个软连接，连接到 /usr/local/datafs/IBP/ivss
+	[root@localhost ~]# ln -fs /usr/local/datafs/IBP/ivss ./ivss
+	[root@localhost ~]# ll
+	total 4
+	-rw------- 1 root root 1867 2015-01-09 22:53 anaconda-ks.cfg
+	lrwxrwxrwx 1 root root   26 2016-08-15 16:33 ivss -> /usr/local/datafs/IBP/ivss
+9、在Windows资源管理器访问ivss目录 ftp://172.16.2.31:1802/ivss/
+	就可以管理ivss目录中的文件
+@endverbatim
+*/
+Linux下搭建ftp服务;
+
+
+/**
+@verbatim
+C:\Users\25697>ftp
+ftp> open 10.30.1.74
+连接到 10.30.1.74。
+220 Microsoft FTP Service
+用户(10.30.1.74:(none)): 25697
+331 Password required for 25697.
+密码:
+230 User 25697 logged in.
+ftp> help
+命令可能是缩写的。  命令为:
+
+!               delete          literal         prompt          send
+?               debug           ls              put             status
+append          dir             mdelete         pwd             trace
+ascii           disconnect      mdir            quit            type
+bell            get             mget            quote           user
+binary          glob            mkdir           recv            verbose
+bye             hash            mls             remotehelp
+cd              help            mput            rename
+close           lcd             open            rmdir
+ftp> ls
+200 PORT command successful.
+150 Opening ASCII mode data connection for file list.
+229_250808_General_NetSDK_Chn_Win32_IS_V3.43.8.R.151020.7z
+ddd.pcap
+python socket编程详细介绍 - Just for you - 博客频道 - CSDN_NET.mht
+python 多线程就这么简单 - 虫师 - 博客园.mht
+Python补充06 Python之道 - Vamei - 博客园.mht
+Python命名空间的本质 - windlaughing - 博客园.mht
+Python命名空间详解_python_脚本之家.mht
+python中pyc和pyo的作用 - 常城的专栏 - 博客频道 - CSDN_NET.mht
+在路由器后面，traceroute返回一系列原因分析 - 向东博客 专注WEB应用 构架之美 ---
+构架之美，在于尽态极妍  应用之美，在于药到病除 - 赢在IT，Playin' with IT,Focus on Killer Application,Marketing Meets Technology_files
+226 Transfer complete.
+ftp: 收到 596 字节，用时 0.00秒 149.00千字节/秒。
+ftp> quit
+221
+@endverbatim
+*/
+使用ftp客户端命令;
+
+/**
+@verbatim
+1、在地址栏输入ftp服务，抓包可以发现交互过程。
+2、ftp服务的监听端口是21，客户端连接端口21，走控制命令。
+3、数据流的传输有两种方式，站在ftp服务端的角度来看，分为主动和被动。
+	主动：客户端开一个端口，ftp服务去连接（使用端口20），然后发送数据。
+	被动：服务端开一个端口，客户端去连接，然后发送数据。	
+	注意：主动情况下，ftp服务使用端口20去连接客户端。
+	主动连接的端口一般是随机生成的，但是也可以设置，只不过我们很少使用，使用socket绑定，即可设置主动连接的端口。
+4、被动方式的抓包如下：
+	220 Microsoft FTP Service
+	USER 25697
+	331 Password required for 25697.
+	PASS Dh_@201569
+	230 User 25697 logged in.
+	SYST
+	215 Windows_NT
+	PWD
+	257 "/25697" is current directory.
+	TYPE I
+	200 Type set to I.
+	PASV
+	227 Entering Passive Mode (10,30,1,74,14,198).
+	SIZE /25697
+	550 /25697: The system cannot find the file specified. 
+	PASV
+	227 Entering Passive Mode (10,30,1,74,14,199).
+	CWD /25697/
+	250 CWD command successful.
+	LIST -l
+	125 Data connection already open; Transfer starting.
+	226 Transfer complete.
+	QUIT
+	221  
+	客户端的监听端口是 256*14+199=3783 ，在3783端口可以看到数据的传输。
+5、特别注意：这里ftp的信令连接和数据连接都是短连接，执行完之后，连接就会断开，下一次操作重新建立连接。
+	使用tcp.flags.syn==1 or tcp.flags.fin==1 显示过滤，可以看到短连接的过程。
+@endverbatim
+*/
+ftp协议抓包;
+
+
+/**
+@verbatim
+1、浏览器本身是支持ftp协议的，可以作为ftp的客户端使用。
+2、当我们使用IE浏览器登陆ftp服务的时候，会显示下面的内容：
+	若要在 Windows 资源管理器中查看此 FTP 站点，请单击“页面”，然后单击“在 Windows 资源管理器中打开 FTP 站点”。
+3、也就是说，我们可以 在Windows资源管理器中访问ftp服务的文件，给人感觉，就像是访问本地的文件一样。
+	资源管理器对应的就是上面的Windows地址栏，下面的叫任务栏，还有Ctrl+Alt+Del调出的是任务管理器
+4、从IE浏览器转到地址栏访问ftp服务器，需要设置如下：
+	a、工具-->Internet选项-->高级-->启动ftp文件夹视图（在Internet Explorer之外）
+	b、按照页面提示 若要在 Windows 资源管理器中查看此 FTP 站点，请单击“页面”，然后单击“在 Windows 资源管理器中打开 FTP 站点”。
+		点击页面，然后点击在 Windows 资源管理器中打开 FTP 站点
+	即可在资源管理器（也就是地址栏）中查看ftp站点。
+@endverbatim
+*/
+访问ftp服务;
+
+/**
+@verbatim
+1、连接如下：
+	[root@localhost aaa]# ftp
+	ftp> open 10.22.4.150
+	Connected to 10.22.4.150 (10.22.4.150).
+	220 Serv-U FTP Server v15.1 ready...
+	Name (10.22.4.150:root): user
+	331 User name okay, need password.
+	Password:
+	230 User logged in, proceed.
+	Remote system type is UNIX.
+	Using binary mode to transfer files.
+2、文件列表
+	ftp> ls
+	227 Entering Passive Mode (10,22,4,150,14,214)
+	150 Opening ASCII mode data connection for /bin/ls.
+	drwxrwxrwx   1 user     group           0 Mar 30  2016 DH_Platform
+	drwxrwxrwx   1 user     group           0 Jun  1 13:25 DH-IBP
+	drwxrwxrwx   1 user     group           0 May 12 13:49 DH-TKB08
+	drwxrwxrwx   1 user     group           0 Jan 20  2016 ias
+	drwxrwxrwx   1 user     group           0 Aug 15 12:04 ibp
+	drwxrwxrwx   1 user     group           0 Mar  7  2016 imds
+	drwxrwxrwx   1 user     group           0 Jan 26  2016 sms
+	drwxrwxrwx   1 user     group           0 Apr 15  2016 web_client
+	drwxrwxrwx   1 user     group           0 Jan  6  2016 &˵
+3、下载文件，如下：
+	ftp> !ls
+	111.txt
+	
+	ftp> get readme.txt
+	local: readme.txt remote: readme.txt
+	227 Entering Passive Mode (10,22,4,150,14,216)
+	150 Opening BINARY mode data connection for readme.txt (64 Bytes).
+	226 Transfer complete. 64 bytes transferred. 0.06 KB/sec.
+	64 bytes received in 0.000989 secs (64.71 Kbytes/sec)
+	
+	ftp> !ls
+	111.txt  readme.txt
+4、cd切换远程ftp服务器的路径，如果切换本机的路径怎么办？
+	使用lcd
+5、ftp客户端有些命令和linux中的命令冲突，比如ls
+	ls是列出ftp服务器上面文件列表，如果列出本机的文件列表，使用 !ls
+	其他的命令 dir也是类似。
+6、ftp帮助命令
+	ftp> help
+	Commands may be abbreviated.  Commands are:
+	
+	!               debug           mdir            sendport        site
+	$               dir             mget            put             size
+	account         disconnect      mkdir           pwd             status
+	append          exit            mls             quit            struct
+	ascii           form            mode            quote           system
+	bell            get             modtime         recv            sunique
+	binary          glob            mput            reget           tenex
+	bye             hash            newer           rstatus         tick
+	case            help            nmap            rhelp           trace
+	cd              idle            nlist           rename          type
+	cdup            image           ntrans          reset           user
+	chmod           lcd             open            restart         umask
+	close           ls              prompt          rmdir           verbose
+	cr              macdef          passive         runique         ?
+	delete          mdelete         proxy           send
+	ftp> help get
+	get             receive file
+7、mget * 用于获取多个文件，这个时候需要逐个确认。如果不想确认，使用prompt off
+@endverbatim
+*/
+ftp的客户端命令;
+
+
+/** @} */
+
+/** @} */
+
+

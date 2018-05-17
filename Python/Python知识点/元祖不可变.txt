@@ -1,0 +1,66 @@
+﻿/**
+* @defgroup Python
+* @{
+*/
+
+/**
+* @defgroup Python知识点
+* @{
+*/
+
+
+/**
+@verbatim
+1、Python彻底分离了指针和内容，每次修改内容，都相当于，修改指针指向另一块内容。
+2、需要注意的是，Python使用了共享内存，如果内容相同，指向同一块内存。如下：
+	>>> a='hello'
+	>>> b='hello'
+	>>> id(a)
+	43861376
+	>>> id(b)
+	43861376
+	可以这样理解，a='hello' 分配一块内存，内容为"hello"，a指向这块内存。
+	b='hello' 先检查有没有这样的一块内存，内容为"hello"，刚好找到，地址返回给b
+	从内容到地址，可以使用哈希表，内容映射到地址。每次修改内容，对新的内容哈希，看看是否存在一个地址，保存的内容刚好为
+	新的内容，如果存在，直接返回地址。如果不存在，new出一个，返回地址。
+	C++静态存储区也是同样的道理。
+3、查看下面的情况：
+	>>> a=123
+	>>> b=a
+	>>> b=456
+	>>> a
+	123
+	>>> b
+	456
+	这和C++中的写时拷贝（copy-on-write），道理一样。b=a是指针语义，只复制指针。
+	b=456修改b的时候，b指向新的内容，但是a的指向不变，这个时候是值语义。
+4、元祖的元素也是指针，元祖的不可变指的是，元素不能指向其他地方，从C++角度理解，就是const指针，不能修改指向。
+	但是，元祖本身是可以变的，可以指向其他的内容。如下：
+	>>> aTuple=(1,2)
+	>>> aTuple[0]=5		// 元素不能修改指向
+	
+	Traceback (most recent call last):
+	File "<pyshell#34>", line 1, in <module>
+		aTuple[0]=5
+	TypeError: 'tuple' object does not support item assignment
+	>>> aTuple=(3,4)	// 元祖本身可以修改指向
+	>>> aTuple
+	(3, 4)
+5、list与tuple之间的转化，使用list方法和tuple方法，返回一个list或者tuple，如下：
+	>>> aList=list(aTuple)
+	>>> aList
+	[3, 4]
+	>>> aList[1]=100
+	>>> aList
+	[3, 100]
+	>>> bTuple=tuple(aList)
+	>>> bTuple
+	(3, 100)
+@endverbatim
+*/
+元祖不可变;
+
+
+/** @} */
+
+/** @} */

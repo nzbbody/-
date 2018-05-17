@@ -1,0 +1,513 @@
+/**
+* @defgroup CPP
+* @{
+*/
+
+/**
+* @defgroup CPP沉思录
+* @{
+*/
+
+/**
+@verbatim
+1、考虑下面的场景：设计一个容器，包含一组类型不同但相互关联的对象（比如：Animal，Dog，Cat），对象具备多态行为。
+2、容器一般只能包含一种类型的对象，使用vector<Animal> 会造成对象切割，不具备多态行为。
+3、经典的解决办法是：vector<Animal*>, 但是这会增加内存管理的负担。考虑下面的情况：
+	Dog d;
+	vec[i] = &d; // 局部对象d销毁， vec[i] 指向垃圾
+	
+	vec[i] = vec[j]; // 指向同一个对象， 在vec析构之前，需要手动遍历vec，进行delete，两个delete同一个对象，行为未定义。
+4、怎么解决上面的问题，每次都创建一个新的对象。如下：
+	Dog d;
+	vec[i] = new Dog(d);
+	
+	vec[i] = new Animal(vec[j]); // 这里存在问题，由于vec[j] 类型未知，只能使用Animal，但是这造成对象切割。
+5、处理编译时类型未知的对象，使用虚方法。Animal 增加一个纯虚方法clone，纯虚方法导致Animal成为一个抽象类，
+	不能实例化，同时要求子类必须重写clone方法。注：Animal 可以提供纯虚方法clone的实现。
+6、Animal* pa = new Dog; delete pa; 为了能够调用Dog的析构方法，定义Animal的析构方法是虚方法。注：多态行为要满足两个条件：
+	方法是虚方法；表面类型和真实类型不一致。
+7、有没有更好的办法呢？
+	使用代理类，对Animal* 管理。也就是栈上对象管理动态资源，利用C++的一个特性，栈上对象离开作用域，必定会调用析构方法，
+	在析构方法中释放资源。
+8、代码如下：
+AnimalProxy::AnimalProxy():_pa(NULL)
+{
+}
+
+AnimalProxy::~AnimalProxy()
+{
+	delete _pa;
+}
+
+// 注意：类中可以访问自己的private成员，也可以访问rhs的private成员
+AnimalProxy::AnimalProxy(const AnimalProxy& rhs)
+{
+	_pa = (rhs._pa != NULL ? rhs._pa->Clone():NULL);
+}
+
+AnimalProxy& AnimalProxy::operator=(const AnimalProxy& rhs)
+{
+	if(this != &rhs) // 等同测试
+	{
+		delete _pa; // delete NULL 也没有问题
+		_pa = (rhs._pa != NULL ? rhs._pa->Clone():NULL);  // 指针为NULL判断
+	}
+	return *this; // 返回引用
+}
+
+AnimalProxy::AnimalProxy(const Animal& animal):_pa(animal.Clone())
+{
+}
+@endverbatim
+@see
+*/
+【CPP沉思录】代理类;
+
+
+/**
+@verbatim
+1、在【CPP沉思录】代理类中，使用了代理类，存在问题：
+	a、代理复制，每次创建一个副本，这个开销有可能很大
+	b、有些对象不能轻易创建副本，比如文件
+2、怎么解决这个问题？
+	使用引用计数句柄，对动态资源封装，句柄包含指针，多个句柄可以指向同一个对象。复制的时候，只是复制句柄的指针。
+3、使用引用计数句柄，是为了避免不必要的对象复制，因此我们要知道有多少个句柄绑定到当前对象，也就是引用计数，
+	这样才能确定何时可以释放资源。
+4、需要注意的是：引用计数不能是句柄的一部分，如果怎么做，当前句柄必须知道指向同一个对象的其他句柄，引用计数也要保持一致。
+	同时，引用计数不能成为对象的一部分，如果这样做，要求我们重写已经存在的对象类。
+5、以Point类为例说明，解决办法是：增加一个新的类UPoint，包含Point对象和引用计数u，如下：
+class Point
+{
+public:
+	Point():_x(0),_y(0){}
+	Point(int x,int y):_x(x),_y(y){}
+	Point(const Point& rhs):_x(rhs._x),_y(rhs._y){}
+
+	Point& SetX(int x)
+	{
+		_x = x;
+		return *this;
+	}
+
+	int GetX()
+	{
+		return _x;
+	}
+
+	Point& SetY(int y)
+	{
+		_y = y;
+		return *this;
+	}
+
+	int GetY()
+	{
+		return _y;
+	}
+
+private:
+	int		_x;
+	int		_y;
+};
+
+#include "point.h"
+// UPoint的目的是对Point和引用计数封装，用户是不可见的
+class UPoint
+{
+	friend class Handle_1;
+
+private:
+	Point p;
+	int	  u;
+	
+	UPoint():u(1){}
+
+	UPoint(int x,int y)
+	{
+		p.SetX(x);
+		p.SetY(y);
+		u = 1;
+	}
+
+	UPoint(const Point& rhs)
+	{
+		p = rhs;
+		u = 1;
+	}
+};
+
+6、现在考虑Handle_1的实现细节，
+#include "u_point.h"
+class Handle_1
+{
+public:
+	Handle_1():_up(new UPoint){}
+
+	Handle_1(int x,int y):_up(new UPoint(x,y)){}
+
+	Handle_1(const Point& rhs):_up(new UPoint(rhs)){}
+
+	~Handle_1()
+	{
+		subRef();
+	}
+
+	// copy构造，复制指针，增加引用
+	Handle_1(const Handle_1& rhs)
+	{
+		addRef(rhs._up);
+	}
+
+	// copy赋值，左边减少引用计数，判断是否delete，右边增加引用计数，考虑自我赋值
+	Handle_1& operator=(const Handle_1& rhs)
+	{
+		if(this != &rhs)
+		{
+			subRef();
+			addRef(rhs._up);
+		}		
+		return * this;
+	}
+
+
+	int GetX()
+	{
+		return _up->p.GetX();
+	}
+
+	int GetY()
+	{
+		return _up->p.GetY();
+	}
+
+	Handle_1& SetX(int x)
+	{
+		_up->p.SetX(x);
+		return *this;
+	}
+
+	Handle_1& SetY(int y)
+	{
+		_up->p.SetY(y);
+		return *this;
+	}
+
+private:
+	void addRef(UPoint* up) // 复制指针，增加引用
+	{
+		_up = up;
+		++_up->u;
+	}
+	
+	void subRef()			// 减少引用，判断是否delete
+	{
+		if(--_up->u == 0)
+		{
+			delete _up;
+		}
+	}
+
+private:
+	UPoint* _up;
+};
+
+7、考虑下面的情况，
+	Handle_1 h1(3,4);
+	Handle_1 h2(h1);
+	h2.SetX(5);
+	int dd = h1.GetX();	
+	dd的值是5，也就是说，多个句柄指向同一个对象，避免了不必要的对象复制，实现的是 指针语义。但是对于上面的情况，往往不是用户所期望的，
+	怎么解决这个问题？
+8、使用写时拷贝，每次修改的时候重新创建一个对象。也就是说，修改的时候变成值语义，原对象h1是不可变对象，使用h2修改，会导致重新创建一个对象。
+	如下：
+	Handle_1& SetX(int x)
+	{
+		//_up->p.SetX(x);
+		if(_up->u == 1) // 当前是唯一的引用
+		{
+			_up->p.SetX(x);
+		}
+		else
+		{
+			--_up->u;
+			_up = new UPoint(x,_up->p.GetY());
+		}
+		return *this;
+	}
+
+	Handle_1& SetY(int y)
+	{
+		//_up->p.SetY(y);
+		if(_up->u == 1) // 当前是唯一的引用
+		{
+			_up->p.SetY(y);
+		}
+		else
+		{
+			--_up->u;
+			_up = new UPoint(_up->p.GetX(),y);
+		}
+		return *this;
+	}
+@endverbatim
+@see
+*/
+【CPP沉思录】句柄1;
+
+
+/**
+@verbatim
+1、【CPP沉思录】句柄1 存在问题：
+	句柄为了绑定到Point的对象上，必须定义一个辅助类UPoint，如果要求句柄绑定到Point的子类上，那就存在问题了。
+2、有没有更简单的办法呢？
+	句柄使用Point*直接绑定到Point对象上（包括子类），为了保持多个句柄引用计数的一致性，使用int* 指向引用计数。
+3、代码如下：
+#include "point.h"
+class Handle_2
+{
+public:
+	Handle_2():_p(new Point),_u(new int(1)){}
+
+	Handle_2(int x,int y):_p(new Point(x,y)),_u(new int(1)){}
+
+	Handle_2(const Point& rhs):_p(new Point(rhs)),_u(new int(1)){}
+
+	~Handle_2()
+	{
+		subRef();
+	}
+
+	Handle_2(const Handle_2& rhs)
+	{
+		addRef(rhs);
+	}
+
+	Handle_2& operator=(const Handle_2& rhs)
+	{
+		if(this != &rhs)
+		{
+			subRef();
+			addRef(rhs);
+		}		
+		return * this;
+	}
+
+
+	int GetX()
+	{
+		return _p->GetX();
+	}
+
+	int GetY()
+	{
+		return _p->GetY();
+	}
+
+	Handle_2& SetX(int x)
+	{
+		if(*_u == 1) // 当前是唯一的引用
+		{
+			_p->SetX(x);
+		}
+		else
+		{
+			--*_u;
+			_p = new Point(x,_p->GetY());
+		}
+		return *this;
+	}
+
+	Handle_2& SetY(int y)
+	{
+		if(*_u == 1) // 当前是唯一的引用
+		{
+			_p->SetY(y);
+		}
+		else
+		{
+			--*_u;
+			_p = new Point(_p->GetX(),y);
+		}
+		return *this;
+	}
+
+private:
+	void addRef(const Handle_2& rhs) // 复制对象指针和引用计数指针，增加引用
+	{
+		_p = rhs._p;
+		_u = rhs._u;
+		++*_u;
+	}
+	
+	void subRef()// 减少引用，判断是否delete对象和引用计数
+	{
+		if(--*_u == 0)
+		{
+			delete _p;
+			delete _u;
+		}
+	}
+
+private:
+	Point* _p;
+	int*   _u;
+};
+4、这里要手动管理动态内存 int* _u; 同样道理，可以使用栈上对象进行管理，抽象出一个辅助类 UseCount
+class UseCount
+{
+public:
+	UseCount():_p(new int(1)){}
+	UseCount(const UseCount& rhs)
+	{
+		addRef(rhs);
+	}
+
+	UseCount& operator=(const UseCount& rhs)
+	{
+		if(this != &rhs)
+		{
+			subRef();
+			addRef(rhs);
+		}
+		return *this;
+	}
+
+	~UseCount()
+	{
+		subRef();
+	}
+
+	bool IsOnly()
+	{
+		return (*_p == 1);
+	}
+
+	void MakeOnly()
+	{
+		if(IsOnly()) // 防止已经是only，用户还调用MakeOnly
+		{
+			return;
+		}
+		--*_p;
+		_p = new int(1);
+	}
+
+private:
+	void addRef(const UseCount& rhs)
+	{
+		_p = rhs._p;
+		++*_p;
+	}
+
+	void subRef()
+	{
+		if(--*_p == 0)
+		{
+			delete _p;
+		}
+	}
+
+private:
+	int* _p;
+};
+
+#include "point.h"
+#include "use_count.h"
+class Handle_2
+{
+public:
+	Handle_2():_p(new Point){}
+
+	Handle_2(int x,int y):_p(new Point(x,y)){}
+
+	Handle_2(const Point& rhs):_p(new Point(rhs)){}
+
+	~Handle_2()
+	{
+		subRef();
+	}
+
+	Handle_2(const Handle_2& rhs)
+	{
+		addRef(rhs);
+	}
+
+	Handle_2& operator=(const Handle_2& rhs)
+	{
+		if(this != &rhs)
+		{
+			subRef();
+			addRef(rhs);
+		}
+		return * this;
+	}
+
+	int GetX()
+	{
+		return _p->GetX();
+	}
+
+	int GetY()
+	{
+		return _p->GetY();
+	}
+
+	Handle_2& SetX(int x)
+	{
+		if(_u.IsOnly()) // 当前是唯一的引用
+		{
+			_p->SetX(x);
+		}
+		else
+		{
+			_u.MakeOnly();
+			_p = new Point(x,_p->GetY());
+		}
+		return *this;
+	}
+
+	Handle_2& SetY(int y)
+	{
+		if(_u.IsOnly()) // 当前是唯一的引用
+		{
+			_p->SetY(y);
+		}
+		else
+		{
+			_u.MakeOnly();
+			_p = new Point(_p->GetX(),y);
+		}
+		return *this;
+	}
+
+private:
+	void addRef(const Handle_2& rhs)
+	{
+		_p = rhs._p;
+		_u = rhs._u;
+	}
+
+	void subRef()
+	{
+		if(_u.IsOnly())
+		{
+			delete _p;
+		}
+	}
+
+private:
+	Point*     _p;
+	UseCount   _u;
+};
+@endverbatim
+@see
+*/
+【CPP沉思录】句柄2;
+
+
+
+
+/** @} */
+
+
+/** @} */

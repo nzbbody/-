@@ -1,0 +1,51 @@
+/**
+* @defgroup 数据结构_树
+* @{
+*/
+
+
+/**
+@verbatim
+void MirrorTree(TreeNode* node)
+{
+	if(node == NULL)
+	{
+		return;
+	}
+
+	if(node->_Left != NULL)
+	{
+		if(node->_Right != NULL) // 有两个孩子
+		{
+			TreeNode* tmp = node->_Left;
+			node->_Left = node->_Right;
+			node->_Right = tmp;
+		}
+		else // 只有左孩子
+		{
+			node->_Right = node->_Left;
+			node->_Left = NULL;
+		}
+	}
+	else
+	{
+		if(node->_Right != NULL) // 只有右孩子
+		{
+			node->_Left = node->_Right;
+			node->_Right = NULL;
+		}
+		else // 没有孩子
+		{
+			// do nothing
+		}
+	}
+
+	MirrorTree(node->_Left);
+	MirrorTree(node->_Right);
+}
+@endverbatim
+*/
+二叉树镜像;
+
+
+/** @} */

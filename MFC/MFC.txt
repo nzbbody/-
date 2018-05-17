@@ -1,0 +1,54 @@
+﻿/**
+* @defgroup MFC
+* @{
+*/
+
+
+/**
+@verbatim
+1、模态对话框，关闭对话框之前，不能进行其它工作。
+	非模态对话框，对话框打开的情况下，可以进行其它工作。
+2、创建模态对话框
+	CDlgAlarm dlg;
+	dlg.DoModal();
+3、创建非模态对话框
+	CDlgAlarm* dlg = new CDlgAlarm;
+	dlg->Create(IDD_DIALOG_ALARM);	// IDD_DIALOG_ALARM要填写正确，是控件的ID
+	dlg->ShowWindow(SW_SHOWNORMAL);
+@endverbatim
+*/
+模态对话框与非模态对话框;
+
+/**
+@verbatim
+1、添加变量的时候选择类别是Control，多出一个变量 CEdit aaa; 代码如下：
+	CString str;
+	aaa.GetWindowText(str); 
+	aaa.SetWindowText("1111");
+2、也可以根据Id获取到CEdit，进行操作，如下：
+	CEdit* pBox= (CEdit*)GetDlgItem(IDC_EDIT1); // IDC_EDIT1是EditControl的Id
+	pBox->GetWindowText(str); 
+	pBox->SetWindowText("2222");
+3、上面的策略是：添加变量的时候选择类别是Control，也可以选择Value
+	这个时候对应的变量是一个 CString bbb; 获取EditControl的内容，如下：
+	UpdateData();
+	char* inxml = bbb.GetBuffer();
+@endverbatim
+*/
+获取和设置EditControl的值;
+
+/**
+@verbatim
+1、MFC中有MessageBox，WinAPI也有MessageBox
+2、AfxMessageBox是MFC中的，是对MFC中MessageBox的封装，示例：
+	AfxMessageBox("和vru没有连接");
+	MFC中MessageBox是模态的，也就是必须确认之后，才能点击其它的窗口
+3、怎么创建非模态的？
+	需要使用WinAPI中的MessageBox，第一个参数设置为NULL，如下：
+	::MessageBox(NULL,"和vru没有连接","Caption",MB_OK);
+@endverbatim
+*/
+确认框;
+
+
+/** @} */

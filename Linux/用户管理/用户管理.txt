@@ -1,0 +1,184 @@
+/**
+* @defgroup Linux
+* @{
+*/
+
+/**
+* @defgroup 用户管理
+* @{
+*/
+
+
+
+
+/**
+@verbatim
+1、登录Linux主机的时候，我们使用的是用户名，而Linux使用UID和GID来标识用户的。在passwd可以看到UID和GID，如下：
+	[root@2 ~]# more /etc/passwd
+	root:x:0:0:root:/root:/bin/bash
+	bin:x:1:1:bin:/bin:/sbin/nologin
+	daemon:x:2:2:daemon:/sbin:/sbin/nologin
+	passwd每行表示一个用户，有7个字段
+2、passwd每行中的第二个字段是登录密码，这里都是x，真正的密码保存在/etc/shadow，如下：
+	root:$6$dC4C06mrthJsxgWE$g7SlxiQvqB7oQRLSQBInr7iNVDreRKPYxlqpq9cbW7CM14bsgF4kwKFcpiu.E8n6QyaJxMX4okJId1VEGjCkl1:16266:0:99999:7:::
+	bin:*:15628:0:99999:7:::
+	daemon:*:15628:0:99999:7:::
+	adm:*:15628:0:99999:7:::
+	shadow每行表示一个用户对应的密码，有9个字段，第二个字段是密码，并且加密了。
+3、Linux如果忘记密码，怎么办？
+	忘记普通用户的密码，这个很简单，root登录进去，使用passwd命令修改密码。
+	忘记root用户的密码，有两个办法：
+	a、重新启动进入用户维护模式，Linux系统给予root权限的bash接口，以passwd修改密码
+	b、以Live CD开机挂载根目录，修改shadow文件，root的密码字段清空，重启后，root登录不需要密码，然后重置密码
+4、与用户对应，用户组的信息分别在文件 /etc/group 和 /etc/gshadow
+@endverbatim
+*/
+用户名和密码;
+
+
+/**
+@verbatim
+1、查询当前登陆的用户
+	[root@localhost rc.d]# w
+	17:49:10 up  1:31,  5 users,  load average: 0.37, 0.16, 0.23
+	USER     TTY      FROM              LOGIN@   IDLE   JCPU   PCPU WHAT
+	root     :0       -                16:19   ?xdm?  23.23s  0.06s /usr/bin/gnome-session
+	root     pts/1    :0.0             16:20    1:23m  0.01s  0.01s bash
+	root     pts/2    192.168.1.100    16:22   52:21   0.13s  0.13s -bash
+	root     pts/3    192.168.1.100    16:57   51:45   0.01s  0.00s vi aaa
+	root     pts/4    192.168.1.100    16:57    0.00s  0.09s  0.09s -bash
+	[root@localhost rc.d]# who
+	root     :0           2015-12-28 16:19
+	root     pts/1        2015-12-28 16:20 (:0.0)
+	root     pts/2        2015-12-28 16:22 (192.168.1.100)
+	root     pts/3        2015-12-28 16:57 (192.168.1.100)
+	root     pts/4        2015-12-28 16:57 (192.168.1.100)
+	[root@localhost rc.d]# whoami
+	root
+	[root@localhost rc.d]# who am i
+	root     pts/4        2015-12-28 16:57 (192.168.1.100)
+2、区别如下：
+	w			show who is logged on and what they are doing
+	who			show who is logged on
+	whoami		print effective userid
+	who am i	print actual userid
+	Consider, when a user logs in as a root across the network, both the command whoami and who am i will show you root. 
+	However, when a user abc logs in remotely and runs su – root, whoami will show root whereas who am i will show abc
+3、lastlog 查询所有用户或者某一个用户，最后一次的登陆地址和登录时间，如果用户从来没有登录过，显示  **Never logged in**
+	[root@localhost ~]# lastlog
+	Username         Port     From             Latest
+	root             pts/5    192.168.1.100    Tue Dec 29 10:03:18 -0800 2015
+	bin                                        **Never logged in**
+	daemon                                     **Never logged in**
+4、last对于登录过的用户，显示登陆有关的信息。
+	[root@localhost ~]# last
+	root     pts/5        192.168.1.100    Tue Dec 29 10:03   still logged in   
+	root     pts/4        192.168.1.100    Mon Dec 28 16:57   still logged in   
+	root     pts/3        192.168.1.100    Mon Dec 28 16:57   still logged in   
+	root     pts/2        192.168.1.100    Mon Dec 28 16:22   still logged in   
+	root     pts/2        :0.0             Mon Dec 28 16:21 - 16:21  (00:00)    
+	root     pts/1        :0.0             Mon Dec 28 16:20   still logged in   
+	root     :0                            Mon Dec 28 16:19   still logged in   
+	root     :0                            Mon Dec 28 16:19 - 16:19  (00:00)    
+	reboot   system boot  2.6.18-194.el5   Mon Dec 28 16:18          (17:53)    
+	zhanxin  pts/1        :0.0             Wed Jul  1 22:47 - down   (00:02)    
+	zhanxin  :0                            Wed Jul  1 22:46 - down   (00:02)  
+5、另外id和finger也能显示当前登陆的用户信息，如下：
+	[root@localhost ~]# id
+	uid=0(root) gid=0(root) groups=0(root),1(bin),2(daemon),3(sys),4(adm),6(disk),10(wheel)
+	[root@localhost ~]# finger
+	Login     Name       Tty      Idle  Login Time   Office     Office Phone
+	root      root      *:0             Dec 28 16:19
+	root      root       pts/1   17:47  Dec 28 16:20 (:0.0)
+	root      root       pts/2   17:15  Dec 28 16:22 (192.168.1.100)
+	root      root       pts/3   17:15  Dec 28 16:57 (192.168.1.100)
+	root      root       pts/4       9  Dec 28 16:57 (192.168.1.100)
+	root      root       pts/5          Dec 29 10:03 (192.168.1.100)
+@endverbatim
+*/
+查询用户登录信息;
+
+
+/**
+@verbatim
+1、添加用户
+	useradd niu
+	注意：useradd是二进制程序，而adduser是useradd的软连接。
+2、设置密码
+	passwd niu
+	输入密码，然后确认
+	使用ssh远程登录，确认 ssh root@192.168.1.101
+3、删除用户
+	userdel niu
+4、修改用户名称
+	usermod -lniu2 niu
+	把用户名niu修改为niu2
+@endverbatim
+*/
+用户的增删改;
+
+
+/**
+@verbatim
+1、考虑下面的需求，当前以普通用户登陆，先查看shadow的内容，如下：
+	-bash-3.2$ cat /etc/shadow
+	cat: /etc/shadow: Permission denied
+2、这个文件只有root用户才有权限，怎么办？
+3、第一种方法，使用sudo，以其他用户的身份执行命令，通常是使用root的身份来执行命令。如下：
+	-bash-3.2$ sudo -uroot cat /etc/shadow
+	[sudo] password for niu: 
+	niu is not in the sudoers file.  This incident will be reported.
+4、这里报错，原因是用户niu 没有借用其他用户身份的权限，需要配置权限。
+	使用visudo在root下面的一行添加niu的信息，如下：
+	## Allow root to run any commands anywhere
+	root    ALL=(ALL)       ALL
+	niu     ALL=(ALL)       ALL
+	再次执行，sudo -uroot cat /etc/shadow 
+5、第二种方法，使用su，切换到其他身份，如下：
+	-bash-3.2$ env|grep -E -i 'mail|home'
+	MAIL=/var/spool/mail/niu
+	PWD=/home/niu
+	HOME=/home/niu
+	-bash-3.2$ su root
+	Password: 
+	bash: alais: command not found
+	[root@localhost niu]# env|grep -E -i 'mail|home'
+	MAIL=/var/spool/mail/niu
+	PWD=/home/niu
+	HOME=/root
+	这个时候发现，虽然用户niu的身份已经切换到了root，但是环境变量还是用户niu的环境变量，怎么办？
+6、使用su - root（中划线后面有空格），如下：
+	-bash-3.2$ env|grep -E -i 'mail|home'
+	MAIL=/var/spool/mail/niu
+	PWD=/home/niu
+	HOME=/home/niu
+	-bash-3.2$ su - root
+	Password: 
+	-bash: alais: command not found
+	[root@localhost ~]# env|grep -E -i 'mail|home'
+	MAIL=/var/spool/mail/root
+	HOME=/root
+7、特别注意一点，使用su 改变的只是有效用户，并没有改变真实用户。whoami显示有效用户，而 who am i 显示真实用户
+	-bash-3.2$ who am i
+	niu      pts/3        2015-12-29 11:42 (192.168.1.101)
+	-bash-3.2$ whoami
+	niu
+	-bash-3.2$ su root
+	Password: 
+	bash: alais: command not found
+	[root@localhost niu]# who am i
+	niu      pts/3        2015-12-29 11:42 (192.168.1.101)
+	[root@localhost niu]# whoami
+	root
+	特别注意：用户niu的提示符是-bash-3.2$，而用户root的提示符是[root@localhost niu]，这里的niu是一个目录，不要搞混淆了。
+8、通过上面的测试知道，使用su，切换到root，可能会导致比较大的危险，因此建议使用sudo
+@endverbatim
+*/
+用户身份切换;
+
+
+
+
+/** @} */
+
+/** @} */

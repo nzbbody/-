@@ -1,0 +1,25 @@
+﻿/**
+* @defgroup STL
+* @{
+*/
+
+/**
+* @defgroup Effective__STL
+* @{
+*/
+
+/**
+@verbatim
+1、标准STL序列容器：vector、string、list和deque
+2、标准STL关联容器：set、multiset、map和multimap
+3、vector和string是基于连续内存，list、set和map是基于节点。
+	而deque是二者的结合，deque内部是一块一块的，块与块之间是基于节点，块内部基于连续内存。
+4、对比vector，deque是双向开口。
+@endverbatim
+*/
+【S01】慎重选择容器类型;
+
+
+/** @} */
+
+/** @} */

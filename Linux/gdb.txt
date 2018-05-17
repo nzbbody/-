@@ -1,0 +1,1261 @@
+/**
+* @defgroup Linux
+* @{
+*/
+
+/**
+* @defgroup gdb
+* @{
+*/
+
+
+/**
+@verbatim
+1、准备工作
+	编译调试版本的可执行程序(gcc加上-g参数即可,注意不要调试加-O相关的选项)
+2、gdb调试方式
+	冷启动
+		gdb program			e.g., gdb ./cs
+		gdb –p pid			e.g., gdb –p `pidof cs`
+		gdb program core	e.g., gdb ./cs core.xxx
+	热启动
+		(gdb) attach pid	e.g., (gdb) attach 2313
+	命令行参数
+		gdb program --args arglist
+		(gdb) set args arglist
+		(gdb) run arglist
+3、在gdb中调用shell命名，如下：
+	(gdb) shell vi main.cpp
+	进入vi 
+	输入 :exit 退出vi
+	注意：有些shell命名执行完毕就返回了，这种情况不需要exit
+4、设置断点
+	(gdb) break function: 在函数funtion入口处设置断点
+	(gdb) break linenum: 在当前源文件的第linenum行处设置断点
+	(gdb) break filename:linenum: 在名为filename的源文件的第linenum行处设置断点
+	(gdb) break filename:function: 在名为filename的源文件中的function函数入口处设置断点
+	比如：
+	(gdb) break foo1
+	(gdb) break 17
+5、查看断点信息
+	(gdb) info break
+	Num     Type           Disp Enb Address    What
+	1       breakpoint     keep y   0x080483fa in foo1() at main.cpp:5
+	2       breakpoint     keep y   0x08048425 in foo3() at main.cpp:17
+6、断点禁用启用
+	(gdb) info break
+	Num     Type           Disp Enb Address    What
+	1       breakpoint     keep y   0x080483fa in foo1() at main.cpp:5
+	2       breakpoint     keep y   0x08048425 in foo3() at main.cpp:17
+	(gdb) disable break 1
+	(gdb) info break
+	Num     Type           Disp Enb Address    What
+	1       breakpoint     keep n   0x080483fa in foo1() at main.cpp:5
+	2       breakpoint     keep y   0x08048425 in foo3() at main.cpp:17
+	(gdb) enable break 1
+	(gdb) info break
+	Num     Type           Disp Enb Address    What
+	1       breakpoint     keep y   0x080483fa in foo1() at main.cpp:5
+	2       breakpoint     keep y   0x08048425 in foo3() at main.cpp:17
+7、删除断点
+	(gdb) info break
+	Num     Type           Disp Enb Address    What
+	1       breakpoint     keep y   0x080483fa in foo1() at main.cpp:5
+	2       breakpoint     keep y   0x08048425 in foo3() at main.cpp:17
+	(gdb) delete break 1-2
+	(gdb) info break
+8、调试
+	n step over	
+	s step into
+	c next break
+9、打印，如下：
+	(gdb) p a3
+	$1 = 3
+	(gdb) set print pretty 
+	(gdb) p a3
+	$2 = 3
+10、转到堆栈
+	(gdb) f 1
+	#1  0x08048449 in main () at main.cpp:24
+	24              foo3();
+11、gdb 寄存器，如下：
+	(gdb) info register
+	eax            0xbfffead4       -1073747244
+	ecx            0xbfffea50       -1073747376
+	edx            0x1      1
+	ebx            0x80aff4 8433652
+	esp            0xbfffea24       0xbfffea24
+	ebp            0xbfffea38       0xbfffea38
+	esi            0x6c5ca0 7101600
+	edi            0x0      0
+	eip            0x8048405        0x8048405 <main()+17>
+	eflags         0x286    [ PF SF IF ]
+	cs             0x73     115
+	ss             0x7b     123
+	ds             0x7b     123
+	es             0x7b     123
+	fs             0x0      0
+	gs             0x33     51
+@endverbatim
+*/
+gdb调试;
+
+/**
+@verbatim
+1、列出某一行的上下文：
+	(gdb) list 8
+	3       int foo1(int a)
+	4       {
+	5               return a+1;
+	6       }
+	7
+	8
+	9       int main()
+	10      {
+	11              int a = 7;
+	12              int b= foo1(a);
+2、列出行的范围：
+	(gdb) list 7,14
+	7
+	8
+	9       int main()
+	10      {
+	11              int a = 7;
+	12              int b= foo1(a);
+	13              return b;
+	14      }
+3、列出方法的上下文：
+	(gdb) list foo1
+	1       #include <stdio.h>
+	2
+	3       int foo1(int a)
+	4       {
+	5               return a+1;
+	6       }
+	7
+	8
+	9       int main()
+	10      {
+4、list是针对当前文件，一般是main.cpp，也可以指定其他cpp文件，对应的位置前面加上xxx.cpp，如下：
+	(gdb) list main.cpp:8
+	(gdb) list main.cpp:7,14
+	(gdb) list main.cpp:foo1
+5、特别注意：list能列出源代码，必须满足条件，当前环境下有cpp文件。
+	如果没有cpp文件，报错 xxx.cpp: No such file or directory.
+	也就是说，在设备A编译程序，然后把编译后的结果拷贝到设备B，在设备B上进行gdb，list不能列出源代码。怎么办？
+	解决办法是：从设备A把cpp文件拷贝到设备B的当前目录下。
+@endverbatim
+*/
+gdb调试之list;
+
+
+/**
+@verbatim
+1、gdb ./vru_start.sh 用法是错误的
+	[root@localhost vru]# gdb ./vru_start.sh 用法是错误的，添加断点错误如下：
+	(gdb) b 2
+	No symbol table is loaded.  Use the "file" command.
+2、正确的用法：
+	[root@localhost vru]# export LD_LIBRARY_PATH=../common:./:$LD_LIBRARY_PATH
+	[root@localhost vru]# gdb ./vru_main
+	(gdb) set args -f vru_linux.xml 
+	(gdb) r
+3、另外一种办法，找到进程Id，先下断点，再continue，然后p
+	如下：
+	[root@localhost vru]# gdb -p 24847
+	(gdb) b src/VruMaster.cpp:528
+	Breakpoint 1 at 0x80d33b0: file src/VruMaster.cpp, line 528.
+	(gdb) c
+	Continuing.
+	[Switching to Thread 0xb097eb70 (LWP 24884)]
+	
+	Breakpoint 1, VruMaster::HandlePlan (this=0x93c6578) at src/VruMaster.cpp:528
+	528     src/VruMaster.cpp: No such file or directory.
+			in src/VruMaster.cpp
+	(gdb) p ttpConfig
+4、设置断点
+	(gdb) info b
+	No breakpoints or watchpoints.
+	(gdb) b 6
+	Breakpoint 8 at 0x80a6718: file src/VruApp.cpp, line 9. (2 locations)
+	(gdb) b VruMaster.cpp:236
+	Breakpoint 9 at 0x80d4649: file src/VruMaster.cpp, line 236.
+	(gdb) b src/VruMaster.cpp:238
+	Breakpoint 10 at 0x80d465b: file src/VruMaster.cpp, line 238.
+	(gdb) b ./src/VruMaster.cpp:246
+	No source file named ./src/VruMaster.cpp.
+	Make breakpoint pending on future shared library load? (y or [n]) [answered N; input not from terminal]
+	(gdb) b src/VruMaster.cpp:246
+	Breakpoint 11 at 0x80d46f6: file src/VruMaster.cpp, line 246.
+	(gdb) info b
+	Num     Type           Disp Enb Address    What
+	8       breakpoint     keep y   <MULTIPLE> 
+	8.1                         y     0x080a6718 in __tcf_2(void*) at src/VruApp.cpp:9
+	8.2                         y     0x080a6845 in __static_initialization_and_destruction_0(int, int) at src/VruApp.cpp:9
+	9       breakpoint     keep y   0x080d4649 in VruMaster::logoutDeviceEvent() at src/VruMaster.cpp:236
+	10      breakpoint     keep y   0x080d465b in VruMaster::logoutDeviceEvent() at src/VruMaster.cpp:238
+	11      breakpoint     keep y   0x080d46f6 in VruMaster::logoutDeviceEvent() at src/VruMaster.cpp:246
+	注意：b ./src/VruMaster.cpp:246 这种用法是错误的。
+@endverbatim
+*/
+gdb调试服务vru;
+
+
+/**
+@verbatim
+1、高版本的gdb可以打印出vector的内容，但是低版本的vector还不行。
+2、怎么解决？
+	我们知道vector内部是使用数组实现的，我们可以打印出来array地址的内容。
+3、示例如下：
+	[niu_zibin@localhost gdb]$ vi main.cpp
+	
+	1 #include <stdio.h>
+	2 #include <vector.h>
+	3 int main()
+	4 {
+	5         vector<int> aVec;
+	6         aVec.push_back(1);
+	7         aVec.push_back(2);
+	8         aVec.push_back(3);
+	9 
+	10         return 0;
+	11 }
+	
+	[niu_zibin@localhost gdb]$ g++ -g -o main main.cpp
+	
+	[niu_zibin@localhost gdb]$ gdb main
+	(gdb) b 10 
+	Breakpoint 1 at 0x804879b: file main.cpp, line 10.
+	(gdb) r
+	Starting program: /home/niu_zibin/test/gdb/main 
+	
+	Breakpoint 1, main () at main.cpp:10
+	10              return 0;
+	(gdb) p aVec
+	$1 = {<std::_Vector_base<int, std::allocator<int> >> = {
+		_M_impl = {<std::allocator<int>> = {<__gnu_cxx::new_allocator<int>> = {<No data fields>}, <No data fields>}, 
+		_M_start = 0x804b028, _M_finish = 0x804b034, _M_end_of_storage = 0x804b038}}, <No data fields>}
+	(gdb) p *(0x804b028)
+	$2 = 1
+	(gdb) p *(0x804b028)@1
+	$3 = {1}
+	(gdb) p *(0x804b028)@2
+	$4 = {1, 2}
+	(gdb) p *(0x804b028)@3
+	$5 = {1, 2, 3}
+	(gdb) c
+	Continuing.
+	
+	Program exited normally.
+	(gdb) q
+4、现在考虑，vector元素是自定义的类型，操作如下：
+	[niu_zibin@localhost gdb]$ vi main.cpp 
+
+	#include <stdio.h>
+	#include <vector.h>
+	#include <string.h>
+	
+	using namespace std;
+	
+	struct Person
+	{
+			int     _Age;
+			string  _Name;
+			Person(int age,string name)
+			{
+					_Age = age;
+					_Name = name;
+			}
+	};
+	
+	int main()
+	{
+			Person p1(1,"Andy");
+			Person p2(2,"Bill");
+			Person p3(3,"Caroline");
+	
+			vector<Person> aVec;
+			aVec.push_back(p1);
+			aVec.push_back(p2);
+			aVec.push_back(p3);
+	
+			return 0;
+	}
+	
+	[niu_zibin@localhost gdb]$ g++ -g -o main main.cpp
+	
+	[niu_zibin@localhost gdb]$ gdb main
+	(gdb) shell vi main.cpp
+	
+		1 #include <stdio.h>
+		2 #include <vector.h>
+		3 #include <string.h>
+		4 
+		5 using namespace std;
+		6 
+		7 struct Person
+		8 {
+		9         int     _Age;
+		10         string  _Name;
+		11         Person(int age,string name)
+		12         {
+		13                 _Age = age;
+		14                 _Name = name;
+		15         }
+		16 };
+		17 
+		18 int main()
+		19 {
+		20         Person p1(1,"Andy");
+		21         Person p2(2,"Bill");
+		22         Person p3(3,"Caroline");
+		23 
+		24         vector<Person> aVec;
+		25         aVec.push_back(p1);
+		26         aVec.push_back(p2);
+		27         aVec.push_back(p3);
+		28 
+		29         return 0;
+		30 }
+	(gdb) b 29
+	Breakpoint 1 at 0x8048b14: file main.cpp, line 29.
+	(gdb) r
+	Starting program: /home/niu_zibin/test/gdb/main 
+	warning: .dynamic section for "/lib/libc.so.6" is not at the expected address
+	warning: difference appears to be caused by prelink, adjusting expectations
+	
+	Breakpoint 1, main () at main.cpp:29
+	29              return 0;
+	(gdb) p aVec
+	$1 = {<std::_Vector_base<Person, std::allocator<Person> >> = {
+		_M_impl = {<std::allocator<Person>> = {<__gnu_cxx::new_allocator<Person>> = {<No data fields>}, <No data fields>}, 
+		_M_start = 0x804c080, _M_finish = 0x804c098, _M_end_of_storage = 0x804c0a0}}, <No data fields>}
+	(gdb) p *(0x804c080)
+	$2 = 1
+	(gdb) p *(Person*)(0x804c080)
+	$3 = {_Age = 1, _Name = {static npos = 4294967295, 
+		_M_dataplus = {<std::allocator<char>> = {<__gnu_cxx::new_allocator<char>> = {<No data fields>}, <No data fields>}, 
+		_M_p = 0x804c014 "Andy"}}}
+	(gdb) p *(Person*)(0x804c080)@1
+	$4 = {{_Age = 1, _Name = {static npos = 4294967295, 
+		_M_dataplus = {<std::allocator<char>> = {<__gnu_cxx::new_allocator<char>> = {<No data fields>}, <No data fields>}, 
+			_M_p = 0x804c014 "Andy"}}}}
+	(gdb) p *(Person*)(0x804c080)@2
+	$5 = {{_Age = 1, _Name = {static npos = 4294967295, 
+		_M_dataplus = {<std::allocator<char>> = {<__gnu_cxx::new_allocator<char>> = {<No data fields>}, <No data fields>}, 
+			_M_p = 0x804c014 "Andy"}}}, {_Age = 2, _Name = {static npos = 4294967295, 
+		_M_dataplus = {<std::allocator<char>> = {<__gnu_cxx::new_allocator<char>> = {<No data fields>}, <No data fields>}, 
+			_M_p = 0x804c02c "Bill"}}}}
+	(gdb) p *(Person*)(0x804c080)@3
+	$6 = {{_Age = 1, _Name = {static npos = 4294967295, 
+		_M_dataplus = {<std::allocator<char>> = {<__gnu_cxx::new_allocator<char>> = {<No data fields>}, <No data fields>}, 
+			_M_p = 0x804c014 "Andy"}}}, {_Age = 2, _Name = {static npos = 4294967295, 
+		_M_dataplus = {<std::allocator<char>> = {<__gnu_cxx::new_allocator<char>> = {<No data fields>}, <No data fields>}, 
+			_M_p = 0x804c02c "Bill"}}}, {_Age = 3, _Name = {static npos = 4294967295, 
+		_M_dataplus = {<std::allocator<char>> = {<__gnu_cxx::new_allocator<char>> = {<No data fields>}, <No data fields>}, 
+			_M_p = 0x804c044 "Caroline"}}}}
+	(gdb) c
+	Continuing.
+	
+	Program exited normally.
+	(gdb) q
+@endverbatim
+*/
+gdb打印vector的内容;
+
+
+/**
+@verbatim
+1、将下面的内容，保存到 ~/.gdbinit
+#                                                                                                        
+#   STL GDB evaluators/views/utilities - 1.03
+#
+#   The new GDB commands:                                                         
+# 	    are entirely non instrumental                                             
+# 	    do not depend on any "inline"(s) - e.g. size(), [], etc
+#       are extremely tolerant to debugger settings
+#                                                                                 
+#   This file should be "included" in .gdbinit as following:
+#   source stl-views.gdb or just paste it into your .gdbinit file
+#
+#   The following STL containers are currently supported:
+#
+#       std::vector<T> -- via pvector command
+#       std::list<T> -- via plist or plist_member command
+#       std::map<T,T> -- via pmap or pmap_member command
+#       std::multimap<T,T> -- via pmap or pmap_member command
+#       std::set<T> -- via pset command
+#       std::multiset<T> -- via pset command
+#       std::deque<T> -- via pdequeue command
+#       std::stack<T> -- via pstack command
+#       std::queue<T> -- via pqueue command
+#       std::priority_queue<T> -- via ppqueue command
+#       std::bitset<n> -- via pbitset command
+#       std::string -- via pstring command
+#       std::widestring -- via pwstring command
+#
+#   The end of this file contains (optional) C++ beautifiers
+#   Make sure your debugger supports $argc
+#
+#   Simple GDB Macros writen by Dan Marinescu (H-PhD) - License GPL
+#   Inspired by intial work of Tom Malnar, 
+#     Tony Novac (PhD) / Cornell / Stanford,
+#     Gilad Mishne (PhD) and Many Many Others.
+#   Contact: dan_c_marinescu@yahoo.com (Subject: STL)
+#
+#   Modified to work with g++ 4.3 by Anders Elton
+#   Also added _member functions, that instead of printing the entire class in map, prints a member.
+
+
+
+#
+# std::vector<>
+#
+
+define pvector
+	if $argc == 0
+		help pvector
+	else
+		set $size = $arg0._M_impl._M_finish - $arg0._M_impl._M_start
+		set $capacity = $arg0._M_impl._M_end_of_storage - $arg0._M_impl._M_start
+		set $size_max = $size - 1
+	end
+	if $argc == 1
+		set $i = 0
+		while $i < $size
+			printf "elem[%u]: ", $i
+			p *($arg0._M_impl._M_start + $i)
+			set $i++
+		end
+	end
+	if $argc == 2
+		set $idx = $arg1
+		if $idx < 0 || $idx > $size_max
+			printf "idx1, idx2 are not in acceptable range: [0..%u].\n", $size_max
+		else
+			printf "elem[%u]: ", $idx
+			p *($arg0._M_impl._M_start + $idx)
+		end
+	end
+	if $argc == 3
+	  set $start_idx = $arg1
+	  set $stop_idx = $arg2
+	  if $start_idx > $stop_idx
+	    set $tmp_idx = $start_idx
+	    set $start_idx = $stop_idx
+	    set $stop_idx = $tmp_idx
+	  end
+	  if $start_idx < 0 || $stop_idx < 0 || $start_idx > $size_max || $stop_idx > $size_max
+	    printf "idx1, idx2 are not in acceptable range: [0..%u].\n", $size_max
+	  else
+	    set $i = $start_idx
+		while $i <= $stop_idx
+			printf "elem[%u]: ", $i
+			p *($arg0._M_impl._M_start + $i)
+			set $i++
+		end
+	  end
+	end
+	if $argc > 0
+		printf "Vector size = %u\n", $size
+		printf "Vector capacity = %u\n", $capacity
+		printf "Element "
+		whatis $arg0._M_impl._M_start
+	end
+end
+
+document pvector
+	Prints std::vector<T> information.
+	Syntax: pvector <vector> <idx1> <idx2>
+	Note: idx, idx1 and idx2 must be in acceptable range [0..<vector>.size()-1].
+	Examples:
+	pvector v - Prints vector content, size, capacity and T typedef
+	pvector v 0 - Prints element[idx] from vector
+	pvector v 1 2 - Prints elements in range [idx1..idx2] from vector
+end 
+
+#
+# std::list<>
+#
+
+define plist
+	if $argc == 0
+		help plist
+	else
+		set $head = &$arg0._M_impl._M_node
+		set $current = $arg0._M_impl._M_node._M_next
+		set $size = 0
+		while $current != $head
+			if $argc == 2
+				printf "elem[%u]: ", $size
+				p *($arg1*)($current + 1)
+			end
+			if $argc == 3
+				if $size == $arg2
+					printf "elem[%u]: ", $size
+					p *($arg1*)($current + 1)
+				end
+			end
+			set $current = $current._M_next
+			set $size++
+		end
+		printf "List size = %u \n", $size
+		if $argc == 1
+			printf "List "
+			whatis $arg0
+			printf "Use plist <variable_name> <element_type> to see the elements in the list.\n"
+		end
+	end
+end
+
+document plist
+	Prints std::list<T> information.
+	Syntax: plist <list> <T> <idx>: Prints list size, if T defined all elements or just element at idx
+	Examples:
+	plist l - prints list size and definition
+	plist l int - prints all elements and list size
+	plist l int 2 - prints the third element in the list (if exists) and list size
+end
+
+define plist_member
+	if $argc == 0
+		help plist_member
+	else
+		set $head = &$arg0._M_impl._M_node
+		set $current = $arg0._M_impl._M_node._M_next
+		set $size = 0
+		while $current != $head
+			if $argc == 3
+				printf "elem[%u]: ", $size
+				p (*($arg1*)($current + 1)).$arg2
+			end
+			if $argc == 4
+				if $size == $arg3
+					printf "elem[%u]: ", $size
+					p (*($arg1*)($current + 1)).$arg2
+				end
+			end
+			set $current = $current._M_next
+			set $size++
+		end
+		printf "List size = %u \n", $size
+		if $argc == 1
+			printf "List "
+			whatis $arg0
+			printf "Use plist_member <variable_name> <element_type> <member> to see the elements in the list.\n"
+		end
+	end
+end
+
+document plist_member
+	Prints std::list<T> information.
+	Syntax: plist <list> <T> <idx>: Prints list size, if T defined all elements or just element at idx
+	Examples:
+	plist_member l int member - prints all elements and list size
+	plist_member l int member 2 - prints the third element in the list (if exists) and list size
+end
+
+
+#
+# std::map and std::multimap
+#
+
+define pmap
+	if $argc == 0
+		help pmap
+	else
+		set $tree = $arg0
+		set $i = 0
+		set $node = $tree._M_t._M_impl._M_header._M_left
+		set $end = $tree._M_t._M_impl._M_header
+		set $tree_size = $tree._M_t._M_impl._M_node_count
+		if $argc == 1
+			printf "Map "
+			whatis $tree
+			printf "Use pmap <variable_name> <left_element_type> <right_element_type> to see the elements in the map.\n"
+		end
+		if $argc == 3
+			while $i < $tree_size
+				set $value = (void *)($node + 1)
+				printf "elem[%u].left: ", $i
+				p *($arg1*)$value
+				set $value = $value + sizeof($arg1)
+				printf "elem[%u].right: ", $i
+				p *($arg2*)$value
+				if $node._M_right != 0
+					set $node = $node._M_right
+					while $node._M_left != 0
+						set $node = $node._M_left
+					end
+				else
+					set $tmp_node = $node._M_parent
+					while $node == $tmp_node._M_right
+						set $node = $tmp_node
+						set $tmp_node = $tmp_node._M_parent
+					end
+					if $node._M_right != $tmp_node
+						set $node = $tmp_node
+					end
+				end
+				set $i++
+			end
+		end
+		if $argc == 4
+			set $idx = $arg3
+			set $ElementsFound = 0
+			while $i < $tree_size
+				set $value = (void *)($node + 1)
+				if *($arg1*)$value == $idx
+					printf "elem[%u].left: ", $i
+					p *($arg1*)$value
+					set $value = $value + sizeof($arg1)
+					printf "elem[%u].right: ", $i
+					p *($arg2*)$value
+					set $ElementsFound++
+				end
+				if $node._M_right != 0
+					set $node = $node._M_right
+					while $node._M_left != 0
+						set $node = $node._M_left
+					end
+				else
+					set $tmp_node = $node._M_parent
+					while $node == $tmp_node._M_right
+						set $node = $tmp_node
+						set $tmp_node = $tmp_node._M_parent
+					end
+					if $node._M_right != $tmp_node
+						set $node = $tmp_node
+					end
+				end
+				set $i++
+			end
+			printf "Number of elements found = %u\n", $ElementsFound
+		end
+		if $argc == 5
+			set $idx1 = $arg3
+			set $idx2 = $arg4
+			set $ElementsFound = 0
+			while $i < $tree_size
+				set $value = (void *)($node + 1)
+				set $valueLeft = *($arg1*)$value
+				set $valueRight = *($arg2*)($value + sizeof($arg1))
+				if $valueLeft == $idx1 && $valueRight == $idx2
+					printf "elem[%u].left: ", $i
+					p $valueLeft
+					printf "elem[%u].right: ", $i
+					p $valueRight
+					set $ElementsFound++
+				end
+				if $node._M_right != 0
+					set $node = $node._M_right
+					while $node._M_left != 0
+						set $node = $node._M_left
+					end
+				else
+					set $tmp_node = $node._M_parent
+					while $node == $tmp_node._M_right
+						set $node = $tmp_node
+						set $tmp_node = $tmp_node._M_parent
+					end
+					if $node._M_right != $tmp_node
+						set $node = $tmp_node
+					end
+				end
+				set $i++
+			end
+			printf "Number of elements found = %u\n", $ElementsFound
+		end
+		printf "Map size = %u\n", $tree_size
+	end
+end
+
+document pmap
+	Prints std::map<TLeft and TRight> or std::multimap<TLeft and TRight> information. Works for std::multimap as well.
+	Syntax: pmap <map> <TtypeLeft> <TypeRight> <valLeft> <valRight>: Prints map size, if T defined all elements or just element(s) with val(s)
+	Examples:
+	pmap m - prints map size and definition
+	pmap m int int - prints all elements and map size
+	pmap m int int 20 - prints the element(s) with left-value = 20 (if any) and map size
+	pmap m int int 20 200 - prints the element(s) with left-value = 20 and right-value = 200 (if any) and map size
+end
+
+
+define pmap_member
+	if $argc == 0
+		help pmap_member
+	else
+		set $tree = $arg0
+		set $i = 0
+		set $node = $tree._M_t._M_impl._M_header._M_left
+		set $end = $tree._M_t._M_impl._M_header
+		set $tree_size = $tree._M_t._M_impl._M_node_count
+		if $argc == 1
+			printf "Map "
+			whatis $tree
+			printf "Use pmap <variable_name> <left_element_type> <right_element_type> to see the elements in the map.\n"
+		end
+		if $argc == 5
+			while $i < $tree_size
+				set $value = (void *)($node + 1)
+				printf "elem[%u].left: ", $i
+				p (*($arg1*)$value).$arg2
+				set $value = $value + sizeof($arg1)
+				printf "elem[%u].right: ", $i
+				p (*($arg3*)$value).$arg4
+				if $node._M_right != 0
+					set $node = $node._M_right
+					while $node._M_left != 0
+						set $node = $node._M_left
+					end
+				else
+					set $tmp_node = $node._M_parent
+					while $node == $tmp_node._M_right
+						set $node = $tmp_node
+						set $tmp_node = $tmp_node._M_parent
+					end
+					if $node._M_right != $tmp_node
+						set $node = $tmp_node
+					end
+				end
+				set $i++
+			end
+		end
+		if $argc == 6
+			set $idx = $arg5
+			set $ElementsFound = 0
+			while $i < $tree_size
+				set $value = (void *)($node + 1)
+				if *($arg1*)$value == $idx
+					printf "elem[%u].left: ", $i
+					p (*($arg1*)$value).$arg2
+					set $value = $value + sizeof($arg1)
+					printf "elem[%u].right: ", $i
+					p (*($arg3*)$value).$arg4
+					set $ElementsFound++
+				end
+				if $node._M_right != 0
+					set $node = $node._M_right
+					while $node._M_left != 0
+						set $node = $node._M_left
+					end
+				else
+					set $tmp_node = $node._M_parent
+					while $node == $tmp_node._M_right
+						set $node = $tmp_node
+						set $tmp_node = $tmp_node._M_parent
+					end
+					if $node._M_right != $tmp_node
+						set $node = $tmp_node
+					end
+				end
+				set $i++
+			end
+			printf "Number of elements found = %u\n", $ElementsFound
+		end
+		printf "Map size = %u\n", $tree_size
+	end
+end
+
+document pmap_member
+	Prints std::map<TLeft and TRight> or std::multimap<TLeft and TRight> information. Works for std::multimap as well.
+	Syntax: pmap <map> <TtypeLeft> <TypeRight> <valLeft> <valRight>: Prints map size, if T defined all elements or just element(s) with val(s)
+	Examples:
+	pmap_member m class1 member1 class2 member2 - prints class1.member1 : class2.member2
+	pmap_member m class1 member1 class2 member2 lvalue - prints class1.member1 : class2.member2 where class1 == lvalue
+end
+
+
+#
+# std::set and std::multiset
+#
+
+define pset
+	if $argc == 0
+		help pset
+	else
+		set $tree = $arg0
+		set $i = 0
+		set $node = $tree._M_t._M_impl._M_header._M_left
+		set $end = $tree._M_t._M_impl._M_header
+		set $tree_size = $tree._M_t._M_impl._M_node_count
+		if $argc == 1
+			printf "Set "
+			whatis $tree
+			printf "Use pset <variable_name> <element_type> to see the elements in the set.\n"
+		end
+		if $argc == 2
+			while $i < $tree_size
+				set $value = (void *)($node + 1)
+				printf "elem[%u]: ", $i
+				p *($arg1*)$value
+				if $node._M_right != 0
+					set $node = $node._M_right
+					while $node._M_left != 0
+						set $node = $node._M_left
+					end
+				else
+					set $tmp_node = $node._M_parent
+					while $node == $tmp_node._M_right
+						set $node = $tmp_node
+						set $tmp_node = $tmp_node._M_parent
+					end
+					if $node._M_right != $tmp_node
+						set $node = $tmp_node
+					end
+				end
+				set $i++
+			end
+		end
+		if $argc == 3
+			set $idx = $arg2
+			set $ElementsFound = 0
+			while $i < $tree_size
+				set $value = (void *)($node + 1)
+				if *($arg1*)$value == $idx
+					printf "elem[%u]: ", $i
+					p *($arg1*)$value
+					set $ElementsFound++
+				end
+				if $node._M_right != 0
+					set $node = $node._M_right
+					while $node._M_left != 0
+						set $node = $node._M_left
+					end
+				else
+					set $tmp_node = $node._M_parent
+					while $node == $tmp_node._M_right
+						set $node = $tmp_node
+						set $tmp_node = $tmp_node._M_parent
+					end
+					if $node._M_right != $tmp_node
+						set $node = $tmp_node
+					end
+				end
+				set $i++
+			end
+			printf "Number of elements found = %u\n", $ElementsFound
+		end
+		printf "Set size = %u\n", $tree_size
+	end
+end
+
+document pset
+	Prints std::set<T> or std::multiset<T> information. Works for std::multiset as well.
+	Syntax: pset <set> <T> <val>: Prints set size, if T defined all elements or just element(s) having val
+	Examples:
+	pset s - prints set size and definition
+	pset s int - prints all elements and the size of s
+	pset s int 20 - prints the element(s) with value = 20 (if any) and the size of s
+end
+
+
+
+#
+# std::dequeue
+#
+
+define pdequeue
+	if $argc == 0
+		help pdequeue
+	else
+		set $size = 0
+		set $start_cur = $arg0._M_impl._M_start._M_cur
+		set $start_last = $arg0._M_impl._M_start._M_last
+		set $start_stop = $start_last
+		while $start_cur != $start_stop
+			p *$start_cur
+			set $start_cur++
+			set $size++
+		end
+		set $finish_first = $arg0._M_impl._M_finish._M_first
+		set $finish_cur = $arg0._M_impl._M_finish._M_cur
+		set $finish_last = $arg0._M_impl._M_finish._M_last
+		if $finish_cur < $finish_last
+			set $finish_stop = $finish_cur
+		else
+			set $finish_stop = $finish_last
+		end
+		while $finish_first != $finish_stop
+			p *$finish_first
+			set $finish_first++
+			set $size++
+		end
+		printf "Dequeue size = %u\n", $size
+	end
+end
+
+document pdequeue
+	Prints std::dequeue<T> information.
+	Syntax: pdequeue <dequeue>: Prints dequeue size, if T defined all elements
+	Deque elements are listed "left to right" (left-most stands for front and right-most stands for back)
+	Example:
+	pdequeue d - prints all elements and size of d
+end
+
+
+
+#
+# std::stack
+#
+
+define pstack
+	if $argc == 0
+		help pstack
+	else
+		set $start_cur = $arg0.c._M_impl._M_start._M_cur
+		set $finish_cur = $arg0.c._M_impl._M_finish._M_cur
+		set $size = $finish_cur - $start_cur
+        set $i = $size - 1
+        while $i >= 0
+            p *($start_cur + $i)
+            set $i--
+        end
+		printf "Stack size = %u\n", $size
+	end
+end
+
+document pstack
+	Prints std::stack<T> information.
+	Syntax: pstack <stack>: Prints all elements and size of the stack
+	Stack elements are listed "top to buttom" (top-most element is the first to come on pop)
+	Example:
+	pstack s - prints all elements and the size of s
+end
+
+
+
+#
+# std::queue
+#
+
+define pqueue
+	if $argc == 0
+		help pqueue
+	else
+		set $start_cur = $arg0.c._M_impl._M_start._M_cur
+		set $finish_cur = $arg0.c._M_impl._M_finish._M_cur
+		set $size = $finish_cur - $start_cur
+        set $i = 0
+        while $i < $size
+            p *($start_cur + $i)
+            set $i++
+        end
+		printf "Queue size = %u\n", $size
+	end
+end
+
+document pqueue
+	Prints std::queue<T> information.
+	Syntax: pqueue <queue>: Prints all elements and the size of the queue
+	Queue elements are listed "top to bottom" (top-most element is the first to come on pop)
+	Example:
+	pqueue q - prints all elements and the size of q
+end
+
+
+
+#
+# std::priority_queue
+#
+
+define ppqueue
+	if $argc == 0
+		help ppqueue
+	else
+		set $size = $arg0.c._M_impl._M_finish - $arg0.c._M_impl._M_start
+		set $capacity = $arg0.c._M_impl._M_end_of_storage - $arg0.c._M_impl._M_start
+		set $i = $size - 1
+		while $i >= 0
+			p *($arg0.c._M_impl._M_start + $i)
+			set $i--
+		end
+		printf "Priority queue size = %u\n", $size
+		printf "Priority queue capacity = %u\n", $capacity
+	end
+end
+
+document ppqueue
+	Prints std::priority_queue<T> information.
+	Syntax: ppqueue <priority_queue>: Prints all elements, size and capacity of the priority_queue
+	Priority_queue elements are listed "top to buttom" (top-most element is the first to come on pop)
+	Example:
+	ppqueue pq - prints all elements, size and capacity of pq
+end
+
+
+
+#
+# std::bitset
+#
+
+define pbitset
+	if $argc == 0
+		help pbitset
+	else
+        p /t $arg0._M_w
+	end
+end
+
+document pbitset
+	Prints std::bitset<n> information.
+	Syntax: pbitset <bitset>: Prints all bits in bitset
+	Example:
+	pbitset b - prints all bits in b
+end
+
+
+
+#
+# std::string
+#
+
+define pstring
+	if $argc == 0
+		help pstring
+	else
+		printf "String \t\t\t= \"%s\"\n", $arg0._M_data()
+		printf "String size/length \t= %u\n", $arg0._M_rep()._M_length
+		printf "String capacity \t= %u\n", $arg0._M_rep()._M_capacity
+		printf "String ref-count \t= %d\n", $arg0._M_rep()._M_refcount
+	end
+end
+
+document pstring
+	Prints std::string information.
+	Syntax: pstring <string>
+	Example:
+	pstring s - Prints content, size/length, capacity and ref-count of string s
+end 
+
+#
+# std::wstring
+#
+
+define pwstring
+	if $argc == 0
+		help pwstring
+	else
+		call printf("WString \t\t= \"%ls\"\n", $arg0._M_data())
+		printf "WString size/length \t= %u\n", $arg0._M_rep()._M_length
+		printf "WString capacity \t= %u\n", $arg0._M_rep()._M_capacity
+		printf "WString ref-count \t= %d\n", $arg0._M_rep()._M_refcount
+	end
+end
+
+document pwstring
+	Prints std::wstring information.
+	Syntax: pwstring <wstring>
+	Example:
+	pwstring s - Prints content, size/length, capacity and ref-count of wstring s
+end 
+
+#
+# C++ related beautifiers (optional)
+#
+
+set print pretty on
+set print object on
+set print static-members on
+set print vtbl on
+set print demangle on
+set demangle-style gnu-v3
+set print sevenbit-strings off
+
+2、然后就可以使用这些命令 pvector, plist, pmap, pset, pdequeue, pstack, pqueue, ppqueue, pbitset, pstring, pwstring
+
+@endverbatim
+@see
+*/
+gdb打印stl的内容;
+
+
+
+/**
+@verbatim
+1、gdb常常用于查看崩溃信息，如下：
+	[root@localhost vru]# gdb vru_main core.10504.vru_main
+2、常用的命名
+	info thread
+	thread apply 1 bt
+	thread apply all bt
+3、常见的coredump原因
+	Signal 4(SIGILL)
+		SIGILL信号是cpu在发现非法指令之后发出一个异常，然后由负责处理该异常的内核的ISR对含有这个非法指令的进程发出的。
+		程序收到这个信号，一般就是报告 illegal instruction 错误信息。可能导致的原因：
+		版本不一致， 比如依赖的共享库接口变了，但你仍在使用老版本的库，问题的现象通常是诡异。
+		而且你觉得不可能挂的地方，而通常是挂在你对依赖库的调用之处。简单点说就是头文件更新了，但库文件还没有更新。
+		一个非常常见的原因是：崩溃的上下文，存在把string当成int，进行打印。
+		这种情况，采用排除法，注释掉会崩溃的代码，缩小范围，找到问题。
+	Signal 6(SIGABRT)
+		New失败：内存泄露造成内存不够
+		Delete失败：多次delete同一块内存
+		应用程序抛出的异常
+	Signal 11(SIGSEGV)
+		多为内存越界，访问已经被delete掉的内存
+	Signal 13(SIGPIPE)
+		写已经被删除的文件，写对方已经关闭的socket
+4、更多的崩溃信号，如下：
+	编号为1-31的信号为传统UNIX支持的信号，是不可靠信号(非实时的)。
+	编号为32-63的信号是后来扩充的，称做可靠信号(实时信号)。
+	不可靠信号和可靠信号的区别在于前者不支持排队，可能会造成信号丢失，而后者不会。
+	下面我们对编号小于SIGRTMIN的信号进行讨论。
+	1) SIGHUP
+		本信号在用户终端连接(正常或非正常)结束时发出, 通常是在终端的控制进程结束时, 通知同一session内的各个作业,
+		这时它们与控制终端不再关联。登录Linux时，系统会分配给登录用户一个终端(Session)。
+		在这个终端运行的所有程序，包括前台进程组和后台进程组，一般都属于这个Session。当用户退出Linux登录时，
+		前台进程组和后台有对终端输出的进程将会收到SIGHUP信号。这个信号的默认操作为终止进程，
+		因此前台进程组和后台有终端输出的进程就会中止。不过可以捕获这个信号，比如wget能捕获SIGHUP信号，并忽略它，
+		这样就算退出了Linux登录，wget也能继续下载。
+		此外，对于与终端脱离关系的守护进程，这个信号用于通知它重新读取配置文件。
+	2) SIGINT
+		程序终止(interrupt)信号, 在用户键入INTR字符(通常是Ctrl-C)时发出，用于通知前台进程组终止进程。
+	3) SIGQUIT
+		和SIGINT类似, 但由QUIT字符(通常是Ctrl-\)来控制. 进程在因收到SIGQUIT退出时会产生core文件, 
+		在这个意义上类似于一个程序错误信号。
+	4) SIGILL
+		执行了非法指令. 通常是因为可执行文件本身出现错误, 或者试图执行数据段. 堆栈溢出时也有可能产生这个信号。
+	5) SIGTRAP
+		由断点指令或其它trap指令产生. 由debugger使用。
+	6) SIGABRT
+		调用abort函数生成的信号。
+	7) SIGBUS
+		非法地址, 包括内存地址对齐(alignment)出错。比如访问一个四个字长的整数, 
+		但其地址不是4的倍数。它与SIGSEGV的区别在于后者是由于对合法存储地址的非法访问触发的
+		(如访问不属于自己存储空间或只读存储空间)。
+	8) SIGFPE
+		在发生致命的算术运算错误时发出. 不仅包括浮点运算错误, 还包括溢出及除数为0等其它所有的算术的错误。
+	9) SIGKILL
+		用来立即结束程序的运行. 本信号不能被阻塞、处理和忽略。如果管理员发现某个进程终止不了，可尝试发送这个信号。
+	10) SIGUSR1
+		留给用户使用
+	11) SIGSEGV
+		试图访问未分配给自己的内存, 或试图往没有写权限的内存地址写数据.
+	12) SIGUSR2
+		留给用户使用
+	13) SIGPIPE
+		管道破裂。这个信号通常在进程间通信产生，比如采用FIFO(管道)通信的两个进程，读管道没打开或者意外终止就往管道写，
+		写进程会收到SIGPIPE信号。此外用Socket通信的两个进程，写进程在写Socket的时候，读进程已经终止。
+	14) SIGALRM
+		时钟定时信号, 计算的是实际的时间或时钟时间. alarm函数使用该信号.
+	15) SIGTERM
+		程序结束(terminate)信号, 与SIGKILL不同的是该信号可以被阻塞和处理。通常用来要求程序自己正常退出，
+		shell命令kill缺省产生这个信号。如果进程终止不了，我们才会尝试SIGKILL。
+	17) SIGCHLD
+		子进程结束时, 父进程会收到这个信号。如果父进程没有处理这个信号，也没有等待(wait)子进程，子进程虽然终止，
+		但是还会在内核进程表中占有表项，这时的子进程称为僵尸进程。这种情况我们应该避免
+		(父进程或者忽略SIGCHILD信号，或者捕捉它，或者wait它派生的子进程，或者父进程先终止，
+		这时子进程的终止自动由init进程来接管)。
+	18) SIGCONT
+		让一个停止(stopped)的进程继续执行. 本信号不能被阻塞。
+		可以用一个handler来让程序在由stopped状态变为继续执行时完成特定的工作。例如, 重新显示提示符
+	19) SIGSTOP
+		停止(stopped)进程的执行. 注意它和terminate以及interrupt的区别:该进程还未结束, 只是暂停执行。
+		本信号不能被阻塞, 处理或忽略.
+	20) SIGTSTP
+		停止进程的运行, 但该信号可以被处理和忽略. 用户键入SUSP字符时(通常是Ctrl-Z)发出这个信号
+	21) SIGTTIN
+		当后台作业要从用户终端读数据时, 该作业中的所有进程会收到SIGTTIN信号. 缺省时这些进程会停止执行.
+	22) SIGTTOU
+		类似于SIGTTIN, 但在写终端(或修改终端模式)时收到.
+	23) SIGURG
+		有"紧急"数据或out-of-band数据到达socket时产生.
+	24) SIGXCPU
+		超过CPU时间资源限制. 这个限制可以由getrlimit/setrlimit来读取/改变。
+	25) SIGXFSZ
+		当进程企图扩大文件以至于超过文件大小资源限制。
+	26) SIGVTALRM
+		虚拟时钟信号. 类似于SIGALRM, 但是计算的是该进程占用的CPU时间.
+	27) SIGPROF
+		类似于SIGALRM/SIGVTALRM, 但包括该进程用的CPU时间以及系统调用的时间.
+	28) SIGWINCH
+		窗口大小改变时发出.
+	29) SIGIO
+		文件描述符准备就绪, 可以开始进行输入/输出操作.
+	30) SIGPWR
+		Power failure
+	31) SIGSYS
+		非法的系统调用。
+	在以上列出的信号中，
+	程序不可捕获、阻塞或忽略的信号有：SIGKILL,SIGSTOP
+	不能恢复至默认动作的信号有：SIGILL,SIGTRAP
+	默认会导致进程流产的信号有：SIGABRT,SIGBUS,SIGFPE,SIGILL,SIGIOT,SIGQUIT,SIGSEGV,SIGTRAP,SIGXCPU,SIGXFSZ
+	默认会导致进程退出的信号有：SIGALRM,SIGHUP,SIGINT,SIGKILL,SIGPIPE,SIGPOLL,SIGPROF,SIGSYS,SIGTERM,SIGUSR1,SIGUSR2,SIGVTALRM
+	默认会导致进程停止的信号有：SIGSTOP,SIGTSTP,SIGTTIN,SIGTTOU
+	默认进程忽略的信号有：SIGCHLD,SIGPWR,SIGURG,SIGWINCH
+	此外，SIGIO在SVR4是退出，在4.3BSD中是忽略；SIGCONT在进程挂起时是继续，否则是忽略，不能被阻塞
+@endverbatim
+*/
+gdb查看崩溃信息;
+
+
+/**
+@verbatim
+1、使用gdb查看core文件的堆栈信息，使用bt（全称是backtrace回溯），栈顶显示为 ?? ()
+2、这是怎么回事？
+	bt会显示方法的调用堆栈，栈顶为 ?? () 说明是调用的方法找不到。
+	比如：方法指针被设置为NULL，或者其他无效的值
+3、模拟代码如下：
+	int Sum(int a,int b)
+	{
+		return a+b;
+	}
+	
+	int main()
+	{
+		int(*pFun)(int,int)=Sum;
+		pFun=0; // 强制设置为0，然后调用
+		// pFun=(int(*)(int,int))1234; 设置为无效的值，也是同样的道理。
+		int c = pFun(1,2);
+		return 0;
+	}
+4、运行产生core文件
+	[root@localhost niu5]# g++ -g -o main main.cpp
+	[root@localhost niu5]# ulimit -c unlimited
+	[root@localhost niu5]# ./main
+	Segmentation fault (core dumped)
+5、查看core文件，显示栈顶为?? ()
+	[root@localhost niu5]# gdb main core.31041.main 
+	GNU gdb (GDB) Red Hat Enterprise Linux (7.0.1-23.el5)
+	Copyright (C) 2009 Free Software Foundation, Inc.
+	License GPLv3+: GNU GPL version 3 or later <http://gnu.org/licenses/gpl.html>
+	This is free software: you are free to change and redistribute it.
+	There is NO WARRANTY, to the extent permitted by law.  Type "show copying"
+	and "show warranty" for details.
+	This GDB was configured as "i386-redhat-linux-gnu".
+	For bug reporting instructions, please see:
+	<http://www.gnu.org/software/gdb/bugs/>...
+	Reading symbols from /home/niu5/main...done.
+	Reading symbols from /usr/lib/libstdc++.so.6...(no debugging symbols found)...done.
+	Loaded symbols for /usr/lib/libstdc++.so.6
+	Reading symbols from /lib/libm.so.6...(no debugging symbols found)...done.
+	Loaded symbols for /lib/libm.so.6
+	Reading symbols from /lib/libgcc_s.so.1...(no debugging symbols found)...done.
+	Loaded symbols for /lib/libgcc_s.so.1
+	Reading symbols from /lib/libc.so.6...(no debugging symbols found)...done.
+	Loaded symbols for /lib/libc.so.6
+	Reading symbols from /lib/ld-linux.so.2...(no debugging symbols found)...done.
+	Loaded symbols for /lib/ld-linux.so.2
+	Core was generated by `./main'.
+	Program terminated with signal 11, Segmentation fault.
+	#0  0x00000000 in ?? ()
+	(gdb) bt
+	#0  0x00000000 in ?? ()
+	#1  0x08048463 in main () at main.cpp:10
+@endverbatim
+*/
+gdb查看core堆栈，栈顶显示问号;
+
+/**
+@verbatim
+1、no source file named xxx
+2、一种情况是动态库还没有加载进来
+3、一种情况是因为找不到源文件，把需要的源文件拷贝到当前目录，
+	或者获取拷贝到一个目录，使用directory指定源文件的搜索路径
+@endverbatim
+*/
+gdb在动态库上打断点出现错误;
+
+/** @} */
+
+/** @} */

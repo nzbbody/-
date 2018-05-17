@@ -1,0 +1,205 @@
+/**
+* @defgroup Linux
+* @{
+*/
+
+/**
+* @defgroup git
+* @{
+*/
+
+/**
+@verbatim
+1、git push命令用于将本地分支的更新，推送到远程主机。它的格式与git pull命令相似。
+	git push <远程主机名> <本地分支名>:<远程分支名>
+2、git push origin master
+	上面命令表示，将本地的master分支推送到origin主机的master分支。如果master不存在，则会被新建。
+@endverbatim
+*/
+push命令;
+
+/**
+@verbatim
+1、执行的结果如下：
+	niuzibin@ubuntu:~/work/gittest$ git status    
+	On branch master
+	Changes to be committed:
+	(use "git reset HEAD <file>..." to unstage)
+	
+			modified:   readme.txt
+	
+	Changes not staged for commit:
+	(use "git add <file>..." to update what will be committed)
+	(use "git checkout -- <file>..." to discard changes in working directory)
+	
+			modified:   readme.txt
+2、解释如下：
+	On branch master				工作的分支
+	Changes to be committed:		暂存区没有提交的信息
+	Changes not staged for commit:	工作区没有添加到暂存区的信息
+@endverbatim
+*/
+git命令status;
+
+/**
+@verbatim
+1、分为两种情况：
+	第一种情况，工作区做了修改，还没有添加到暂存区。
+	第二种情况，工作区做了修改，并且已经添加到暂存区，然后工作区又做了修改。
+2、对于第一种情况，直接使用checkout即可。如下：
+	niuzibin@ubuntu:~/work/gittest$ git status
+	On branch master
+	Changes not staged for commit:
+	(use "git add <file>..." to update what will be committed)
+	(use "git checkout -- <file>..." to discard changes in working directory)
+	
+			modified:   readme.txt
+	
+	no changes added to commit (use "git add" and/or "git commit -a")
+	niuzibin@ubuntu:~/work/gittest$ git diff  
+	diff --git a/readme.txt b/readme.txt
+	index 4dd9cb5..56b6b46 100644
+	--- a/readme.txt
+	+++ b/readme.txt
+	@@ -1 +1 @@
+	-I am Andy
+	+I am Bill
+	niuzibin@ubuntu:~/work/gittest$ git checkout readme.txt
+	niuzibin@ubuntu:~/work/gittest$ git status
+	On branch master
+	nothing to commit, working directory clean
+	niuzibin@ubuntu:~/work/gittest$ git diff
+3、对于第二种情况，版本库是 I am Andy，暂存区是 I am Bill， 工作区是 I am Caroline，如下：
+	// 比较暂存区和版本库的差别
+	niuzibin@ubuntu:~/work/gittest$ git diff --cached
+	diff --git a/readme.txt b/readme.txt
+	index 4dd9cb5..56b6b46 100644
+	--- a/readme.txt
+	+++ b/readme.txt
+	@@ -1 +1 @@
+	-I am Andy
+	+I am Bill
+	
+	// 比较工作区和暂存区的差别
+	niuzibin@ubuntu:~/work/gittest$ git diff
+	diff --git a/readme.txt b/readme.txt
+	index 56b6b46..b688830 100644
+	--- a/readme.txt
+	+++ b/readme.txt
+	@@ -1 +1 @@
+	-I am Bill
+	+I am Caroline
+	
+	// 比较工作区和版本库的差别
+	niuzibin@ubuntu:~/work/gittest$ git diff HEAD
+	diff --git a/readme.txt b/readme.txt
+	index 4dd9cb5..b688830 100644
+	--- a/readme.txt
+	+++ b/readme.txt
+	@@ -1 +1 @@
+	-I am Andy
+	+I am Caroline
+4、撤销工作区的修改，如下：
+	niuzibin@ubuntu:~/work/gittest$ git checkout readme.txt
+	niuzibin@ubuntu:~/work/gittest$ git diff --cached
+	diff --git a/readme.txt b/readme.txt
+	index 4dd9cb5..56b6b46 100644
+	--- a/readme.txt
+	+++ b/readme.txt
+	@@ -1 +1 @@
+	-I am Andy
+	+I am Bill
+	niuzibin@ubuntu:~/work/gittest$ git diff
+	niuzibin@ubuntu:~/work/gittest$ git diff HEAD          
+	diff --git a/readme.txt b/readme.txt
+	index 4dd9cb5..56b6b46 100644
+	--- a/readme.txt
+	+++ b/readme.txt
+	@@ -1 +1 @@
+	-I am Andy
+	+I am Bill
+5、撤销暂存区的修改，如下：
+	niuzibin@ubuntu:~/work/gittest$ git reset HEAD readme.txt
+	Unstaged changes after reset:
+	M       readme.txt
+	niuzibin@ubuntu:~/work/gittest$ git diff --cached
+	niuzibin@ubuntu:~/work/gittest$ git diff
+	diff --git a/readme.txt b/readme.txt
+	index 4dd9cb5..56b6b46 100644
+	--- a/readme.txt
+	+++ b/readme.txt
+	@@ -1 +1 @@
+	-I am Andy
+	+I am Bill
+6、还需要再次checkout，如下：
+	niuzibin@ubuntu:~/work/gittest$ git checkout readme.txt
+	niuzibin@ubuntu:~/work/gittest$ git diff --cached
+	niuzibin@ubuntu:~/work/gittest$ git diff
+7、也就是说，checkout相当于拿暂存区的数据，覆盖工作区。reset HEAD相当于拿版本库的数据，覆盖暂存区。
+8、考虑工作区、暂存区、版本库的内容分别为C、B、A
+	现在要全部撤销，有两个办法：
+	第一个办法：checkout结果为【B、B、A】-->reset HEAD结果为【B、A、A】-->checkout结果为【A、A、A】
+	第二个办法：reset HEAD结果为【C、A、A】-->checkout结果为【A、A、A】
+@endverbatim
+*/
+git撤销修改;
+
+/**
+@verbatim
+1、准备工作如下：
+	niuzibin@ubuntu:~/work/gittest$ git init
+	Initialized empty Git repository in /home/niuzibin/work/gittest/.git/
+	niuzibin@ubuntu:~/work/gittest$ git config --global user.name "niuzibin"        
+	niuzibin@ubuntu:~/work/gittest$ git config --global user.email "nzbbody@163.com"
+	niuzibin@ubuntu:~/work/gittest$ git config user.name
+	niuzibin
+	niuzibin@ubuntu:~/work/gittest$ git config user.email
+	nzbbody@163.com
+	niuzibin@ubuntu:~/work/gittest$ vi readme.txt
+	niuzibin@ubuntu:~/work/gittest$ git add readme.txt 
+	niuzibin@ubuntu:~/work/gittest$ git commit -m"add file readme.txt"
+	[master (root-commit) 7846ec0] add file readme.txt
+	1 file changed, 1 insertion(+)
+	create mode 100644 readme.txt
+	niuzibin@ubuntu:~/work/gittest$ git log
+	commit 7846ec02be0f61138d84b75aa5213c9f4421d4b4
+	Author: niuzibin <nzbbody@163.com>
+	Date:   Mon Apr 9 18:29:47 2018 -0700
+	
+		add file readme.txt
+2、注意：提交的时候，如果没有-m写日志，会提示输入日志。输入之后，Ctrl+o，然后Enter，然后Ctrl+x
+3、修改，查看变化
+	niuzibin@ubuntu:~/work/gittest$ git status    
+	On branch master
+	Changes not staged for commit:
+	(use "git add <file>..." to update what will be committed)
+	(use "git checkout -- <file>..." to discard changes in working directory)
+	
+			modified:   readme.txt
+	
+	Untracked files:
+	(use "git add <file>..." to include in what will be committed)
+	
+			1
+	
+	no changes added to commit (use "git add" and/or "git commit -a")
+	niuzibin@ubuntu:~/work/gittest$ git diff
+	diff --git a/readme.txt b/readme.txt
+	index 4dd9cb5..3f54eb5 100644
+	--- a/readme.txt
+	+++ b/readme.txt
+	@@ -1 +1,2 @@
+	I am Andy
+	+hehe
+4、撤销本地修改
+	niuzibin@ubuntu:~/work/gittest$ git checkout -- readme.txt
+5、上面的方法撤销一个文件的修改，如果撤销当前目录下的多个文件修改，使用
+	niuzibin@ubuntu:~/work/gittest$ git checkout ./
+@endverbatim
+*/
+撤销本地修改;
+
+
+/** @} */
+
+/** @} */

@@ -1,0 +1,71 @@
+/**
+* @defgroup Mysql事务
+* @{
+*/
+
+/**
+@verbatim
+	read-uncommitted（未提交读）
+	测试流程：
+	1、A设置read-uncommitted, start transaction
+	2、B执行start transaction，修改一条记录，
+	3、A查询记录，得到了以为正确的记录
+	4、B回滚。
+	问题：A读到了B没有提交的记录，也就是脏读。
+@endverbatim
+
+@verbatim
+	read-committed（已提交读）
+	测试流程：
+	1、A设置read-committed, start transaction
+	2、B执行start transaction，修改一条记录，查询记录，记录已经修改成功
+	3、A查询记录，结果还是老的记录
+	4、B提交事务
+	5、A再次查询记录，结果是新的记录。
+	问题：解决了脏读的问题，但是出现一个新问题，A在一个事务中，两次读取的记录不一致，也就是不可重复读。
+@endverbatim
+
+@verbatim
+	repeatable-read（可重复读）
+	测试流程：
+	1、A设置repeatable-read, start transaction，查询记录，结果是老的记录
+	2、B执行start transaction，修改一条记录，查询记录，记录已经修改成功
+	3、A查询记录，结果还是老的记录
+	4、B提交事务
+	5、A再次查询记录，结果还是老的记录。
+	问题：可以重复读，A在事务过程中，即使B修改了数据，并且commit，A读取的还是老的数据。实际上是A读取的数据还是事务开始时的快照。
+	注意：这里可能会存在一个新的问题，A在事务过程中，B增加一条记录，并提交，导致A的两次读取不一致，会多一条记录，也就是幻影读。
+	这里只是可能，具体取决于数据库的实现。mysql的repeatable-read实现，不会导致幻影读。
+@endverbatim
+
+@verbatim
+	serializable（可串行化）
+	测试流程：
+	1、A设置serializable, start transaction，查询记录，结果是老的记录
+	2、B执行start transaction，修改一条记录，B卡在这里，要等待A完成才行。
+	3、A查询记录，结果还是老的记录，A提交。
+	4、B的修改操作才进行下去。
+	注意：B在等待过程中，会出现lock超时。这种情况，存在性能问题，因为要一个一个来。
+@endverbatim
+
+@verbatim
+	注意：事务隔离级别，是在不同事务之间隔离的概念，而不是针对当前事务。比如：
+	当前事务的隔离级别是提交读，插入一条，在当前事务中可以查询出来。如果另一个事务的隔离级别也是提交读，查询不出来。
+@endverbatim
+
+
+@verbatim
+	注意：事务隔离的实现，基本上是两种方法：
+	1、访问数据之前加锁，阻止其他事务对数据的访问。
+	2、不加任何锁，对于一个请求，通过一定机制生成当前时间点的数据快照，并用这个快照提供一定级别的一致性数据访问。
+		从用户的角度来看，好像是数据库提供了一份数据的多个版本，这种技术叫做数据多版本并发控制。
+		MVCC（MultiVersion Concurrency Control）
+	事务隔离是在一定程度上进行串行化处理，这与并行矛盾，要根据实际需要，进行均衡。
+@endverbatim
+
+*/
+事务隔离级别;
+
+
+/** @} */
+

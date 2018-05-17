@@ -1,0 +1,100 @@
+/**
+* @defgroup Linux
+* @{
+*/
+
+/**
+* @defgroup Shell变量
+* @{
+*/
+
+
+/**
+@verbatim
+[root@localhost test]# name='Andy Niu'			//设置变量
+[root@localhost test]# echo $name
+Andy Niu
+[root@localhost test]# name=$name:'Bill Lee'	//累加变量内容
+[root@localhost test]# echo $name
+Andy Niu:Bill Lee
+[root@localhost test]# unset name				//取消变量
+[root@localhost test]# echo $name
+
+注意：一般情况下，系统默认变量为大写，用户自定义变量为小写。
+@endverbatim
+*/
+变量的设置;
+
+
+/**
+@verbatim
+[root@localhost log]# var=/dir1/dir2/file.txt
+1、对变量取值
+	[root@localhost log]# echo ${var}
+	/dir1/dir2/file.txt
+2、求字符串的长度
+	[root@localhost log]# echo ${#var}
+	19
+3、提取位置3到最后的字符
+	[root@localhost log]# echo ${var:3}
+	r1/dir2/file.txt
+4、从位置3，开始提取5个字符
+	[root@localhost log]# echo ${var:3:5}
+	r1/di
+5、从左边开始，删除最短匹配r，这里的*表示删除
+	[root@localhost log]# echo ${var#*r}
+	1/dir2/file.txt
+6、从左边开始，删除最短匹配dir
+	[root@localhost log]# echo ${var#*dir}
+	1/dir2/file.txt
+7、从左边开始，删除最短匹配数字，支持正则表达式
+	[root@localhost log]# echo ${var#*[0-9]}
+	/dir2/file.txt
+8、从左边开始，删除最长匹配di，这里的*表示删除
+	[root@localhost log]# echo ${var##*di}
+	r2/file.txt
+9、从右边开始，删除最短匹配di，注意：这里的*在后面。 #在$的左边，从左边开始，%在$的右边，从右边开始
+	[root@localhost log]# echo ${var%di*}
+	/dir1/
+10、从右边开始，删除最长匹配di
+	[root@localhost log]# echo ${var%%di*}
+	/
+11、用aa替换第一个匹配的di
+	[root@localhost log]# echo ${var/di/aa}
+	/aar1/dir2/file.txt
+12、用bbb替换所有匹配的dir
+	[root@localhost log]# echo ${var//dir/bbb}
+	/bbb1/bbb2/file.txt
+13、用bbb替换前缀/dir,注意:/本身需要使用转义字符
+	[root@localhost log]# echo ${var/#\/dir/bbb}
+	bbb1/dir2/file.txt
+14、用bbb替换前缀le,注意:/本身需要使用转义字符
+	[root@localhost log]# echo ${var/%\le*.txt/bbb}
+	/dir1/dir2/fibbb
+15、用bbb替换后缀2*.txt,支持正则表达式
+	[root@localhost log]# echo ${var/%2*.txt/bbb}
+	/dir1/dirbbb
+@endverbatim
+*/
+变量内容的操作;
+
+/**
+@verbatim
+1、变量的范围分为环境变量和自定义变量，也可以认为是全局变量和局部变量。
+2、当前进程name为Andy Niu，进入子进程，子进程只会继承父进程的环境变量，而不会继承父进程的自定义变量。
+	也就是说，在子进程看不到name，离开子进程，又可以看到name。想在子进程看到父进程的自定义变量，怎么办？
+	使用export，把当前进程的自定义变量name导出，作为环境变量，在子进程就可以使用了。
+	export name
+3、export的原理是：
+	a、启动一个shell为A，操作系统分配一块内存给shell使用，可认为这块内存保存了A的环境变量。
+	b、A执行export，相当于把自定义变量写到上述的内存块中，作为环境变量。
+	c、启动一个子shell为B，B会将A内存块中的环境变量导入自己的环境变量块中，就可以使用了。
+4、env查看环境变量，set查看环境变量和自定义变量。
+@endverbatim
+*/
+变量的有效范围;
+
+
+/** @} */
+
+/** @} */

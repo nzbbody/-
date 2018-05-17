@@ -1,0 +1,430 @@
+﻿/**
+* @defgroup MySQL
+* @{
+*/
+
+/**
+* @defgroup Mysql常见问题
+* @{
+*/
+
+/**
+@verbatim
+1、通过select或者show variables 可以看到系统变量单词之间的分隔符是下划线，如下：
+	mysql> show variables like 'event%';
+	+-----------------+-------+
+	| Variable_name   | Value |
+	+-----------------+-------+
+	| event_scheduler | ON    |
+	+-----------------+-------+
+	1 row in set (0.00 sec)
+	
+	mysql> select @@event_scheduler;
+	+-------------------+
+	| @@event_scheduler |
+	+-------------------+
+	| ON                |
+	+-------------------+
+	1 row in set (0.00 sec)
+2、在配置文件 my.cnf中，使用下划线或者中划线都是可以的。如下：
+	lower_case_table_names=1
+	default-character-set=utf8
+	event-scheduler=on
+3、另外对于开关变量，比如event-scheduler，使用on或者1也都是可以的。
+	event-scheduler=1
+	或者 event-scheduler=on
+4、但是在执行命令，使用选项参数的时候，必须使用中划线。
+	两个中划线是全写方式，选项和取值之间必须有=号或者空格，但是有些必须使用=号，比如密码之类。
+	单中划线是简写方式，选项和取值之间不能使用=号，可以有空格也可以没有空格，但是有些必须没有空格，比如密码之类。
+	如下：
+	mysql --user=root --password=123456
+	mysql --user root --password=123456
+	mysql -u root -p123456
+	mysql -uroot -p123456
+@endverbatim
+*/
+mysql下划线和中划线;
+
+
+/**
+@verbatim
+1、mysql是典型的的CS架构，连接mysql服务有两种方式：
+	TCP/IP套接字和Unix域套接字
+2、TCP/IP套接字是MySQL在任何平台都提供的一种连接方式，也是网络中使用最多的一种方式。
+	这种方式通过TCP/IP建立网络连接，一般情况下客户端在一台服务器上，而MySQL实例在另外一台服务器上，如下：
+	mysql -h127.0.0.1 -uroot -p123456
+	使用netstat可以看到TCP连接，在Linux使用tcpdump抓包可以看到交互的数据（在Windows下抓不到环回包）
+3、如果mysql客户端和数据库实例在同一台服务器上，可以使用Unix域套接字连接。
+	注：Unix域套接字其实不是网络协议，mysql客户端和数据库实例之间没有TCP连接。
+	查看socket文件，如下：
+	mysql> show variables like 'socket';
+	+---------------+---------------------------+
+	| Variable_name | Value                     |
+	+---------------+---------------------------+
+	| socket        | /var/lib/mysql/mysql.sock |
+	+---------------+---------------------------+
+	使用UNIX域套接字连接，如下：
+	mysql -uroot -p123456 -S /var/lib/mysql/mysql.sock
+	UNIX域套接字比TCP/IP套接字效率更高，mysql默认使用Unix域套接字来连接，下面的方式都是使用Unix域套接字。
+	mysql -uroot -p123456
+	mysql -hlocalhost -uroot -p123456
+4、通过TCP/IP套接字连接，抓包可以获取交互信息
+	a、抓包获取的内容如下：
+		"......select serverid,title from serversmanagement;
+		.....P....
+		def.ibp_niu1.serversmanagement.serversmanagement.serverid.SERVERID.?.......B...J....
+		def.ibp_niu1.serversmanagement.serversmanagement.title.TITLE.!.,................
+		"......10.VTDU.....11.DMU.....18.VRU......."
+	b、具体内容，请求是select serverid,title from serversmanagement;
+		回复包括槽位的信息，以及返回的数据集合。
+	c、注意：登录的时候，密码字段是加密的。
+@endverbatim
+*/
+Mysql的两种连接方式;
+
+
+/**
+@verbatim
+1、数据库mysql，保存的信息有：
+	用户，帮助信息，普通日志，慢查询日志，时区有关。
+2、数据库information_schema，保存的信息有：
+	schemata，tables，columns，funcs，procedures，events，partitions,triggers，各种privileges，
+	全局和会话的status和variables，processlist,innodb的事务和锁
+	注意：有些表并没有实际的物理文件，而是对应着内存中的一些信息。
+3、数据库performance_schema，保存的信息有：
+	性能统计和分析
+@endverbatim
+*/
+Mysql默认的数据库;
+
+/**
+@verbatim
+1、为了性能考虑，mysql服务启动的时候，会把常用的信息从数据库中加载到内存。
+	这样以后在查询或者操作的时候，直接在内存中操作就行了，大大提高效率。
+	dmu的做法也是这样的。
+2、对于GRANT、REVOKE、SET PASSWORD操作，mysql会更新数据库中对应的表，同时刷新内存中的数据。
+	但是对于手工修改表的数据，比如insert、update，mysql内存中的数据并不会更新，导致内存和表的数据不一致。
+	客户端的请求，mysql还是在内存中进行，表现为insert，update操作没有起作用。
+3、怎么解决这个问题？
+	第一种方法是：重启mysql
+	第二种方法是：进行相应的flush，比如flush privileges，将数据库中的信息刷新到内存中。
+4、测试如下：
+	mysql> drop user niu;
+	Query OK, 0 rows affected (0.00 sec)
+	
+	mysql> create user niu;
+	Query OK, 0 rows affected (0.00 sec)
+	
+	mysql> update user set password=password('123') where user='niu';
+	Query OK, 1 row affected (0.00 sec)
+	Rows matched: 1  Changed: 1  Warnings: 0
+	
+	登录mysql -uniu -p123 报错，如下：
+	[root@localhost ~]# mysql -uniu -p123
+	Warning: Using a password on the command line interface can be insecure.
+	ERROR 1045 (28000): Access denied for user 'niu'@'localhost' (using password: YES)
+	
+	进行flush privileges
+	登录mysql -uniu -p123成功
+	
+	使用
+	mysql> set password for niu=password('456');
+	Query OK, 0 rows affected (0.00 sec)
+	登录mysql -uniu -p456成功
+@endverbatim
+*/
+Mysql有时候为什么要flush;
+
+
+/**
+@verbatim
+1、普通日志
+	mysql> show variables like 'general%';
+	+------------------+------------------------------+
+	| Variable_name    | Value                        |
+	+------------------+------------------------------+
+	| general_log      | ON                           |
+	| general_log_file | /var/lib/mysql/localhost.log |
+	+------------------+------------------------------+
+	2 rows in set (0.00 sec)
+2、注意：普通日志，不仅记录select查询语句，还记录insert，update等语句，查看普通日志，如下：
+	[root@localhost ~]# tail /var/lib/mysql/localhost.log
+					89 Query     show tables
+					89 Field List        a 
+					89 Field List        b 
+					89 Field List        t1 
+					89 Field List        t2 
+	160625 11:28:28    89 Query     create table t1(ID int)
+	160625 11:28:33    89 Query     create table t100(ID int)
+	160625 11:37:25    89 Query     insert t100 values(52)
+	160625 11:37:42    89 Query     show variables like 'general%'
+	160625 11:38:09    89 Query     update t100 set id=456
+3、慢查询日志
+	mysql> show global variables like '%_query%';
+	+------------------------------+-----------------------------------+
+	| Variable_name                | Value                             |
+	+------------------------------+-----------------------------------+
+	| binlog_rows_query_log_events | OFF                               |
+	| ft_query_expansion_limit     | 20                                |
+	| have_query_cache             | YES                               |
+	| long_query_time              | 4.000000                          |
+	| slow_query_log               | ON                                |
+	| slow_query_log_file          | /var/lib/mysql/localhost-slow.log |
+	+------------------------------+-----------------------------------+
+	6 rows in set (0.01 sec)
+	
+	mysql> set global long_query_time=3;
+	Query OK, 0 rows affected (0.00 sec)
+	
+	mysql> show global variables like '%_query%';
+	+------------------------------+-----------------------------------+
+	| Variable_name                | Value                             |
+	+------------------------------+-----------------------------------+
+	| binlog_rows_query_log_events | OFF                               |
+	| ft_query_expansion_limit     | 20                                |
+	| have_query_cache             | YES                               |
+	| long_query_time              | 3.000000                          |
+	| slow_query_log               | ON                                |
+	| slow_query_log_file          | /var/lib/mysql/localhost-slow.log |
+	+------------------------------+-----------------------------------+
+	6 rows in set (0.00 sec)
+	
+	mysql> select sleep(5);
+	+----------+
+	| sleep(5) |
+	+----------+
+	|        0 |
+	+----------+
+	1 row in set (5.00 sec)
+4、查看慢查询日志：
+	[root@localhost ~]# tail /var/lib/mysql/localhost-slow.log
+	Time                 Id Command    Argument
+	# Time: 160625 12:22:23
+	# User@Host: root[root] @ localhost []  Id:    89
+	# Query_time: 5.002054  Lock_time: 0.000000 Rows_sent: 1  Rows_examined: 0
+	use niu1;
+	SET timestamp=1466828543;
+	select sleep(5);
+	/usr/sbin/mysqld, Version: 5.6.15 (MySQL Community Server (GPL)). started with:
+	Tcp port: 3306  Unix socket: /var/lib/mysql/mysql.sock
+	Time                 Id Command    Argument
+@endverbatim
+*/
+Mysql的有关日志;
+
+
+/**
+@verbatim
+1、create table xxx as select xxx，创建新表，没有原表的完整约束，会把原表的数据拷贝一份，如下：
+mysql> desc stu;
++------------+--------------+------+-----+---------+----------------+
+| Field      | Type         | Null | Key | Default | Extra          |
++------------+--------------+------+-----+---------+----------------+
+| Id         | int(9)       | NO   | PRI | NULL    | auto_increment |
+| Name       | varchar(100) | NO   |     | NULL    |                |
+| Age        | int(9)       | NO   |     | 0       |                |
+| updatetime | datetime     | YES  |     | NULL    |                |
++------------+--------------+------+-----+---------+----------------+
+4 rows in set
+
+mysql> select * from stu;
++----+------+-----+---------------------+
+| Id | Name | Age | updatetime          |
++----+------+-----+---------------------+
+|  1 | Andy |  28 | 2015-03-19 15:42:09 |
++----+------+-----+---------------------+
+1 row in set
+
+mysql> create table stu2 as select * from stu;
+Query OK, 1 row affected
+Records: 1  Duplicates: 0  Warnings: 0
+
+mysql> desc stu2;
++------------+--------------+------+-----+---------+-------+
+| Field      | Type         | Null | Key | Default | Extra |
++------------+--------------+------+-----+---------+-------+
+| Id         | int(9)       | NO   |     | 0       |       |
+| Name       | varchar(100) | NO   |     | NULL    |       |
+| Age        | int(9)       | NO   |     | 0       |       |
+| updatetime | datetime     | YES  |     | NULL    |       |
++------------+--------------+------+-----+---------+-------+
+4 rows in set
+
+mysql> select * from stu2;
++----+------+-----+---------------------+
+| Id | Name | Age | updatetime          |
++----+------+-----+---------------------+
+|  1 | Andy |  28 | 2015-03-19 15:42:09 |
++----+------+-----+---------------------+
+1 row in set
+
+2、create table xxx like xxx，创建新表，约束和原表相同，只拷贝表结构，没有拷贝表的数据，如下：
+mysql> desc stu;
++------------+--------------+------+-----+---------+----------------+
+| Field      | Type         | Null | Key | Default | Extra          |
++------------+--------------+------+-----+---------+----------------+
+| Id         | int(9)       | NO   | PRI | NULL    | auto_increment |
+| Name       | varchar(100) | NO   |     | NULL    |                |
+| Age        | int(9)       | NO   |     | 0       |                |
+| updatetime | datetime     | YES  |     | NULL    |                |
++------------+--------------+------+-----+---------+----------------+
+4 rows in set
+
+mysql> select * from stu;
++----+------+-----+---------------------+
+| Id | Name | Age | updatetime          |
++----+------+-----+---------------------+
+|  1 | Andy |  28 | 2015-03-19 15:42:09 |
++----+------+-----+---------------------+
+1 row in set
+
+mysql> create table stu3 like stu;
+Query OK, 0 rows affected
+
+mysql> desc stu3;
++------------+--------------+------+-----+---------+----------------+
+| Field      | Type         | Null | Key | Default | Extra          |
++------------+--------------+------+-----+---------+----------------+
+| Id         | int(9)       | NO   | PRI | NULL    | auto_increment |
+| Name       | varchar(100) | NO   |     | NULL    |                |
+| Age        | int(9)       | NO   |     | 0       |                |
+| updatetime | datetime     | YES  |     | NULL    |                |
++------------+--------------+------+-----+---------+----------------+
+4 rows in set
+
+mysql> select * from stu3;
+Empty set
+
+3、如果我想拷贝表的结构（约束和原表相同），同时拷贝表的数据，怎么办？
+先create table xxx like xxx，创建表结构，再insert into xxx select xxx 拷贝数据。注意：这里没有as
+mysql> desc stu;
++------------+--------------+------+-----+---------+----------------+
+| Field      | Type         | Null | Key | Default | Extra          |
++------------+--------------+------+-----+---------+----------------+
+| Id         | int(9)       | NO   | PRI | NULL    | auto_increment |
+| Name       | varchar(100) | NO   |     | NULL    |                |
+| Age        | int(9)       | NO   |     | 0       |                |
+| updatetime | datetime     | YES  |     | NULL    |                |
++------------+--------------+------+-----+---------+----------------+
+4 rows in set
+
+mysql> select * from stu;
++----+------+-----+---------------------+
+| Id | Name | Age | updatetime          |
++----+------+-----+---------------------+
+|  1 | Andy |  28 | 2015-03-19 15:42:09 |
++----+------+-----+---------------------+
+1 row in set
+
+mysql> create table stu4 like stu;
+Query OK, 0 rows affected
+
+mysql> desc stu4;
++------------+--------------+------+-----+---------+----------------+
+| Field      | Type         | Null | Key | Default | Extra          |
++------------+--------------+------+-----+---------+----------------+
+| Id         | int(9)       | NO   | PRI | NULL    | auto_increment |
+| Name       | varchar(100) | NO   |     | NULL    |                |
+| Age        | int(9)       | NO   |     | 0       |                |
+| updatetime | datetime     | YES  |     | NULL    |                |
++------------+--------------+------+-----+---------+----------------+
+4 rows in set
+
+mysql> select * from stu4;
+Empty set
+
+mysql> insert into stu4(name,age,updatetime) select name,age,updatetime from stu;
+Query OK, 1 row affected
+Records: 1  Duplicates: 0  Warnings: 0
+
+mysql> select * from stu4;
++----+------+-----+---------------------+
+| Id | Name | Age | updatetime          |
++----+------+-----+---------------------+
+|  1 | Andy |  28 | 2015-03-19 15:42:09 |
++----+------+-----+---------------------+
+1 row in set
+@endverbatim
+*/
+mysql表的复制;
+
+/**
+@verbatim
+1、考虑下面的需求，根据已有的记录，增加新的记录，但是有些字段取值不一样。
+2、示例如下：
+	mysql> select * from t2;
+	+----+----+----+---------------------+
+	| c1 | c2 | c3 | time                |
+	+----+----+----+---------------------+
+	|  1 |  1 |  1 | 2016-04-19 20:14:45 |
+	+----+----+----+---------------------+
+	1 row in set
+	
+	mysql> insert into t2(c1,c2,c3,time) select 5555,c2,c3,time from t2 where c1=1;
+	Query OK, 1 row affected
+	Records: 1  Duplicates: 0  Warnings: 0
+	
+	mysql> select * from t2;
+	+------+----+----+---------------------+
+	| c1   | c2 | c3 | time                |
+	+------+----+----+---------------------+
+	|    1 |  1 |  1 | 2016-04-19 20:14:45 |
+	| 5555 |  1 |  1 | 2016-04-19 20:14:45 |
+	+------+----+----+---------------------+
+	2 rows in set
+@endverbatim
+*/
+根据已有的记录增加新的记录;
+
+
+/**
+@verbatim
+1、使用navicat执行sql文件，中文没有乱码。
+2、直接在linux下使用mysql客户端执行，如下：
+	mysql -uroot -p123456 --database=niu1 <t1.sql
+	插入的记录显示乱码
+3、怎么解决？
+	在sql文件的开头加上 
+	/*!40101 SET NAMES utf8 */;
+@endverbatim
+*/
+执行sql文件，添加数据乱码;
+
+
+/**
+@verbatim
+1、使用hex可以查看字符串的16进制取值，如下：
+	mysql> select username from user where userid=5;
+	+----------+
+	| username |
+	+----------+
+	| 吕欣盈   |
+	+----------+
+	1 row in set
+	
+	mysql> select hex(username) from user where userid=5;
+	+---------------+
+	| hex(username) |
+	+---------------+
+	| C2C0D0C0D3AF  |
+	+---------------+
+	1 row in set
+	可以看到存储格式是gb2312，因为每个中文字符占用2个字节。
+2、将username字段的存储格式修改为utf8，查询16进制取值，如下：
+	mysql> select hex(username) from user where userid=5;
+	+--------------------+
+	| hex(username)      |
+	+--------------------+
+	| E59095E6ACA3E79B88 |
+	+--------------------+
+	1 row in set
+	可以看到是utf8编码格式，对于utf8编码格式，一个中文字符占用3个字节。
+	另外：中文字符的utf8编码前4bit的取值都是E，这是因为在unicode的标准中，中文字符被框定在一个范围，前4bit都是E。
+@endverbatim
+*/
+查看字符串的16进制取值;
+
+
+/** @} */
+
+/** @} */

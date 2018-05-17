@@ -1,0 +1,29 @@
+﻿/**
+* @defgroup 工作有关
+* @{
+*/
+
+/**
+@verbatim
+1、ftp信息
+	ftp: 192.168.10.70
+	user: uftp
+	passwd: hzflk1234
+2、无线
+	hzflk789
+3、邮箱
+	ym.163.com niuzibin@flksec.com/123456/ruanxiaopang
+4、git
+	niuzibin@flksec.com ruanxiaopang
+5、电脑登录
+	niuzibin/ruanxiaopang
+6、虚拟机
+	ubuntu niuzibin/ruanxiaopang
+	root/ruanxiaopang
+7、svn
+	niuzb/niuzb
+@endverbatim
+*/
+备忘录;
+
+/** @} */

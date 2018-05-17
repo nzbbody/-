@@ -1,0 +1,216 @@
+/**
+* @defgroup 数据结构_树
+* @{
+*/
+
+/**
+* @defgroup 二叉树的遍历
+* @{
+*/
+
+
+/**
+@verbatim
+void preOrder(Node* root)
+{
+	if(root != NULL)
+	{
+		printf("%d-",root->value);
+		preOrder(root->left);
+		preOrder(root->right);
+	}
+}
+@endverbatim
+@see
+*/
+前序（递归）;
+
+
+/**
+@verbatim
+void preOrder_2(Node* root)
+{
+	stack<Node*> stk;
+	Node* cur = root;
+
+	while(stk.size() >0 || cur != NULL)
+	{
+		while(cur != NULL)
+		{
+			printf("%d-",cur->value);
+			stk.push(cur);
+			cur = cur->left;
+		}
+
+		if(stk.size() >0)
+		{
+			cur = stk.top();
+			stk.pop();
+			cur = cur->right;
+		}
+	}	
+}
+@endverbatim
+@see
+*/
+前序（利用栈向左走到底，去掉栈顶，从右节点开始）;
+
+
+/**
+@verbatim
+void preOrder_3(Node* root,list<Node*>& nodeList)
+{
+	stack<Node*> stk;
+	Node* cur = root;
+	stk.push(cur);
+
+	while(stk.size() >0)
+	{
+		cur = stk.top();
+		nodeList.push_back(cur);
+		stk.pop();
+
+		if(cur->right != NULL)
+		{
+			stk.push(cur->right);
+		}	
+
+		if(cur->left != NULL)
+		{
+			stk.push(cur->left);
+		}
+	}	
+}
+@endverbatim
+@see
+*/
+前序（利用栈和链表，入栈先右后左，链表每次从栈顶取元素）;
+
+/**
+@verbatim
+void inOrder(Node* root)
+{
+	if(root != NULL)
+	{
+		inOrder(root->left);
+		printf("%d-",root->value);
+		inOrder(root->right);
+	}
+}
+@endverbatim
+@see
+*/
+中序（递归）;
+
+
+/**
+@verbatim
+void inOrder_2(Node* root)
+{
+	stack<Node*> stk;
+	Node* cur = root;
+
+	while(stk.size() >0 || cur != NULL)
+	{
+		while(cur != NULL)
+		{			
+			stk.push(cur);
+			cur = cur->left;
+		}
+		// 与前序的区别是：打印元素的时机不同
+		if(stk.size() >0)
+		{
+			cur = stk.top();
+			printf("%d-",cur->value);
+			stk.pop();
+			cur = cur->right;
+		}
+	}	
+}
+@endverbatim
+@see
+*/
+中序（利用栈向左走到底，去掉栈顶，从右节点开始）;
+
+/**
+@verbatim
+void postOrder(Node* root)
+{
+	if(root != NULL)
+	{
+		postOrder(root->left);
+		postOrder(root->right);
+		printf("%d-",root->value);		
+	}
+}
+@endverbatim
+@see
+*/
+后序（递归）;
+
+
+/**
+@verbatim
+// 利用栈A和辅助栈B，每次栈A向右走到底，加入栈B，去除栈A的栈顶，从左节点开始，
+// 栈B的顺序中 右 左，出栈刚好左 右 中
+void postOrder_2(Node* root,stack<Node*>& postStk)
+{
+	stack<Node*> stk;
+	Node* cur = root;
+
+	while(stk.size() >0 || cur != NULL)
+	{
+		while(cur != NULL)
+		{			
+			stk.push(cur);
+			postStk.push(cur);
+			cur = cur->right;
+		}
+
+		if(stk.size() >0)
+		{
+			cur = stk.top();
+			stk.pop();
+			cur = cur->left;
+		}
+	}	
+}
+@endverbatim
+@see
+*/
+后序（利用栈A和辅助栈B，每次栈A向右走到底）;
+
+/**
+@verbatim
+void postOrder_3(Node* root,stack<Node*>& nodeStk)
+{
+	stack<Node*> stk;
+	Node* cur = root;
+	stk.push(cur);
+
+	while(stk.size() >0)
+	{
+		cur = stk.top();
+		nodeStk.push(cur);
+		stk.pop();
+
+		if(cur->left != NULL)
+		{
+			stk.push(cur->left);
+		}
+
+		if(cur->right != NULL)
+		{
+			stk.push(cur->right);
+		}		
+	}	
+}
+@endverbatim
+@see
+*/
+后序（利用栈A和辅助栈B，栈A先左后右入栈）;
+
+
+/** @} */
+
+/** @} */

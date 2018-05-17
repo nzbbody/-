@@ -1,0 +1,82 @@
+/**
+* @defgroup Mysql常见错误
+* @{
+*/
+
+
+
+/**
+@verbatim
+ERROR 1418 (HY000): This function has none of DETERMINISTIC, NO SQL, or READS SQL DATA 
+in its declaration and binary logging is enabled (you *might* want to use the less safe 
+log_bin_trust_function_creators variable)
+错误的原因：
+Mysql配置了复制，复制功能也就意味着Master数据的变化，会同步到Slave。对于函数，Mysql要求函数不能修改数据。
+解决办法：
+1、创建函数的时候，明确说明我不会修改数据。创建函数的时候有5个选项：
+	a、DETERMINISTIC 确定性的
+	b、NO SQL 没有包含SQl语句，当然也不会修改数据
+	c、READS SQL DATA 只是读取数据，当然也不会修改数据
+	d、MODIFIES SQL DATA 要修改数据
+	e、CONTAINS SQL 包含了SQL语句
+怎么理解DETERMINISTIC确定性的？
+可以认为输入相同，方法执行过程，输出也是相同的。也就是方法的可重入性。不可重入的方法：
+方法内使用了静态的数据，使用了malloc和free，使用了标准I/O函数。
+创建函数必须明确指出a、b、c三个选项中的一个，才能执行成功。如下：
+	mysql> show variables like 'log_bin%';
+	+---------------------------------+-------+
+	| Variable_name                   | Value |
+	+---------------------------------+-------+
+	| log_bin                         | ON    |
+	| log_bin_trust_function_creators | OFF   |
+	| log_bin_trust_routine_creators  | OFF   |
+	+---------------------------------+-------+
+	3 rows in set
+	mysql> create function fun1 (num int(9)) returns int(9)
+	begin
+	return 1;
+	end;
+	1418 - This function has none of DETERMINISTIC, NO SQL, or READS SQL DATA 
+	in its declaration and binary logging is enabled (you *might* want to use the less safe 
+	log_bin_trust_function_creators variable)
+	mysql> create function fun1 (num int(9)) returns int(9) reads sql data
+	begin
+	return 1;
+	end;
+	Query OK, 0 rows affected
+	mysql> drop function fun1;
+	Query OK, 0 rows affected
+	mysql> create function fun1 (num int(9)) returns int(9) deterministic
+	begin
+	return 1;
+	end;
+	Query OK, 0 rows affected
+2、告诉Mysql，信任我，方法不会修改数据，Mysql不再检查，即使修改了数据。这个时候要靠你信守承诺，否则后果自负。
+	mysql> drop function fun1;
+	Query OK, 0 rows affected
+	mysql> set global log_bin_trust_function_creators=on;
+	Query OK, 0 rows affected
+	mysql> show variables like 'log_bin%';
+	+---------------------------------+-------+
+	| Variable_name                   | Value |
+	+---------------------------------+-------+
+	| log_bin                         | ON    |
+	| log_bin_trust_function_creators | ON    |
+	| log_bin_trust_routine_creators  | ON    |
+	+---------------------------------+-------+
+	3 rows in set
+	mysql> create function fun1 (num int(9)) returns int(9) modifies sql data
+	begin
+	return 1;
+	end;
+	Query OK, 0 rows affected
+3、要想mysql服务重启之后，还起作用，需要在[mysqld]增加配置项，如下：
+	log_bin_trust_function_creators=on		//注意后面没有分号，否则有些mysql版本会启动失败
+	注：低版本的mysql可能不支持on的语法，需要使用log_bin_trust_function_creators=1
+@endverbatim
+@see
+*/
+Error_1418;
+
+
+/** @} */

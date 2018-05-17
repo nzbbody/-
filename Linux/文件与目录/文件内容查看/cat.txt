@@ -1,0 +1,49 @@
+/**
+* @defgroup 文件内容查看
+* @{
+*/
+
+/**
+@verbatim
+1、cat一次显示整个文档的内容，而more、less是可以分页显示的。
+2、cat有创建文件的功能，创建文件的同时，可以输入数据。如下：
+	[root@localhost niu]# ll
+	总计 0
+	[root@localhost niu]# cat >111
+	hello world
+	
+	[root@localhost niu]# ll
+	总计 4
+	-rw-r--r-- 1 root root 12 09-01 18:42 111
+	[root@localhost niu]# cat 111
+	hello world	
+3、注意：cat >111 最后一行的输入，不写入文件。怎么解决？
+	可以多输出一个空行
+	也可以使用EOF，告诉shell后续的输入作为子命令的输入，遇到EOF结束，退出子命令，回到主shell，如下：
+	[root@localhost niu]# cat >111 <<EOF
+	> ddd
+	> dfdf
+	> EOF
+	[root@localhost niu]# cat 111
+	ddd
+	dfdf
+	注意：在shell下输入的时候，删除前一个字符，不能使用后退backspace，后退符会变成输入^H，必须使用del
+	而进入子命令输入时，可以使用后退符。
+4、cat可以修改文件内容的功能，可以覆盖或者追加。
+	cat >111	// 覆盖
+	cat >>111 	//追加
+5、上面都是cat从标准输入接收输入数据，也可以从其他文件接收输入数据，如下：
+	cat 111 222 >333
+	cat 111 222 >>333
+	注意：222后面有一个空格
+6、cat常用的选项
+	-n 列出行数
+	-A 列出所有的字符，包含不可见的空白字符
+@endverbatim
+@see tac
+*/
+cat;
+
+
+/** @} */
+

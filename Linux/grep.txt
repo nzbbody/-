@@ -1,0 +1,120 @@
+﻿/**
+* @defgroup Linux
+* @{
+*/
+
+/**
+* @defgroup grep
+* @{
+*/
+
+
+/**
+@verbatim
+1、示例数据如下：
+	Andy
+	Bill
+	Caroline
+	David
+	Eric
+	Favad
+2、查找包含i的行
+	[niu_zibin@localhost test]$ more aaa.txt |grep i
+3、查找A开头的行
+	[niu_zibin@localhost test]$ more aaa.txt |grep '^A'
+4、查找ne结尾的行
+	[niu_zibin@localhost test]$ more aaa.txt |grep 'ne$'
+5、不区分大小写
+	[niu_zibin@localhost test]$ more aaa.txt |grep -i '^a'
+6、匹配一个字符，这个字符是任意字符
+	[niu_zibin@localhost test]$ more aaa.txt |grep 'v.d'
+7、前面一个字符，后面出现0次或多次
+	[niu_zibin@localhost test]$ more aaa.txt |grep 'd*'
+	注意：这种情况等价于不过滤，因为任何一行都满足d出现0次或者多次
+	如果表示出现一次或多次，需要使用dd*
+	还有一种办法，使用+表示出现1次或多次，但是grep不支持，需要扩展grep才支持，如下：
+	[niu_zibin@localhost test]$ more aaa.txt |egrep 'd+'
+	？表示0次或者1次，也是egrep的语法
+	也就是说，egrep是grep的扩展，支持+，？，
+8、特别注意：通配符*与正则表达式*的区别，通配符*表示匹配0到多个任意字符，
+	正则表达式*表示前一个字符出现0次或多次
+9、转义字符
+	[niu_zibin@localhost test]$ more aaa.txt |grep \'
+10、查找一个字符，属于集合中的一个
+	[niu_zibin@localhost test]$ more aaa.txt |grep v[ia]d
+11、使用grep查找文件，在当前目录下的文件中，查找内容包含andy的文件，并列出文件名和行号
+	[niu_zibin@localhost time]$ grep -i andy ./*
+12、使用grep查找文件，在当前目录下，递归，查找内容包含andy的文件，并列出文件名和行号
+	[niu_zibin@localhost time]$ grep -i andy -R ./
+@endverbatim
+*/
+grep常用功能;
+
+/**
+@verbatim
+1、考虑，如何使用grep查询包含制表符的行？
+	使用\t不行
+2、第一种办法：输入制表符，但是在shell中，制表符（tab键有特殊用途），那怎么输入制表符呢？
+	使用ctrl+v+i，输入制表符，如下：
+	[root@localhost niu9]# more aaa.txt |grep "     "
+	111     ddd
+	222             hhh
+	333     kkkk
+	444     jjj
+3、使用cat -A列出所有的字符，对于制表符，显示^I，grep ^I即可，如下：
+	[root@localhost niu9]# cat -A aaa.txt 
+	111^Iddd$
+	ddsdf$
+	222^I^Ihhh$
+	asasdf$
+	333^Ikkkk$
+	fdsf dsdsds  adddsa$
+	444^Ijjj$
+	[root@localhost niu9]# cat -A aaa.txt|grep "\^I"
+	111^Iddd$
+	222^I^Ihhh$
+	333^Ikkkk$
+	444^Ijjj$
+	注意：脱字符需要转义
+4、对于制表符（水平制表符），ASCII取值为9，可以通过这种方式过滤，如下：
+	[root@localhost niu9]# more aaa.txt |grep -P "\011"
+	111     ddd
+	222             hhh
+	333     kkkk
+	444     jjj
+	注意：\0 表示8进制，如果是16进制使用 \x，如下：more aaa.txt |grep -P "\x9" 或者 more aaa.txt |grep -P "\x09"
+5、常用的不可见字符，取值如下：
+	水平制表符[\t]	9
+	新行符[\n]		10 [牛思齐 new 10]
+	回车符[\r]		13
+	空格			32
+@endverbatim
+*/
+grep查询制表符;
+
+
+/**
+@verbatim
+1、[root@localhost ~]# more aaa.txt |grep -n "111\|222"
+	1:111
+	3:222
+	5:111
+	7:222
+2、[root@localhost ~]# more aaa.txt |grep -nE "111|222"
+	1:111
+	3:222
+	5:111
+	7:222
+3、[root@localhost ~]# more aaa.txt |grep -ne 111 -ne 222
+	1:111
+	3:222
+	5:111
+	7:222
+@endverbatim
+*/
+grep或条件的查询;
+
+
+/** @} */
+
+/** @} */

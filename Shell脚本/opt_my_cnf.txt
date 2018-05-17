@@ -1,0 +1,70 @@
+﻿/**
+* @defgroup Shell脚本
+* @{
+*/
+
+/**
+@verbatim
+my.cnf内容：
+server-id=111
+auto_increment_offset=222
+auto_increment_increment=2
+log-bin=mysql-bin
+master-host=333
+master-user=444
+master-password=555
+master-port=666
+log-slave-updates=1
+slave-skip-errors=all
+replicate-do-db=777
+replicate-ignore-db=mysql
+master-connect-retry=60
+
+opt_my_cnf：
+#! /bin/sh 
+set -x
+
+mysqlcnf=./mysql.cnf
+
+set_item()
+{
+	sed -r "s/(${1}=)(.*)/\1${2}/" -i $mysqlcnf
+}
+
+get_item()
+{
+	echo `cat $mysqlcnf|grep "${1}"|sed -r "s/("${1}=")(.*)/\2/"`	
+}
+
+
+case $1 in
+	"set")
+	set_item server-id $2
+	set_item auto_increment_offset $3
+	set_item master-host $4
+	set_item master-user $5
+	set_item master-password $6
+	set_item master-port $7
+	set_item replicate-do-db $8
+	;;
+	
+	"get")
+	get_item $2
+	;;
+
+	*)
+	echo "param error:$1"
+	;;
+esac
+
+设置：
+opt_my_cnf set 111 222 333 444 555 666 777
+获取：
+opt_my_cnf get server-id
+		
+@endverbatim
+@see
+*/
+设置获取MySQL复制信息;
+
+/** @} */

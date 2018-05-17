@@ -1,0 +1,98 @@
+/**
+* @defgroup 工具软件
+* @{
+*/
+
+/**
+* @defgroup Wireshark
+* @{
+*/
+
+/**
+@verbatim
+1、ctrl+f，by String，Search in Packet bytes，Filter 输入关键字
+2、下一个【ctrl+n】	上一个【ctrl+b】
+@endverbatim
+*/
+查找关键字;
+
+/**
+@verbatim
+1、cmd，ipconfig查看自己的ip地址。
+2、执行命令：route add 10.36.65.89 mask 255.255.255.255 10.36.65.1 metric 1，
+   其中10.36.65.89是目的地，这里填写本机地址，表示到达本机地址，10.36.65.1是网关，metric 1表示跳数，
+   可以理解为到达目的地，经过几个路由器。
+3、route print。查看结果。
+@endverbatim
+*/
+Wireshark抓取本地回路包;
+
+
+/**
+@verbatim
+1、在抓包结果中进行过滤，显示自己关心的内容。
+2、显示过滤的语法比较简单，而且有提示。点击expression可以查看到所有的使用方法。
+	比如输入tcp，可以定位到tcp，然后对字段取值。
+3、ip过滤：
+	ip.addr == 192.168.1.101
+	ip.srcaddr == 192.168.1.101
+	ip.len > 0 // ip数据长度大于0
+4、tcp过滤：
+	tcp.port == 9820
+	tcp.dstport == 9820
+	tcp.flags.fin == 1
+	tcp.flags.reset == 1  // 这个数据包显示红色
+	tcp.len > 0 // tcp数据长度大于0
+5、逻辑操作可以使用and or not 也可以使用 && || !
+6、过滤后数据进行保存，选择 文件-->导出特定的包
+7、注意：telnet，Follow TCP Stream显示数据是重复的，但是抓包是只有一份。
+@endverbatim
+*/
+显示过滤;
+
+/**
+@verbatim
+只抓取自己关心的数据包。有时候抓取所有的包，然后显示过滤，导致抓取的内容太多，影响性能，因此可以只抓取自己关心的数据。
+特别注意：抓包过滤和显示过滤的语法不一样。
+显示过滤 tcp.port == 9845，而抓包过滤是 tcp port 9845。wireshark抓包过滤和linux下的tcpdump语法一样，linux下tcpdump抓包过滤如下：
+tcpdump -i any -s 0 tcp port 9845 -w test.pcap // 抓包写入文件
+tcpdump -i any -s 0 tcp port 9845 -A 		   // 抓包直接显示
+抓包过滤设置：Capture-->Options-->Capture Filter，输入抓包过滤，语法正确显示绿色，否则显示红色。
+@endverbatim
+
+@verbatim
+语法：Protocol		Direction		Host		Value		Logical Operations		Other expression
+例子：tcp			dst				port		80			and						tcp port 3128
+
+Protocol（协议）:
+可能的值: ether, fddi, ip, arp, rarp, decnet, lat, sca, moprc, mopdl, tcp and udp.
+如果没有特别指明是什么协议，则默认使用所有支持的协议。
+
+Direction（方向）:
+可能的值: src, dst, src and dst, src or dst
+如果没有特别指明来源或目的地，则默认使用 "src or dst" 作为关键字。
+例如，"host 10.2.2.2"与"src or dst host 10.2.2.2"是一样的。
+
+Host:
+可能的值： net, port, host, portrange.
+如果没有指定此值，则默认使用"host"关键字。
+例如，"src 10.1.1.1"与"src host 10.1.1.1"相同。
+注意：Host的取值和协议有关，前面是ip，对应host，前面是tcp，udp，对应port。tcp，udp协议首部只有端口的概念，ip地址在IP协议首部。
+一个很实用的选项是端口范围，如下: tcp portrange 9530-9538
+
+Logical Operations（逻辑运算）:
+可能的值：not, and, or.
+否("not")具有最高的优先级。或("or")和与("and")具有相同的优先级，运算时从左至右进行。
+例如，
+"not tcp port 3128 and tcp port 23"与"(not tcp port 3128) and tcp port 23"相同。
+"not tcp port 3128 and tcp port 23"与"not (tcp port 3128 and tcp port 23)"不同。
+
+注意：可以使用&& || ! 代替 and or not
+@endverbatim
+*/
+抓包过滤;
+
+
+/** @} */
+
+/** @} */

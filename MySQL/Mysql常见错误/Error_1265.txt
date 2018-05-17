@@ -1,0 +1,31 @@
+/**
+* @defgroup Mysql常见错误
+* @{
+*/
+
+
+/**
+@verbatim
+1265 - Data truncated for column xxx
+错误原因：字面意思是数据发生截断，也就是说插入或者修改记录的时候，字段取值与字段类型不匹配，或者不满足字段的约束条件。
+比如：
+mysql> desc t1;
++-------+--------------+------+-----+---------+-------+
+| Field | Type         | Null | Key | Default | Extra |
++-------+--------------+------+-----+---------+-------+
+| c1    | int(11)      | NO   |     | 0       |       |
+| c2    | double       | YES  |     | NULL    |       |
+| c3    | varchar(100) | YES  |     | NULL    |       |
++-------+--------------+------+-----+---------+-------+
+3 rows in set
+
+mysql> insert into t1(c1,c2,c3) value(1,'hhh','hello');
+1265 - Data truncated for column 'c2' at row 1
+
+c2是double，插入'hhh'
+@endverbatim
+*/
+Error_1265;
+
+
+/** @} */

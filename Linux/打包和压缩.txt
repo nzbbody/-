@@ -1,0 +1,153 @@
+/**
+* @defgroup Linux
+* @{
+*/
+
+/**
+* @defgroup 打包和压缩
+* @{
+*/
+
+
+/**
+@verbatim
+1、文件格式：
+	*.Z				compress程序压缩的文件
+	*.gz			gzip程序压缩的文件
+	*.bz2			bzip2程序压缩的文件
+	*.tar			tar程序打包的文件，没有压缩
+	*.tar.gz		tar程序打包的文件，并使用gzip压缩
+	*.tar.bz2		tar程序打包的文件，并使用bzip2压缩
+2、压缩效果：
+	compress < gzip < bzip2
+3、以gzip为例说明，
+	gzip 111		// 压缩
+	gzip -d 111.gz	// 解压，等价于 gunzip 111.gz
+	注：使用gzip压缩解压之后，原文件不见了，要想保留原文件，使用如下：
+	gzip -c 111 >aaa.gz		// 111后面有个空格，保留了原文件，并且重命名压缩后的文件
+	gzip -dc aaa.gz >111	// aaa.gz后面有个空格，保留了原文件，并且重命名解压后的文件	
+4、zcat可以查看gzip压缩文件，显示的是解压后的文本内容。bzip2 对应的是 bzcat
+5、bzip2的用法和gzip类似。
+@endverbatim
+*/
+压缩;
+
+/**
+@verbatim
+1、区分打包和压缩的概念，打包是把一堆文件合成一个文件，压缩是把一个大的文件通过压缩算法，变成一个小文件。
+	经典的压缩算法是哈夫曼算法。
+2、压缩程序一般只能对一个文件进行压缩，因此，对于一堆文件，要先打包，再压缩。
+3、tar既可以打包也可以压缩，压缩可认为调用其他的命令进行压缩。
+4、z对应gzip，j对应bzip2，压缩与解压的算法要一致，否者出错。
+5、常用选项：
+	-c		创建压缩包
+	-x		解压
+	-t		查看压缩的内容
+	-r		在打包的文件中追加
+	-u		在打包的文件中更新
+	-f		选项取值是压缩的文件，必须是最后一个选项
+	注意：-r -u只能针对打包的文件，压缩后的文件，不能执行。另外，追加的时候，打包中已经存在，打包成功，
+	但是解压会覆盖，只有一个。
+6、例子：
+	tar -zcvf aaa.tar.gz 111 222	// 压缩111 222
+	tar -zxvf aaa.tar.gz			// 解压到当前文件
+	tar -zxvf aaa.tar.gz -C ./hhh	// 解压到./hhh
+@endverbatim
+
+@verbatim
+tar命令示例，考虑下面的情况，当前目录有文件111.txt和aaa.txt
+1、打包成IBP.tar，如下：
+	[root@localhost tmp]# ll
+	total 8
+	-rw-r--r-- 1 root root 2 2015-10-15 10:28 111.txt
+	-rw-r--r-- 1 root root 5 2015-10-15 10:28 aaa.txt
+	[root@localhost tmp]# tar -cvf IBP.tar ./*
+	./111.txt
+	./aaa.txt
+	[root@localhost tmp]# ll
+	total 20
+	-rw-r--r-- 1 root root     2 2015-10-15 10:28 111.txt
+	-rw-r--r-- 1 root root     5 2015-10-15 10:28 aaa.txt
+	-rw-r--r-- 1 root root 10240 2015-10-15 10:29 IBP.tar
+2、解包
+	[root@localhost tmp]# rm -f *txt
+	[root@localhost tmp]# ll
+	total 12
+	-rw-r--r-- 1 root root 10240 2015-10-15 10:29 IBP.tar
+	[root@localhost tmp]# tar -xvf IBP.tar 
+	./111.txt
+	./aaa.txt
+	[root@localhost tmp]# ll
+	total 20
+	-rw-r--r-- 1 root root     2 2015-10-15 10:28 111.txt
+	-rw-r--r-- 1 root root     5 2015-10-15 10:28 aaa.txt
+	-rw-r--r-- 1 root root 10240 2015-10-15 10:29 IBP.tar
+3、查看包的内容
+	[root@localhost tmp]# rm -f *txt
+	[root@localhost tmp]# tar -tvf IBP.tar 
+	-rw-r--r-- root/root         2 2015-10-15 10:28 ./111.txt
+	-rw-r--r-- root/root         5 2015-10-15 10:28 ./aaa.txt
+	[root@localhost tmp]# ll
+	total 12
+	-rw-r--r-- 1 root root 10240 2015-10-15 10:29 IBP.tar
+4、把111.txt和aaa.txt，使用gzip压缩成IBP.tar.gz
+	[root@localhost tmp]# ll
+	total 8
+	-rw-r--r-- 1 root root 2 2015-10-15 10:28 111.txt
+	-rw-r--r-- 1 root root 5 2015-10-15 10:28 aaa.txt
+	[root@localhost tmp]# tar -zcvf IBP.tar.gz ./*
+	./111.txt
+	./aaa.txt
+	[root@localhost tmp]# ll
+	total 12
+	-rw-r--r-- 1 root root   2 2015-10-15 10:28 111.txt
+	-rw-r--r-- 1 root root   5 2015-10-15 10:28 aaa.txt
+	-rw-r--r-- 1 root root 145 2015-10-15 10:34 IBP.tar.gz
+5、解压到IBP，先创建目录IBP
+	[root@localhost tmp]# mkdir IBP
+	[root@localhost tmp]# tar -zxvf IBP.tar.gz -C ./IBP
+	./111.txt
+	./aaa.txt
+	[root@localhost tmp]# ll
+	total 4
+	drwxr-xr-x 2 root root   0 2015-10-15 10:37 IBP
+	-rw-r--r-- 1 root root 145 2015-10-15 10:34 IBP.tar.gz
+6、把目录IBP压缩成IBP.tar.gz，并且压缩包里面没有目录IBP，进入目录IBP
+	[root@localhost tmp]# cd IBP
+	[root@localhost IBP]# tar -zcvf ../IBP.tar.gz ./*
+	./111.txt
+	./aaa.txt
+	[root@localhost IBP]# cd ..
+	[root@localhost tmp]# ll
+	total 4
+	drwxr-xr-x 2 root root   0 2015-10-15 10:37 IBP
+	-rw-r--r-- 1 root root 145 2015-10-15 10:39 IBP.tar.gz
+7、把目录IBP压缩成IBP.tar.gz，压缩包里面有目录IBP
+	[root@localhost tmp]# ll
+	total 0
+	drwxr-xr-x 2 root root 0 2015-10-15 10:37 IBP
+	[root@localhost tmp]# tar -zcvf IBP.tar.gz IBP
+	IBP/
+	IBP/aaa.txt
+	IBP/111.txt
+	[root@localhost tmp]# tar -ztvf IBP.tar.gz 
+	drwxr-xr-x root/root         0 2015-10-15 10:37 IBP/
+	-rw-r--r-- root/root         5 2015-10-15 10:28 IBP/aaa.txt
+	-rw-r--r-- root/root         2 2015-10-15 10:28 IBP/111.txt
+8、解压到当前目录
+	[root@localhost tmp]# tar -zxvf IBP.tar.gz 
+	IBP/
+	IBP/aaa.txt
+	IBP/111.txt
+	[root@localhost tmp]# ll
+	total 4
+	drwxr-xr-x 2 root root   0 2015-10-15 10:37 IBP
+	-rw-r--r-- 1 root root 181 2015-10-15 10:46 IBP.tar.gz
+@endverbatim
+*/
+tar;
+
+
+/** @} */
+
+/** @} */

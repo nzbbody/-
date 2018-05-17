@@ -1,0 +1,48 @@
+/**
+* @defgroup Mysql常见错误
+* @{
+*/
+
+/**
+@verbatim
+1、navicat执行utf-8格式的sql脚本，报错1064-You have an error in your SQL syntax... at line 1
+2、错误原因：utf-8格式的文件开头有三个字符，这三个字符是不可见的，通过文件属性可以看到 大小比实际长度多出3个字符。
+	这三个字符不可见，navicat无法识别这三个字符。
+3、怎么解决？
+	使用notepad++，格式-->转为UTF-8无BOM 编码格式，可以看到大小就是实际长度
+	注意：转为UTF-8编码格式，大小比实际长度多出三个字节。
+@endverbatim
+*/
+navicat执行utf8格式的sql脚本第一行报错;
+
+
+/**
+@verbatim
+1、运行SQL文件报错，详细信息如下：
+	[Err] 1064 - You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near 'DELIMITER' at line 1
+	[Err] DELIMITER ;
+	[Msg] Finished - Unsuccessfully
+2、执行的SQL文件内容是：
+	-- ----------------------------
+	-- Procedure structure for `vms_getchncode_bydevcode_chnseq`
+	-- ----------------------------
+	DROP PROCEDURE IF EXISTS `vms_getchncode_bydevcode_chnseq`;
+	DELIMITER ;;
+	CREATE DEFINER=`root`@`localhost` PROCEDURE `vms_getchncode_bydevcode_chnseq`(in iDomId varchar(100), in iDevCode varchar(100), in iChnSeq int)
+	BEGIN
+			declare vDevId int default 0;
+			
+			select devid into vDevId from device where domainid=iDomId and devicecode=iDevCode and fast=1;
+	
+			select device.domainid, device.devicecode from device,dev_chn where device.devid=dev_chn.devid and device.parentdevid= vDevId and dev_chn.channelsequence= iChnSeq and device.fast=1 and dev_chn.fast=1;
+	END
+	;;
+	DELIMITER ;
+3、错误原因是：最后多了一个DELIMITER ;
+	去掉DELIMITER ;就可以了。
+@endverbatim
+*/
+执行SQL文件DELIMITER报错;
+
+
+/** @} */

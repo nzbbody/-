@@ -1,0 +1,103 @@
+/**
+* @defgroup Linux
+* @{
+*/
+
+/**
+* @defgroup 文件系统和目录树
+* @{
+*/
+
+/**
+@verbatim
+1、Linux的文件系统包含三个部分：
+	inode：记录文件的属性，包括访问模式（rwx），所有者和所有组，大小，修改时间，
+		最重要的是包含指针（多个指针以及间接指针），指向文件的内容，也就是data block，一个文件占用一个inode
+	data block：实际记录文件的内容，若文件较大，会占用多个data block
+	super block 记录文件系统的整体信息，包括inode/data block的总量，使用量，剩余量，以及文件系统的格式。
+2、Linux的这种文件系统，称为索引式文件系统，由inode可以定位到所有的data block，磁盘转一圈，就可以读取到文件所有的
+	内容。而Windows的文件系统可认为是链表式文件系统，读取到data block，才能读取下一个data block，这就导致读取文件的
+	所有内容，可能需要磁盘转几圈。如果data block分散的很厉害，读取开销更大。因此，Windows需要定期进行碎片整理。
+	而Linux基本上不需要。
+@endverbatim
+@see
+*/
+文件系统;
+
+
+/**
+@verbatim
+1、Linux内存中维护一棵目录树，使用VFS，目录包含两个部分：目录和文件名
+2、目录关联一个inode，inode记录目录的权限和属性，inode关联data block，data block中记录该目录下面
+	的文件名和该文件名占用的inode
+3、inode中并不记录文件名，而是文件名关联inode，inode记录文件的信息，其中有一个data block指针，指向文件的数据。
+4、定位文件的过程是：当前目录A-->目录A的inode-->目录A的data block-->目录A下面的文件名和该文件名对应的inode
+	-->找到文件名对应的inode-->找到文件的data block-->读取数据
+@endverbatim
+@see
+*/
+目录树;
+
+
+/**
+@verbatim
+1、将文件系统（或者其他目录）与目录树结合的操作，成为挂载。
+	也就是目录树上面的一个目录，作为挂载点，挂载一个文件系统，该目录作为文件系统的入口。
+	注：挂载点必须是目录树上面的目录。
+2、示例，如下：
+	mount //10.36.65.80/80_Linux_Dir ~/80_Linux_Dir -t cifs -o username=25697,password=Dh_@2015
+@endverbatim
+*/
+mount;
+
+/**
+@verbatim
+1、mount报错如下：
+	[root@localhost datafs]# mount //10.65.200.168/ivss ./ivss -t cifs -o username=niu,password=ruanxiaopang
+	mount: Cannot allocate memory
+2、错误原因是：
+	//10.65.200.168/ivss 目录太大，不能进行挂载
+3、解决办法：
+	修改windows的注册表
+	修改注册表 HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanmanServer\Parameters\IRPStackSize项
+	如果不存在IRPStackSize项，新建一个DWORD值，取名为IRPStackSize，值设置为18（10进制）
+	然后重启电脑。
+@endverbatim
+*/
+mount报错不能分配内存;
+
+
+/**
+@verbatim
+取消挂载：
+	umount //10.36.65.80/80_Linux_Dir
+@endverbatim
+*/
+umount;
+
+
+/**
+@verbatim
+1、连接文件分为两种方式：硬连接和软连接
+2、我们知道，文件名关联文件系统的inode，硬连接相当于多一个文件名关联inode。
+	通过ll -i，可以看到文件名关联的inode相同，同时inode的连接个数加1
+3、软连接相当于新建一个文件，软连接文件名关联inode，inode指向data block，data block关联原文件的inode。
+4、从C++指针和引用计数的角度理解：
+	硬连接相当于指针复制，inode的引用计数加1，删除文件名的时候，检查引用计数，为0的时候才删除原文件。
+	软连接相当于指针的指针，比如原文件名为A，软连接为B，B指向A，删除A，B也就无效了。
+5、使用硬连接比较安全，但是硬连接存在问题：
+	a、不能跨越文件系统，原因是：因为只有一个文件系统中，两个文件名才能关联同一个inode
+	b、不能硬连接到目录，原因是：如果可以，那就要保证目录下面的文件之间也要建立一一对应的硬连接关系，
+	这显然太复杂。
+6、软连接是指针的指针，可认为是Windows下面的快捷方式，没有硬连接的限制。
+7、ln的语法，ln [-sf] 源文件 目标文件
+	-s	是软连接，不加参数就是硬连接
+	-f	如果目标文件存在，删除目标文件再重新创建
+@endverbatim
+@see
+*/
+ln;
+
+/** @} */
+
+/** @} */

@@ -1,0 +1,58 @@
+﻿/**
+* @defgroup 编程珠玑
+* @{
+*/
+
+
+/**
+@verbatim
+void GetCharCountByMap(const string& str)	
+{
+	map<char,int> chMap;
+
+	for(int i = 0;i<str.size();++i)
+	{
+		chMap[str[i]]++;
+	}
+
+	for(map<char,int>::iterator iter = chMap.begin();
+		iter != chMap.end(); ++iter)
+	{
+		printf("[%c:%d]\n",iter->first,iter->second);
+	}
+}
+
+void GetCharCountByHashTable(const string& str)
+{
+	// 最多512个字符，下标对应字符，下标取值对应出现的次数
+	int hashTable[512]={0};
+
+	for(int i = 0;i<str.size();++i)
+	{
+		hashTable[str[i]]++;
+	}
+
+	for(int i=0; i<512; ++i)
+	{
+		if(hashTable[i]>0) // 出现过
+		{
+			printf("[%c:%d]\n",i,hashTable[i]);
+		}			
+	}
+}
+@endverbatim
+
+@verbatim
+int main(int argc, char*argv[])
+{
+	string str = "acbbdkdehfghgefahb";
+	Pearls::GetCharCountByMap(str);
+	Pearls::GetCharCountByHashTable(str);
+	
+	return 0;
+}
+@endverbatim
+*/
+过滤重复字符并排序;
+
+/** @} */

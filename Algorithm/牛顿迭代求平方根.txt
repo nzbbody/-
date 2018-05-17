@@ -1,0 +1,35 @@
+/**
+* @defgroup Algorithm
+* @{
+*/
+
+/**
+@verbatim
+double GetSqrt(int n)
+{
+	double left = 0;
+	double right = n;
+	double mid = (left+right)/2;
+
+
+	// |x|>0.1 等价于 x>0.1||x<-0.1
+	while(0.00001< mid*mid-n || mid*mid-n < -0.000001)
+	{
+		if(mid*mid > n)
+		{
+			right = mid;
+		}
+		else
+		{
+			left = mid;
+		}
+		mid = (left+right)/2;
+	}
+	return mid;
+}
+@endverbatim
+*/
+牛顿迭代求平方根;
+
+
+/** @} */

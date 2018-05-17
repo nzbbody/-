@@ -1,0 +1,86 @@
+﻿/**
+* @defgroup 笔试面试
+* @{
+*/
+
+/**
+@verbatim
+1、main之前对全局对象进行初始化工作，会调用全局对象的构造方法。
+	注意：C++不保证全局对象的初始化顺序，如果全局对象A依赖全局对象B，A需要使用方法对全局对象B封装一下。
+2、main之后对全局对象进行清理工作，会调用全局对象的析构方法。
+3、main作为程序的入口，只是一种惯例，可以修改，但是不推荐。修改办法：
+	a、main方法名修改为main_2，重新编译报错：error LNK2019: 无法解析的外部符号 _main，该符号在函数 ___tmainCRTStartup 中被引用
+	b、右击当前工程-->属性-->配置属性-->链接器-->高级-->入口点，修改为main_2
+	注意：这样修改后，就不能保证main_2之前对全局对象初始化，main_2之后对全局对象清理的工作了。
+4、你可能奇怪，之前的入口点没有写，为什么还能找到main呢？
+	这是因为 C/C++-->预处理器-->预处理器定义中有：_CONSOLE，同时 链接器-->系统-->子系统：控制台(/SUBSYSTEM:CONSOLE)，
+	可以认为 CONSOLE对应 main
+5、对应关系：
+	main：		Windows控制台程序的入口
+	WinMain：	Windows下GUI程序的入口
+	wmain：		Unicode版本的main，w是宽字符
+	_tmain:		是个宏，Unicode情况下是wmain，否者是main
+6、启动控制台程序，打上断点，在调用堆栈中 mainCRTStartup，双击进去，进入文件 crtexe.c，在这个文件调用main方法
+	调用顺序：mainCRTStartup-->__tmainCRTStartup-->_initterm-->全局对象构造方法-->main方法
+7、也就是控制台程序main方法是由mainCRTStartup调用的，对应关系：
+	CONSOLE<-->	mainCRTStartup		<-->main
+	WINDOWS<-->	WinMainCRTStartup 	<-->WinMain
+	DllMain<-->	_DllMainCRTStartup	<-->必须使用__stdcall来定义
+8、如果想main结束后，还执行一个方法，使用atexit和exit，如下：
+	atexit(DoSthAtExit); // 注册，在main结束之后调用，在全局对象析构之前调用
+	//exit(0); //这个调用不是必要的，加在return之前，程序提前结束，导致return不执行
+	return 0;
+@endverbatim
+*/
+main之前之后做了什么;
+
+
+/**
+@verbatim
+考虑有 y 升水，每个桶的容量是 x 升，需要多少个桶？
+需要 y/x+(y%x==0?0:1); 有没有其它的计算方法？
+有，y/x+1能够表示不整除情况，要想同时表示整除的情况，使用(y-1)/x+1; 这个公式对于不整除的情况同样适用。 
+@endverbatim
+*/
+需要多少个桶;
+
+/**
+@verbatim
+
+@endverbatim
+*/
+见面概率;
+
+
+/**
+@verbatim
+1、一篇文档的所有单词倒序，要求线性时间常数空间。比如：
+	I am Andy 转化为 Andy am I
+2、解决办法：先对整个文档的所有字符进行倒序，再对每个单词倒序。如下：
+	I am Andy -->ydnA ma I -->Andy am I
+3、上面的方法等价于，先对每个单词倒序，再对整个文档的所有字符每个单词倒序。如下：
+	I am Andy -->I ma ydnA-->Andy am I
+4、这使人想到循环移位，abcdef，向左循环移动两位是 cdefab，有一种非常规的做法是：
+	前面2位反转，后面4位反转，再整个反转，如下：
+	abcdef-->bacdef-->bafedc-->cdefab
+	注意：前面2位反转，后面4位反转，再整个反转，等价于先整个反转，前4个反转，后2个反转，如下：
+	abcdef-->fedcba-->cdefba-->cdefab
+@endverbatim
+*/
+一篇文档的所有单词倒序;
+
+
+/**
+@verbatim
+1、面试官给出一个题目，往往需求不明确，场景范围太大，不要埋头去干，需要进一步沟通，举例来说。
+2、查找一个数组中最大的K个数，这个题目的场景就太大，需要进一步确定，下面的几个问题：
+3、最大的K个数要不要有序？
+4、数组的规模，如果太大，可能内存都放不下。
+5、K的大小相对于数组的大小，比如100个数中最大的5个数，还是100个数中最大的95个数，
+	如果是后者，可以筛选出最小的5个数，剩下的就是最大的95个数。
+6、时间开始和空间开销，更关心哪一点？
+@endverbatim
+*/
+面试过程沟通;
+
+/** @} */

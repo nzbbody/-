@@ -1,0 +1,2077 @@
+/**
+* @defgroup CPP
+* @{
+*/
+
+/**
+* @defgroup CPP常见问题
+* @{
+*/
+
+/**
+@verbatim
+1、考虑下面的情况，main-->person<-->utils
+	可执行文件main引用动态库person，动态库person和动态库utils之间相互引用。
+2、一般情况下，我们是在生成so文件的时候，每一步都进行链接依赖的so文件。
+	那么这里就存在问题了，person和utils之间相互依赖，导致了死循环。
+3、怎么解决这个问题？
+	正常的顺序如下：
+	先生成utils，不链接person
+	再生成person，链接utils
+	最后生成main，链接person
+4、示例代码如下：
+	niuzibin@ubuntu:~/work/test1/dll/utils$ more utils.h 
+	#ifndef UTILS_H_
+	#define UTILS_H_
+	#include <string>
+	#include "../person/person.h"
+	using namespace std;
+	class Utils
+	{
+			public:
+					string GetKey(const Person& p); 
+	};
+	#endif
+	
+	
+	niuzibin@ubuntu:~/work/test1/dll/utils$ more utils.cpp 
+	#include "utils.h"
+	string Utils::GetKey(const Person& p)
+	{
+			return "123-" + p.GetKey();
+	}
+	
+	
+	niuzibin@ubuntu:~/work/test1/dll/person$ more person.h
+	#ifndef PERSON_H_
+	#define PERSON_H_
+	#include <string>
+	using namespace std;
+	class Person
+	{
+			public:
+					Person(const string& name);
+					string GetName() const;
+					string GetKey() const;
+					string m_name;
+	};
+	#endif
+	
+	
+	niuzibin@ubuntu:~/work/test1/dll/person$ more person.cpp 
+	#include "person.h"
+	#include "../utils/utils.h"
+	Person::Person(const string& name)
+	{
+			m_name = name;
+	}
+	string Person::GetName() const
+	{
+			Utils ut;
+			return ut.GetKey(*this) + m_name;
+	}
+	string Person::GetKey() const
+	{
+			return "abc-";
+	}
+	
+	
+	niuzibin@ubuntu:~/work/test1/dll$ more main.cpp 
+	#include "person/person.h"
+	#include <stdio.h>
+	int main(int argc,char* argv[])
+	{
+			Person p("Andy");
+			printf("Person[%s]\n", p.GetName().c_str());
+			return 0;
+	}
+5、构建运行如下：
+	niuzibin@ubuntu:~/work/test1/dll/utils$ g++ -fPIC -shared -o libutils.so utils.cpp
+	
+	niuzibin@ubuntu:~/work/test1/dll/person$ g++ -fPIC -shared -o libperson.so person.cpp -lutils -L../utils
+	
+	niuzibin@ubuntu:~/work/test1/dll$ g++ -o main main.cpp -lperson -L./person        
+	niuzibin@ubuntu:~/work/test1/dll$ ./main
+	Person[123-abc-Andy]
+@endverbatim
+*/
+动态库彼此相互引用;
+
+/**
+@verbatim
+1、一般情况下，string内部不包含取值为0的字符，因为在赋值的时候，会自动截断。
+2、但是存在下面的情况，如下：
+	string s1 = "aaa&bbb";
+	s1[3] = '\0';
+	调试看到s1的取值为aaa，但是，实际上取值是aaa\0bbb，s1的size是7
+3、对于这样的string，进行base64编码解码需要特别注意：
+	base64编码没有问题，因为base64本来就是对字节编码，取值为0当然没有问题。
+	在解码的时候，解码出来的string，要考虑string内部包含取值为0的字符。如下：
+4、返回解码后的string如下：
+	// 特别注意，需要考虑解码后的string内部包含取值为0的字符
+	string KeyManager::DecSerialObject(const string &cipherText) 
+	{
+		unsigned char* buf = new unsigned char[cipherText.size()];
+		memset(buf, 0, cipherText.size());
+		int size = 0;
+		Base64_Decode(cipherText, buf, size);
+	
+		string plainText;
+		plainText.resize(size);
+		memcpy(&plainText[0], buf, size);
+		delete buf;
+		buf = NULL;
+		return plainText;
+	}
+5、重新实现base64的加密解密，增加输入string，输出string的方法。
+@endverbatim
+*/
+string内部包含取值为0的字符;
+
+
+/**
+@verbatim
+1、普通方法指针，绑定普通方法，如下：
+	typedef int (*FunPtr)(int a,int userHandle);
+	int Fool(int a,int userHanlde)
+	{
+		return a+1;
+	}
+	
+	int main(int argc, char* argv[])
+	{
+		FunPtr fun = Fool;
+		int hh = fun(3,0);
+	}
+2、成员方法指针，绑定成员方法，如下：
+	class Student
+	{
+	public:
+		Student(string name):_Name(name)
+		{
+		}
+		void SayHello()
+		{
+			printf("Hello,I am %s",_Name.c_str());
+		}
+	public:
+		string _Name;
+	};
+	
+	typedef void (Student::*SayHelloPtr)();
+	
+	int main(int argc, char* argv[])
+	{
+		Student a("Andy");
+		SayHelloPtr sayHello = &Student::SayHello;
+		(a.*sayHello)();
+	}
+3、现在问题来了，想用普通方法指针，绑定成员方法，怎么办？
+	不能直接绑定，增加一个间接层。如下：
+	class Student
+	{
+	public:
+		Student(string name):_Name(name)
+		{
+		}
+		void SayHello()
+		{
+			printf("Hello,I am %s",_Name.c_str());
+		}
+	public:
+		string _Name;
+	};
+	
+	typedef int (*FunPtr)(int a,int userHandle);
+	
+	int StudentCallBack(int a,int userHandle)
+	{
+		Student* pStu = (Student*)userHandle;
+		pStu->SayHello();
+		return a+1;
+	}
+	
+	int main(int argc, char* argv[])
+	{
+		Student a("Andy");
+	
+		FunPtr fun = StudentCallBack;
+		int hh = fun(3,(int)&a);
+	}
+4、可以采用更高级的C++特性bind，普通成员方法指针，期望一个普通方法，使用bind把对象和成员方法封装起来，
+	对外暴露成一个普通的方法，对内调用对象的成员方法。
+@endverbatim
+@see
+*/
+普通方法指针绑定成员方法;
+
+
+/**
+@verbatim
+1、考虑下面的代码：
+	class Dog
+	{
+	public:
+		Dog(string name):_Name(name)
+		{
+			printf("I am a dog[%s]\n",_Name.c_str());
+		}
+	
+	public:
+		string _Name;
+	};
+	
+	class Person
+	{
+	public:
+		Person(Dog dog):_Dog(dog)
+		{
+			printf("I have a dog[%s]\n",_Dog._Name.c_str());
+		}
+	
+	public:
+		Dog _Dog;
+	};
+	
+	int main(int argc, char* argv[])
+	{
+		string dogName = "Hali";
+		Person p1 = dogName;
+	}
+2、对于 Person p1 = dogName; 左边的p1之前不存在，要调用构造方法创建一个对象。
+	构造方法的参数期望接收Dog对象，但是右边是一个string对象，明显不匹配。
+	因此，需要一个适配过程，中间产生一个临时对象。如下：
+	dogName --> 临时的Dog对象 -->p1
+3、对于Person p2 = "Hali"; 为什么会编译失败？
+	因为这里需要多次适配，"Hali"-->string-->Dog-->Person，适配过程是编译器进行的，但是中间只能适配一次，为什么？
+	假如可以适配多次，那么编译就要找到所有可能的适配路径，编译器做不到。
+	可能会存在循环的适配过程，而且如果存在两条适配路径，路径长度也一样，选择哪一条呢？
+4、考虑下面的情况：
+	Dog hali = "Hali";
+	p1 = hali;
+	p1 = dogName;
+5、根据只能适配一次的规则，得到：
+	p1 = hali; p1调用copy赋值，期望右边是一个Person对象，而hali是Dog对象，中间可以直接转化，进行适配。
+	p1 = dogName; 同样道理，p1调用copy赋值，期望右边是一个Person对象，而dogName是string对象，中间不能直接转化。
+	编译报错：error C2679: 二进制“=”: 没有找到接受“std::string”类型的右操作数的运算符(或没有可接受的转换)
+	也就是说，没有找到从string到Person的copy赋值，也不存在可接受的转换（一次适配过程）。	
+@endverbatim
+@see
+*/
+隐式类型转化;
+
+
+/**
+@verbatim
+1、考虑下面的情况：有个Person类，内部有个_Age字段。正常情况下，定义和赋值为：
+	Person p = Person(8);
+	p = Person(9);
+	但是有个家伙很懒，他想这么写：
+	Person p = 8;
+	p = 9;
+	这样写也是可以的，因为编译器知道你的意图，运行的时候会进行一次隐式类型转换。这就是隐式类型转换。
+	但这样写不好，因为语义不通。要避免这种情况，使用explicit，这样编译器就会报出错误。
+2、现在在考虑下面的需求：判断p的年龄是否大于5，正常的写法是：
+	if(p.GetAge()>5){....}
+	但是，上面的家伙还是很懒，想直接这样写：
+	if(p>5){....}	
+	这是情况，有两种解决办法，一种是让p转化为对应的_Age，一种是让5转化为Person。
+	a、前一种办法，使用隐式类型转换操作符 operator int()
+		这时候，需要提供一个隐式类型转换操作符，
+		Person::operator int()
+		{
+			return this->_Age;
+		}
+	b、后一种办法，提供一个操作符重载，如下：
+		bool operator>(const Person& lhs,const Person& rhs)
+		{
+			return lhs.GetAge()>rhs.GetAge();
+		}
+	注意：如果两种方法同时提供，编译器会报错，因为编译器不知道应该使用哪一个类型转换。
+3、操作符重载，本质上是方法，和GetName一样，operator+ 对应于方法名。
+	而隐式类型转换操作符可以认为是一个特殊的成员方法，这个成员方法为operator int()，
+	可以认为这个方法以operator开头，返回值是int，没有方法名，没有形参。
+@endverbatim
+*/
+隐式类型转换__隐式类型转换操作符__操作符重载;
+
+/**
+@verbatim
+1、隐式类型转换和临时对象之间没有关系，是从两个不同的角度来看问题。
+	类型不匹配，就要进行隐式类型转换，但是中间并不一定要产生临时对象，可以直接调用构造方法。
+	临时对象是由于类型不匹配，需要中间适配一个对象。
+	也就是说，隐式类型转换并不一定要产生临时对象，而产生临时对象必然存在隐式类型转换。
+2、考虑Person类有一个_Age字段，
+	int main(int agrc,char* argv[])
+	{
+		Person p1(8);
+		Person p2 = 8;
+		Person p3 = Person(8);
+	
+		Person p4 = p1;
+		p4 = p1;
+		p4 = Person(9);
+		p4 = 9;
+	
+		return 0;
+	}
+3、有两个地方存在隐式类型转换，Person p2 = 8; 和 p4 = 9;
+	使用explicit Person(int age):_Age(age){} 会导致这两行编译失败。
+4、p4 = 9; 会产生临时对象，中间需要适配一个临时的对象。
+5、逐个分析如下：
+	int main(int agrc,char* argv[])
+	{
+		Person p1(8);			// 直接调用构造方法
+		Person p2 = 8;			// 直接调用构造方法，不产生临时对象，等价于Person p1(8)
+		Person p3 = Person(8);	// 直接调用构造方法，而且只调用一次，等价于Person p1(8)
+	
+		Person p4 = p1;			// 调用copy构造
+		p4 = p1;				// 调用copy赋值
+		p4 = Person(9);			// 先调用构造方法，产生匿名对象，再调用copy赋值
+		p4 = 9;					// 先调用构造方法，产生临时对象，再调用copy赋值
+	
+		return 0;
+	}
+	也就是说，下面三行的执行过程是等价的，唯一的区别就是，对于Person p2 = 8; 编译器任务存在隐式类型转换，
+	如果构造方法使用了explicit，会导致Person p2 = 8; 这一行编译失败。
+	Person p1(8);
+	Person p2 = 8;
+	Person p3 = Person(8);
+@endverbatim
+*/
+隐式类型转换__临时对象;
+
+/**
+@verbatim
+1、写时拷贝（copy-on-write，简称COW）, 为了解决什么问题？
+	考虑下面的代码：
+	string aa = "abcd";
+	string bb = aa;
+	如果bb是深复制，也就是申请内存，并且复制内容。
+	语言中到处都是string的copy构造（copy赋值的情况一样），这么做，性能会比较差。
+2、为了解决这个问题，使用浅复制，也就是bb和aa的指针相同一块内存。
+	但是这样导致两个新的问题：
+	a、因为aa和bb指向同一块内存，aa离开作用域，调用析构方法的时候不能释放内存，因为bb可能还要使用。
+		同时，当aa和bb都离开作用域，必须释放内存，否则造成资源泄露。
+	b、如果只是读取，没有问题。考虑修改bb的值，比如 bb[1] = 'h'; 程序员只是期望修改bb的值，
+		但是因为aa和bb共享一块内存，导致aa的值也发生了变化，这不是程序员所期望的。
+3、为了解决上面的两个问题，需要使用引用计数和写时拷贝技术。
+	引用计数：在copy构造、copy赋值，和析构的时候，对引用计数增加减少，析构的时候，引用计数为1，释放内存。
+	写时拷贝：每次修改的时候，引用计数等于1，直接修改，反正没人共享。大于1，减少引用计数，重新分配一块内存，复制内容。
+4、这里又存在一个问题，怎么判断是修改呢？
+	bb[1]有可能是读取，也有可能是写入，你可能会想到，提供两个版本的重载操作符[]，如下：
+	const char& operator[](int index) const; // 针对const string
+	char& operator[](int index);			 // 针对non-const string
+	但是，这还是存在问题，决定调用哪个方法，不是取决于用户的读取意图或者写入意图，而是取决于string对象是否为const。
+	对于const string 只可能调用第一个方法，没有问题。
+	对于non-const string，无论是读取还是写入，都是调用第二个方法。
+5、怎么解决上面的问题？
+	有两个解决办法，如下：
+	a、对于操作符[]，不区分读取写入，只要引用计数大于1，存在共享，就再分配一块内存，复制内容。
+		对于读取的情况，增加了开销。
+	b、再搞出一个代理类CharProxy，对char封装，string的内容是CharProxy，CharProxy关联string。
+		CharProxy提供隐式类型转换操作符，转化为char，用于读取操作。
+		重载operator= 用于赋值操作。
+		读取操作肯定调用隐式类型转换操作符，而写入操作肯定调用operator=，这样就区分了读取和写入。
+		隐式类型转换操作符，直接返回对应的char
+		operator= ，进行COW，引用计数等于1，直接修改，反正没人共享。大于1，减少引用计数，重新分配一块内存，复制内容。
+6、特别注意，写时拷贝只是一种提高性能的技术，对于STL中string要看具体的实现。
+	也就是说，STL中的string的实现，有可能是写时拷贝，也可能是深复制。
+	测试代码如下：
+	#include <stdio.h>
+	#include <string>
+	using namespace std;
+	
+	int main(int argc, char* argv[])
+	{
+		string aa = "abcd";
+		string bb = aa;
+		printf("aa[%x], ", aa.c_str());
+		printf("bb[%x]\n", bb.c_str());
+	
+		aa[0]='w';
+	
+		printf("aa[%x], ", aa.c_str());
+		printf("bb[%x]\n", bb.c_str());
+	
+		char* pc= (char*)(&aa[1]);
+		printf("pc[%x:%c]\n", pc, *pc);
+	
+		*pc = 'h';
+		printf("pc[%x:%c]\n", pc, *pc);
+	
+		printf("aa[%x:%s], ", &(aa[0]), aa.c_str());
+		printf("bb[%x:%s]\n", &(bb[0]), bb.c_str());
+	
+		getchar();
+		return 0;
+	}
+	在VS2005打印如下：
+	aa[18ff04], bb[18fedc]
+	aa[18ff04], bb[18fedc]
+	pc[18ff05:b]
+	pc[18ff05:h]
+	aa[18ff04:whcd], bb[18fedc:abcd]
+	说明，VS2005中的string实现不是写时拷贝，是深复制。
+	
+	在Redhat的Linux打印如下：
+	[root@localhost string2]# ./main
+	aa[97fc014], bb[97fc014]
+	aa[97fc02c], bb[97fc014]
+	pc[97fc02d:b]
+	pc[97fc02d:h]
+	aa[97fc02c:whcd], bb[97fc014:abcd]
+	说明，Redhat的Linux中，string实现是写时拷贝。
+7、对于Redhat的Linux中，string实现是写时拷贝。特别注意以下几点：
+	a、对于aa.c_str()，%x或者%d打印指针地址，%s打印内容。
+	b、aa[0]='w'; 会导致写时拷贝。按道理只有写的时候，才应该深复制，读的时候不需要深复制。
+		也就是说，char c = aa[0]，不应该导致aa深复制，但是测试发现，这也会导致深复制。为什么？
+		原因是：对于[]操作，很难区分是读操作，还是写操作，因此统一认为是写操作。
+		当然，也是可以区分的，effective C++讲过，再增加一个代理类，但是这增加了复杂度。
+		也就是说，Linux的string为了实现的简单性，忽略了一部分的性能。
+	c、引用计数大于1的时候，才会写时拷贝，等于1，没有必要再去深复制，直接修改就好了。
+	d、修改谁，谁才会去深复制。考虑下面的情况，
+		#include <stdio.h>
+		#include <string>
+		using namespace std;
+		
+		void foo(char a, char b)
+		{
+				// do nothing
+		}
+		
+		int main(int argc, char* argv[])
+		{
+				string aa = "abcd";
+				string bb = aa;
+				printf("aa[%x], ", aa.c_str());
+				printf("bb[%x]\n", bb.c_str());
+		
+				foo(aa[0],bb[0]);
+		
+				printf("aa[%x], ", aa.c_str());
+				printf("bb[%x]\n", bb.c_str());
+		
+				char* pc= (char*)(&aa[1]);
+				printf("pc[%x:%c]\n", pc, *pc);
+		
+				*pc = 'h';
+				printf("pc[%x:%c]\n", pc, *pc);
+		
+				printf("aa[%x:%s], ", &(aa[0]), aa.c_str());
+				printf("bb[%x:%s]\n", &(bb[0]), bb.c_str());
+		
+				getchar();
+				return 0;
+		}
+		测试，打印如下：
+		[root@localhost string2]# ./main
+		aa[8835014], bb[8835014]
+		aa[8835014], bb[883502c]
+		pc[8835015:b]
+		pc[8835015:h]
+		aa[8835014:ahcd], bb[883502c:abcd]
+		调用foo(aa[0],bb[0]); 按道理应该是aa深复制，为什么是bb深复制，因为方法参数入栈是从右向左。
+8、写时拷贝带来什么问题？
+	考虑下面的场景，代码如下：
+	#include <stdio.h>
+	#include <string>
+	using namespace std;
+	int main(int argc, char* argv[])
+	{
+			string aa = "abcd";
+			string bb = aa;
+			printf("aa[%x:%s], ", aa.c_str(), aa.c_str());
+			printf("bb[%x:%s]\n", bb.c_str(), bb.c_str());
+	
+			char* pc = (char*)bb.c_str();
+			pc[1] = 'H';
+			printf("aa[%x:%s], ", aa.c_str(), aa.c_str());
+			printf("bb[%x:%s]\n", bb.c_str(), bb.c_str());
+	
+			getchar();
+			return 0;
+	}
+	打印结果，如下：
+	[root@localhost string2]# g++ -o main main.cpp
+	[root@localhost string2]# ./main
+	aa[9258014:abcd], bb[9258014:abcd]
+	aa[9258014:aHcd], bb[9258014:aHcd]
+	char* pc = (char*)bb.c_str(); 进行了强制转化，没有触发string的写时拷贝，导致aa和bb的内容都发生了变化，这不是程序员所期望的。
+	这种场景，还是显而易见的。
+9、更隐蔽的情况，比如说，把bb传给一个方法，无论是传引用，或者传值，也都会导致aa的变化。如下：
+	#include <stdio.h>
+	#include <string>
+	using namespace std;
+	
+	void foo(const string& str)
+	{
+			char* pc = (char*)str.c_str();
+			pc[1] = 'E';
+	}
+	
+	int main(int argc, char* argv[])
+	{
+			string aa = "abcd";
+			string bb = aa;
+			printf("aa[%x:%s], ", aa.c_str(), aa.c_str());
+			printf("bb[%x:%s]\n", bb.c_str(), bb.c_str());
+	
+			foo(bb);
+	
+			printf("aa[%x:%s], ", aa.c_str(), aa.c_str());
+			printf("bb[%x:%s]\n", bb.c_str(), bb.c_str());
+	
+			getchar();
+			return 0;
+	}
+	或者
+	#include <stdio.h>
+	#include <string>
+	using namespace std;
+	
+	void foo(string str)
+	{
+			char* pc = (char*)str.c_str();
+			pc[1] = 'Q';
+	}
+	
+	int main(int argc, char* argv[])
+	{
+			string aa = "abcd";
+			string bb = aa;
+			printf("aa[%x:%s], ", aa.c_str(), aa.c_str());
+			printf("bb[%x:%s]\n", bb.c_str(), bb.c_str());
+	
+			foo(bb);
+	
+			printf("aa[%x:%s], ", aa.c_str(), aa.c_str());
+			printf("bb[%x:%s]\n", bb.c_str(), bb.c_str());
+	
+			getchar();
+			return 0;
+	}
+	还有更隐蔽的情况，动态加载库，如下：
+	test.cpp
+	#include <string>
+	#ifdef __cplusplus
+	extern "C"
+	{
+	#endif
+	void SetName(std::string name)
+	{
+			printf("name[%x:%s]\n", name.c_str(), name.c_str());
+			char* pc = (char*)name.c_str();
+			pc[2] = 'M';
+	}
+	#ifdef __cplusplus
+	};
+	#endif
+	
+	main.cpp
+	#include <string>
+	#include <dlfcn.h>
+	using namespace std;
+	typedef void (*Func) (string str);
+	
+	int main(int argc, char* argv[])
+	{
+			void* pHandle = dlopen("./libtest.so", RTLD_NOW);
+			void* error = dlerror();
+			printf("Error[%s]\n", error);
+	
+			Func pFunc = (Func)dlsym(pHandle,"SetName");
+			error = dlerror();
+			printf("Error[%s]\n", error);
+	
+			string aa = "Andy";
+			printf("aa[%x:%s]\n", aa.c_str(), aa.c_str());
+			string bb = aa;
+			pFunc(bb);
+			printf("aa[%x:%s]\n", aa.c_str(), aa.c_str());
+	
+			return 0;
+	}
+	运行，如下：
+	[root@localhost dll2]# g++ -fPIC -shared -o libtest.so test.cpp
+	[root@localhost dll2]# g++ -o main main.cpp -ldl
+	[root@localhost dll2]# ./main
+	Error[(null)]
+	Error[(null)]
+	aa[90843dc:Andy]
+	name[90843dc:Andy]
+	aa[90843dc:AnMy]
+10、怎么解决？
+	抑制写时拷贝，使用深复制。如下：
+	string aa = "Andy";
+	string bb(aa.c_str()); 或者 string bb = aa.c_str();
+@endverbatim
+*/
+写时拷贝;
+
+
+/**
+@verbatim
+1、首先考虑A是基本类型的情况，如下：
+	int* p1 = new int;	 // p1没有初始化，为0xcdcdcdcd
+	int* p2 = new int(); // p2初始化为0
+	int a1;				 // a1没有初始化，为0xcccccccc
+	int a2 = int();		 // a2初始化为0
+	注意：int a1(); 不是定义a1为int对象，而是声明了一个方法。编译器优先把语句当成方法声明来解析。
+2、我们知道有两种方式，X和X()，我们称之为X方式和X()方式。
+	X方式是：默认初始化，调用default构造方法。X中的字段是否初始化，取决于default构造方法的实现。首先尝试调用
+	用户定义的default构造方法。如果用户没有定义构造方法，调用编译器自动生成的default构造方法。
+	特别注意：编译器自动生成的default构造方法，不对X的字段进行初始化。
+	X()方式是：值初始化，调用default构造方法。首先尝试调用用户定义的default构造方法。
+	如果用户没有定义构造方法，调用编译器自动生成的default构造方法，并且进行额外的动作，对X的字段进行值初始化。
+	特别注意：编译器自动生成的default构造方法，不对字段进行初始化。后面存在额外的动作，会对X的字段进行值初始化。
+3、现在考虑A是class或者struct，如下：
+	new A 是默认初始化，调用用户定义的default构造方法，对A的字段进行初始化。如果用户没有定义default构造方法，
+	调用编译器自动生成的default构造方法，没有对A的字段初始化。
+	new A() 是值初始化，调用用户定义的default构造方法，对A的字段进行初始化。如果用户没有定义default构造方法，
+	会调用编译器自动生成的default构造方法，自动生成的default构造方法没有对A的字段初始化，
+	后续有一个动作，对字段进行值初始化。
+	A a1;
+	A a2 = A();
+	上面的栈上对象和new A，new A()的调用过程一样。
+4、特别注意：上面的规则只适合用户没有定义任何的default构造方法。
+	如果用户定义了A，或者A中字段的default构造方法，结果会是什么呢？考虑下面的代码：
+	class Cat
+	{
+	public:
+		int _Age;
+		int _Height;
+	};
+	
+	class Dog
+	{
+	public:
+		int _Age;
+		int _Height;
+	};
+	
+	class Person
+	{
+	public:
+		int _Age;
+		int _Height;
+	
+		Cat _Cat;
+		Dog _Dog;
+	};
+	
+	int main(int argc, char* argv[])
+	{
+		Person* p1 = new Person;
+		Person* p2 = new Person();
+	
+		Person a1;
+		Person a2 = Person();
+	}
+	p1全部是0xcdcdcdcd
+	p2全部是0
+	a1全部是0xcccccccc
+	a2全部是0
+5、如果Person增加用户定义的default构造方法，如下：
+	public:
+		Person():_Age(25),_Height(175)
+		{
+	
+		}
+	p1的_Age(25),_Height(175)，_Cat、_Dog的字段是0xcdcdcdcd
+	p2 和p1一样
+	a1的_Age(25),_Height(175)，_Cat、_Dog的字段是0xcccccccc
+	a2 和a1一样
+6、如果Cat增加用户定义的default构造方法，如下：
+	public:
+		Cat():_Age(2),_Height(23)
+		{
+	
+		}
+	p1的_Cat，_Age(2),_Height(23)，其它的字段是0xcdcdcdcd
+	p2 和p1一样
+	a1的_Cat，_Age(2),_Height(23)，其它的字段是0xcccccccc
+	a2 和a1一样
+7、如果Dog增加用户定义的default构造方法，和6的结果一样。
+8、通过5,6,7的测试，得出结论，如果用户定义了A，或者A中字段的default构造方法，
+	也就是如果用户定义了Person的default构造方法，或者Cat、Dog的default构造方法，
+	new Person()中的字段，也就不存在额外的值初始化动作，和new Person一样。
+9、为什么？
+	定义了部分的构造方法，也就是用户不期望额外的值初始化动作，全部靠自己手工初始化。
+	这个时候，new Person()会自动变成new Person的形式。
+10、特别注意：根据实际需要，确认是否要自定义default构造方法，不要依赖编译器的实现。而应该遵照C++标准，进行手工初始化。
+	对于上面的情况，只有在没有定义任何的default构造方法，并且使用X()方式，在windows下面，才会有额外的值初始化动作。
+	满足这种条件的场景很少，千万不要依赖这种情况，而应该自定义default构造方法，对字段手工初始化。
+@endverbatim
+@see
+*/
+new_A与new_A小括号;
+
+/**
+@verbatim
+1、	pch：PreCompiled Header，预编译头文件，比较大，由编译器在建立工程时自动生成，其中存放有工程中已经编译的部分代码。
+		在以后建立工程时不再重新编译这些代码，以便加快整个编译过程的速度。
+2、	ilk：Incremental Linking，作用是增量链接，连接过程中生成的一种中间文件，供LINK工具使用。 
+3、	obj：编译器对编译单元（一般是cpp文件）进行编译生成的目标文件，对cpp文件点击编译即可生成obj文件，在Linux下是o文件。
+		编译器对编译单元编译，生成obj文件，对obj文件链接，生成库文件（静态库或者动态库）和可执行文件。
+4、	pdb：Program DataBase，程序数据库文件，在建立工程时自动生成，存放程序的一些数据和调试信息，用来加快调试过程的速度。
+5、	idb：系统生成的中间状态文件，用于加快随后的编译速度。如果没有idb和pdb文件，就不能增量编译。
+6、	lib：库文件，分为两种情况，对于静态库，lib包含实现。对于动态库，lib只是一堆符号，关联dll中的实现。
+7、	dll：动态库
+8、	exp：同lib类似，跟dll或者exe一起生成的文件，其中包含了函数和数据项目的输出信息。
+		LINK工具将使用EXP文件来创建动态链接库。
+9、	sln：解决方案文件
+10、suo：解决方案，用户自定义的选项文件
+11、ncb：用于智能感知，比如提示对应的方法和字段
+12、vcproj：工程文件
+@endverbatim
+*/
+VS2005各种文件;
+
+
+/**
+@verbatim
+1、考虑下面的场景，频繁地需要同一类型的大量对象，而且对象的生命周期很短。
+	我们知道new操作符，操作系统要找到一块内存，然后调用构造方法。频繁地找一块内存，开销很大。
+2、解决办法是：使用对象池，初始的时候，new出一批对象。用户请求对象，用完还回来。
+3、new出一批的时候，每个都初始化。用户还回来，再初始化。
+4、怎么管理这批对象？
+	a、每个对象增加一个字段，标识是否已经使用。
+	b、只保存没有被使用的，还回来的再放入队列。
+5、使用对象池，还可以监视同时有多少对象被使用，考虑，对象池初始化了很多对象，后来却没有了。
+	不可能同时很多被使用，那就是资源有泄露，用户用了没有还。
+@endverbatim
+*/
+对象池;
+
+/**
+@verbatim
+1、考虑下面的情况，
+	class Animal
+	{
+	public:
+		virtual void Say();
+		virtual void Say(int a);
+	};
+	
+	class Dog : public Animal
+	{
+	public:
+		virtual void Say(int a);
+	};
+	
+	测试代码，如下：
+	int main(int argc, char* argv[])
+	{
+		Dog* pDog = new Dog();
+		pDog->Say();
+		getchar();
+		return 0;
+	}
+	报错：error C2660: "Dog::Say": 函数不接受 0 个参数
+2、pDog->Say(); 期望调用父类Animal的Say方法，而且Animal确实有Say()方法，还是报错，为什么？
+	这是因为，子类同名方法会遮掩父类的方法，名称遮掩只考虑方法名，与方法的形参表没有任何关系。
+3、如何调用父类的Say()方法，显式调用，如下：
+	pDog->Animal::Say();
+	特别注意：显示调用不具备多态行为，在编译时就确定了方法，而不是在运行期根据虚方法表决议。
+	pDog->Say(6); 			// 运行时，通过虚方法表决议，调用子类重写的方法
+	pDog->Animal::Say(6); 	// 编译时确定调用父类的方法
+@endverbatim
+*/
+名称遮掩;
+
+
+/**
+@verbatim
+1、考虑下面的场景，如下：
+	a.h
+	int a = 100;
+	void a1_print();
+	void a2_print();
+	
+	a1.cpp
+	#include "a.h"
+	#include <stdio.h>
+	void a1_print()
+	{
+		printf("before a1.cpp a[%d]\n",a);
+		a = 101;
+		printf("after  a1.cpp a[%d]\n",a);
+	}
+	
+	a2.cpp
+	#include "a.h"
+	#include <stdio.h>
+	void a2_print()
+	{
+		printf("before a2.cpp a[%d]\n",a);
+		a = 102;
+		printf("after  a2.cpp a[%d]\n",a);
+	}
+	
+	main.cpp
+	#include "a.h"
+	#include <stdio.h>
+	int main(int argc, char* argv[])
+	{
+		a1_print();
+		a2_print();
+	
+		getchar();
+		return 0;
+	}
+2、编译报错，连接的时候对于a重复定义，怎么解决？
+3、使用static修饰，使对于a的连接成为内部连接。这种情况下，每个编译单元内都有一个独立的a，互不影响。如下：
+	static int a = 100;
+4、对于方法存在同样的问题，如下：
+	f.h
+	int GetId()
+	{
+		static int a =0;
+		return ++a;
+	}
+	void f1_print();
+	void f2_print();
+	
+	f1.cpp
+	#include "f.h"
+	#include <stdio.h>
+	void f1_print()
+	{
+		printf("before f1.cpp a[%d]\n",GetId());
+		printf("after  f1.cpp a[%d]\n",GetId());
+	}
+
+	f2.cpp
+	#include "f.h"
+	#include <stdio.h>
+	void f2_print()
+	{
+		printf("before f2.cpp a[%d]\n",GetId());
+		printf("after f2.cpp a[%d]\n",GetId());
+	}
+
+	main.cpp
+	#include "f.h"
+	#include <stdio.h>
+	int main(int argc, char* argv[])
+	{
+		f1_print();
+		f2_print();
+	
+		getchar();
+		return 0;
+	}
+5、方法GetId()的作用是返回全局自增的Id，上面连接的时候出错，重复定义。
+	为了解决这个问题，使用static成为内部连接，但是这样出大问题了：
+	方法有了两个副本，彼此独立，不能保证全局自增唯一的Id了。
+	注意：如果是可重入的方法使用static内部连接没有问题。
+6、怎么解决？
+	不使用static内部链接，头文件只是声明方法，方法定义放入其中一个cpp文件中。
+7、考虑类，如下：
+	类的静态字段是外部连接。
+	类的成员方法（实例方法和静态方法都一样）取决于方法定义的位置，方法实现放在类定义内，就是内部连接，
+	方法实现放在类定义外，就是外部连接。
+@endverbatim
+@see
+*/
+CPP内部连接;
+
+
+/**
+@verbatim
+1、区别一：放在类定义内，编译器会尝试编译为内联方法，提高方法执行的效率。能不能成为内联方法，取决于方法的复杂度，
+	复杂不会成为内联方法。因此，很小的方法建议放在类定义内。当然也可以放在类定义外，显式说明是内联方法。
+2、区别二：放在类定义内，成员方法是内部连接，被多个cpp文件包含也不会出现重复定义的错误。
+	放在类定义外，成员方法是外部连接，被多个cpp文件包含会出现重复定义的错误。
+	无论是实例方法还是静态方法，都是一样的情况。
+@endverbatim
+@see
+*/
+成员方法的定义放在类定义内外的区别;
+
+
+/**
+@verbatim
+1、对抛出异常的方法，没有try catch，会导致程序崩溃，如下：
+	void aa()
+	{
+		throw 1;
+	}
+	
+	int main(int argc, char* argv[])
+	{
+		aa();
+		return 0;
+	}
+2、修改为如下：
+	void aa()
+	{
+		throw 1;
+	}
+	
+	int main(int argc, char* argv[])
+	{
+		try
+		{
+			aa();
+		}
+		catch (...)
+		{
+			//
+		}	
+		return 0;
+	}
+3、现在考虑，在catch中又调用方法bb，而bb没有异常保护，也会导致程序崩溃，如下：
+	void aa()
+	{
+		throw 1;
+	}
+	
+	void bb()
+	{
+		throw 2;
+	}
+	
+	int main(int argc, char* argv[])
+	{
+		try
+		{
+			aa();
+		}
+		catch (...)
+		{
+			bb();
+		}	
+		return 0;
+	}
+4、怎么解决这个问题？
+	a、对这个代码段再加一层异常保护，如下：
+		int main(int argc, char* argv[])
+		{
+			try
+			{
+				try
+				{
+					aa();
+				}
+				catch (...)
+				{
+					bb();
+				}
+			}
+			catch (int& ex)
+			{
+				int hh = 0;
+			}
+			return 0;
+		}
+	b、对bb方法进行单独保护，如下：
+		int main(int argc, char* argv[])
+		{
+			try
+			{
+				aa();
+			}
+			catch (...)
+			{
+				try
+				{
+					bb();
+				}
+				catch (int& ex)
+				{
+					int gg = 0;
+				}
+			}
+			return 0;
+		}
+5、Effective C++中有一条，别让异常逃离析构方法。为什么？
+	考虑下面的代码：
+	Person::~Person()
+	{
+		throw 1;
+	}
+	
+	int main(int argc, char* argv[])
+	{
+		Person p;
+		return 0;
+	}
+	这种情况，导致程序崩溃。解决这种问题，必须进行异常保护，如下：	
+	int main(int argc, char* argv[])
+	{
+		try
+		{
+			Person p;
+		}
+		catch (int& ex)
+		{
+	
+		}	
+		return 0;
+	}
+6、这种写法太丑陋了，而且析构方法抛出异常，还会导致其他问题。比如：
+	在集合中有多个Person，这样的话就会一次性抛出多个异常，C++无法处理。
+	还有下列的情况，如下：
+	void aa()
+	{
+		Person p;
+		throw 1;
+	}
+	
+	int main(int argc, char* argv[])
+	{
+		try
+		{
+			aa();
+		}
+		catch (...)
+		{
+	
+		}
+		
+		return 0;
+	}
+	即使对aa进行了异常保护，也会崩溃。
+	因为throw 1 然后堆栈回滚，Person析构又抛出异常，也就是说，在异常的情况下，又抛出异常，导致崩溃。
+	所以说，千万不能让异常逃离析构方法。
+@endverbatim
+*/
+异常保护;
+
+/**
+@verbatim
+1、main之前，有一些准备工作要做，就是对非局部的静态对象进行初始化，这些工作由编译器完成，在main之前插入一些代码。
+2、静态对象分为局部静态对象和非局部静态对象。局部静态对象就是方法内的静态对象，在方法第一次调用的时候进行初始化。
+	非局部静态对象包括全局对象，命名空间内的对象，类的静态对象，在main之前进行初始化。
+@endverbatim
+*/
+main之前执行什么;
+
+
+/**
+@verbatim
+1、原因是：
+	pdb文件存在问题。
+2、解决办法：
+	a、项目 -> 属性 -> 配置属性 -> 链接器 -> 调试 -> [生成调试信息] 从: 否 -> 是(/DEBUG)
+	b、项目 -> 属性 -> 配置属性 -> C/C++ -> [调试信息格式] 从: 禁用 -> 程序数据库(/Zi)
+	c、项目 -> 属性 -> 配置属性 -> C/C++ -> 优化 -> [优化] 从: 最大化速度(/O2) -> 禁用(/Od)
+@endverbatim
+*/
+调试断点不起作用;
+
+
+/**
+@verbatim
+1、.text是代码段，只读
+2、.data是数据段，存储值不为0的静态对象
+3、.bss，存储值为0的静态对象，初始化为0或者没有初始化的静态对象（没有初始化的静态对象，编译器会初始化为0）。
+4、为什么值为0的静态对象放在.data段，而不为0的放在.bss段？
+	二者对应的使用场景不一样。
+	值不为0的静态对象，必须知道取值多少，必须分配空间，放在.data段。
+	值为0的静态对象，既然取值确定了，没有必要分配空间，只要记住这个符号就好了，等到链接成exe的时候再分配空间，放在.bss段
+5、.rodata read only data 只读数据段，不可修改，存储文本常量，比如文本字符串"hello"，或者int类型123
+6、为什么代码段和数据段分开存放？
+	a、代码段只读，数据段可读写，分开存放防止程序修改代码段
+	b、空间局部性原理，可以提高缓存命中率
+	c、代码段是只读的，不存在读写冲突，可以多线程共享，进程的内存消耗。
+@endverbatim
+*/
+目标文件是什么样;
+
+/**
+@verbatim
+1、Linux下产生core文件，只需要 ulimit -c unlimited
+2、Windows下面崩溃不会自动产生core文件，注意：Windows下core文件的后缀名是dmp
+	要想产生dmp文件，需要设置未处理异常的回调，在回调方法中创建dmp文件
+3、代码如下：
+	#include <stdio.h>
+	#include <Windows.h>
+	#include <DbgHelp.h>
+	#include <assert.h>
+	
+	#pragma comment(lib, "Dbghelp.lib")
+	
+	LONG WINAPI MyUnhandledExceptionFilter(PEXCEPTION_POINTERS pExceptionPointers)
+	{
+		SetErrorMode(SEM_NOGPFAULTERRORBOX);
+	
+		DWORD dwBufferSize = MAX_PATH;    
+		SYSTEMTIME stLocalTime;
+		GetLocalTime(&stLocalTime);
+	
+		HMODULE currentModule=GetModuleHandle(NULL);
+		char exeFileName[512]={0};
+		char workFullDir[512]={0};
+		char szFileName[512]={0};
+	
+		if(!GetModuleFileNameA(currentModule,exeFileName,sizeof(exeFileName)-1))
+		{
+			int res=GetLastError();
+			if(0<res)
+				res=0-res;
+			res+=-10;
+			return res;
+		}
+		strncpy(workFullDir,exeFileName,sizeof(workFullDir));
+		char* pos=strrchr(workFullDir,'\\');
+		if(NULL==pos)
+			return -2;
+		++pos;
+		*pos=0;  
+	
+		sprintf(szFileName, "%s-%04d%02d%02d-%02d%02d%02d.dmp",
+			exeFileName,
+			stLocalTime.wYear, stLocalTime.wMonth, stLocalTime.wDay,
+			stLocalTime.wHour, stLocalTime.wMinute, stLocalTime.wSecond);
+	
+		HANDLE hDumpFile = CreateFileA(szFileName, GENERIC_READ | GENERIC_WRITE, FILE_SHARE_WRITE | FILE_SHARE_READ, 0, CREATE_ALWAYS, 0, 0);
+	
+		MINIDUMP_EXCEPTION_INFORMATION ExpParam = {0};
+		ExpParam.ThreadId = GetCurrentThreadId();
+		ExpParam.ExceptionPointers = pExceptionPointers;
+		ExpParam.ClientPointers = FALSE;
+	
+		MINIDUMP_TYPE MiniDumpWithDataSegs = (MINIDUMP_TYPE)(MiniDumpNormal | MiniDumpWithHandleData | MiniDumpWithUnloadedModules);
+		MiniDumpWriteDump(GetCurrentProcess(), GetCurrentProcessId(), hDumpFile, MiniDumpWithDataSegs, &ExpParam, NULL, NULL);
+		CloseHandle(hDumpFile);
+	
+		return EXCEPTION_CONTINUE_SEARCH; 
+	}
+	
+	
+	void DumpCore()
+	{
+		SetUnhandledExceptionFilter(MyUnhandledExceptionFilter);
+		void *addr = (void *)GetProcAddress(GetModuleHandleA("kernel32.dll"), "SetUnhandledExceptionFilter");
+		if (addr != NULL)
+		{
+			unsigned char code[16] = {0};
+			int size = 0;
+			code[size++] = 0x33;
+			code[size++] = 0xC0;
+			code[size++] = 0xC2;
+			code[size++] = 0x04;
+			code[size++] = 0x00;
+			DWORD dwOldFlag = 0, dwTmpFlag = 0;
+	
+			VirtualProtect(addr, size, PAGE_READWRITE, &dwOldFlag);
+			WriteProcessMemory(GetCurrentProcess(), addr, code, size, NULL);
+			VirtualProtect(addr, size, dwOldFlag, &dwTmpFlag);
+		}
+	}
+	
+	void Check()
+	{
+		int ptrSize = sizeof(void*);
+		printf("Pointer Size[%d]\n", ptrSize);
+	
+		#if defined WIN64 || __LP64__
+		assert(ptrSize == 8);
+		#else
+		assert(ptrSize == 4);
+		#endif
+	}
+
+
+int main(int argc, char* argv[])
+{
+	Check();
+	DumpCore();
+	int a = 0;
+	return 1/0;
+}
+@endverbatim
+*/
+崩溃产生core文件;
+
+
+/**
+@verbatim
+1、一般情况下，我们期望所有的源代码都进行编译。但是在某些场景下，我们期望一些代码，在满足某种条件下，才进行编译。
+	比如：要区分Windows和Linux，32位和64位，Debug和Release，还有防止重复定义，使用头文件保护符。
+2、上面的场景就需要使用条件编译，要用到一系列关键字，#if #if defined 等，如下：
+	#define ccc
+	
+	#if defined aaa || defined bbb
+		printf("aaa||bbb\n");
+	#elif defined ccc
+		printf("ccc\n");
+	#else
+		printf("ddd\n");
+	#endif
+3、需要注意的地方：
+	单个条件 #if defined aaa 可以缩写为 #ifdef aaa
+	对于宏可以加上小括号，#if defined (aaa) || defined (bbb)
+@endverbatim
+*/
+条件编译;
+
+
+/**
+@verbatim
+1、32位
+	Windows：
+		指针是4个字节，long是4个字节
+	Linux：
+		指针是4个字节，long是4个字节
+2、64位
+	Windows：
+		指针是8个字节，long是4个字节
+	Linux：
+		指针是8个字节，long是8个字节
+3、需要修改的地方：
+	a、对于64位，指针强转为int，存在问题（应该是long long），主要在设置回调的地方把指针强转为int
+	b、对于64位，日志打印指针，存在问题（应该是lld）
+	c、对于64位，同时Linux，日志打印long，存在问题（应该是lld）
+4、怎么解决？
+	a、指针强转为int，修改为使用intptr_t，intptr_t跨32位和64位，Linux下面需要包含头文件 stdint.h
+	b、日志打印指针，使用%p，%p跨32位和64位，只不过打印出来是16进制表示
+	c、日志打印long，同理使用%p，
+5、另外，操作系统预定义的宏如下：
+	Operating system	Predefined macro									
+	DOS 16 bit			__MSDOS__		_MSDOS								
+	Windows 16 bit		_WIN16												
+	Windows 32 bit		_WIN32			__WINDOWS__							
+	Windows 64 bit		_WIN64			_WIN32								
+	Linux 32 bit		__unix__		__linux__							
+	Linux 64 bit		__unix__		__linux__		__LP64__		__amd64
+	BSD					__unix__		__BSD__			__FREEBSD__			
+	Mac OS				__APPLE__		__DARWIN__		__MACH__			
+	OS/2				__OS2__												
+	
+	表示64位，使用 #if defined _WIN64 || defined __LP64__
+	表示64位并且是Linux，使用 #if defined __LP64__
+	表示32位并且是Windows，使用 #if defined _WIN32 && !defined _WIN64
+@endverbatim
+*/
+编译32位和64位差异有哪些;
+
+/**
+@verbatim
+1、报错如下：
+	fatal error C1083: Cannot open include file: 'xxx.h': No such file or directory
+2、双击错误，找到include这一行
+	右击 Open Document "xxx.h"，会列出头文件的查找目录。
+3、检查目录是否正确，以及目录中是否包含头文件
+@endverbatim
+*/
+编译找不到头文件;
+
+/**
+@verbatim
+1、unix操作系统使用有符号的int表示时间，这个时间是从unix的开始时间【1970年1月1日0时0分0秒】到当前时间所经过的秒数。
+	有符号的int最大值为21亿（21亿4千万左右），到了2038年，经过的秒数就达到21亿，超过有符号的int最大值。
+2、无符号的int最大值为42亿9千万
+@endverbatim
+*/
+时间2038年问题;
+
+/**
+@verbatim
+1、考虑下面的场景，示例代码如下：
+	a.h
+	#ifndef A_H_
+	#define A_H_
+	#include "b.h"
+	class A
+	{
+	public:
+		int _Id;
+		B	_B;
+	};
+	#endif
+	
+	b.h
+	#ifndef B_H_
+	#define B_H_
+	#include "a.h"
+	class B
+	{
+	public:
+		int _Id;
+		A	_A;
+	};
+	#endif
+	
+	main.cpp
+	#include "a.h"
+	int main(int argc, char* argv[])
+	{
+		A a;
+		return 0;
+	}
+2、编译报错：
+	b.h(8) : error C2146: 语法错误 : 缺少“;”(在标识符“_A”的前面)
+3、思考为什么？
+4、先不考虑编译报错的问题，如果可以编译正常，会有什么问题？
+	A类中包含了B类的实例，B类中又包含了A类的实例，我们知道每个实例都是有大小的，在内存中占用一段空间。
+	那么A的实例a大小是多少？
+	a的大小=4个字节（int大小）+ B实例的大小，而B实例的大小=4个字节（int大小）+ A实例的大小......
+	这样循环包含，也就是死循环，a的大小为无穷大，当然不可以。
+5、为什么java、C#没有这样的问题？
+	因为它们关联的对象都是引用。
+6、注意：空类的实例大小为1个字节，这是编译器安插的，为什么要安插占用一个字节？
+	因为要区分空类的不同对象，如果空类对象不占用任何空间，怎么区分呢，
+	占用一个字节，也就是可以说，这个空类对象占用第几个字节。
+7、现在考虑编译报错的原因，我们知道include是文本替换，替换的过程中，会根据宏进行条件判断，决定是否进行递归替换。
+	那么我们把main.cpp转化为一个编译单元，对include进行文本替换，如下：
+	#include "a.h"
+	int main(int argc, char* argv[])
+	{
+		A a;
+		return 0;
+	}
+	把"a.h"展开，转化为
+	#include "b.h"
+	class A
+	{
+	public:
+		int _Id;
+		B	_B;
+	};
+	int main(int argc, char* argv[])
+	{
+		A a;
+		return 0;
+	}
+	把"b.h"展开，由于头文件保护符，a.h不再包含进来，转化为
+	class B
+	{
+	public:
+		int _Id;
+		A	_A;
+	};
+	
+	class A
+	{
+	public:
+		int _Id;
+		B	_B;
+	};
+	int main(int argc, char* argv[])
+	{
+		A a;
+		return 0;
+	}
+	现在来分析，最后展开的编译单元，对于一个编译单元，CPP编译器在编译的时候，
+	从上向下，遇到的名称（也就是使用的名称）必须在之前声明过。
+	注意：可以没有定义，因为是在链接的时候，才去找对应的定义（也就是实现）
+	因此，对于B中的 A	_A; 找不到名称A的声明。要引用的A在下文才出现，这就是超前引用的问题。
+	所谓超前引用，就是超前引用下文才出现的名称。
+8、这里需要注意的是：即使在开头增加A的声明，编译代码如下：
+	class A;
+	class B
+	{
+	public:
+		int _Id;
+		A	_A;
+	};
+	
+	class A
+	{
+	public:
+		int _Id;
+		B	_B;
+	};
+	int main(int argc, char* argv[])
+	{
+		A a;
+		return 0;
+	}
+	也会报错如下：
+	main.cpp(58) : error C2079: “B::_A”使用未定义的 class“A”
+	这是为什么？
+	对于B类包含了A类的实例，必须提前知道A的定义。因为如果不知道A的定义，就不知道对A的实例分配多少内存空间。
+9、怎么解决上面的问题？
+	不能循环包含对方的实例，可以包含对方的指针。方式有：
+	A包含B的实例，B包含A的指针，反过来也行。
+	A和B都包含对方的指针。
+	示例如下：
+	class A;
+	class B
+	{
+	public:
+		int _Id;
+		A*	_A;
+	};
+	
+	class A
+	{
+	public:
+		int _Id;
+		B	_B;
+	};
+	int main(int argc, char* argv[])
+	{
+		A a;
+		return 0;
+	}
+	这种情况下，也要提前声明class A; 这就是前置声明。
+10、思考，为什么上面的方式就没有问题？
+	对于A*	_A; 编译器是知道分配多少内存的，因为任何类型的指针大小都是4个字节（32位系统）。
+	注意：不同类型的指针，本质上没有什么区别，都是一个int值。
+	重要的是：通过指针类型告诉编译器，把指针指向的这块内存当成什么类型来解释，类型确定，实例的内存布局就确定了。
+11、接着思考这个问题，如下：
+	niuzibin@ubuntu:~/work/test1/cpp1$ more a.h 
+	#ifndef A_H_
+	#define A_H_
+	#include "b.h"
+	class A
+	{
+	public:
+		int _Id;
+		B   _B;
+		int GetId()
+		{
+			return _Id;
+		}
+	};
+	#endif
+	niuzibin@ubuntu:~/work/test1/cpp1$ more b.h   
+	#ifndef B_H_
+	#define B_H_
+	#include "a.h"
+	class B
+	{
+	public:
+		int _Id;
+		A   _A;
+	
+		int GetId()
+		{
+			return _Id;
+		}
+	};
+	#endif
+	niuzibin@ubuntu:~/work/test1/cpp1$ more main.cpp 
+	#include "a.h"
+	int main(int argc, char* argv[])
+	{
+		A a;
+		return 0;
+	}
+	niuzibin@ubuntu:~/work/test1/cpp1$ g++ -o main main.cpp 
+	In file included from a.h:3:0,
+					from main.cpp:1:
+	b.h:8:5: error: ‘A’ does not name a type
+		A   _A;
+12、改为前置声明+关联指针的方式，修改b.h，如下：
+	#ifndef B_H_
+	#define B_H_
+	class A;
+	class B
+	{
+	public:
+		int _Id;
+		A*   _A;
+	
+		int GetId()
+		{
+			return _Id;
+		}
+	};
+	#endif
+	构建正常
+13、现在考虑，在B中调用A的方法，也就是前置声明的情况下调用方法，如下：
+	#ifndef B_H_
+	#define B_H_
+	class A;
+	class B
+	{
+	public:
+		int _Id;
+		A*   _A;
+	
+		int GetId()
+		{
+			return _Id + _A->GetId();
+		}
+	};
+	#endif
+14、报错如下：
+	niuzibin@ubuntu:~/work/test1/cpp1$ g++ -o main main.cpp 
+	In file included from a.h:3:0,
+					from main.cpp:1:
+	b.h: In member function ‘int B::GetId()’:
+	b.h:12:17: error: invalid use of incomplete type ‘class A’
+	return _Id + _A->GetId();
+					^
+	b.h:3:7: error: forward declaration of ‘class A’
+	class A;
+	注意：error: invalid use of incomplete type ‘class A’ 和 forward declaration of
+	错误的原因是：对于前置声明，调用指针的方法。
+15、怎么解决这个问题？
+	方法一：b.h不再使用前置声明，a.h使用前置声明。如下：
+		niuzibin@ubuntu:~/work/test1/cpp1$ more b.h
+		#ifndef B_H_
+		#define B_H_
+		#include "a.h"
+		class B
+		{
+		public:
+			int _Id;
+			A*   _A;
+		
+			int GetId()
+			{
+				return _Id + _A->GetId();
+			}
+		};
+		#endif
+		niuzibin@ubuntu:~/work/test1/cpp1$ more a.h 
+		#ifndef A_H_
+		#define A_H_
+		class B;
+		class A
+		{
+		public:
+			int _Id;
+			B*   _B;
+			int GetId()
+			{
+				return _Id;
+			}
+		};
+		#endif
+	方法二：方法的实现移到b.cpp，并且在b.cpp包含a.h，如下：
+		niuzibin@ubuntu:~/work/test1/cpp1$ more b.h      
+		#ifndef B_H_
+		#define B_H_
+		class A;
+		class B
+		{
+		public:
+			int _Id;
+			A*   _A;
+		
+			int GetId();
+		};
+		#endif
+		niuzibin@ubuntu:~/work/test1/cpp1$ more b.cpp
+		#include "b.h"
+		#include "a.h"
+		int B::GetId()
+		{
+		return _Id + _A->GetId();
+		}
+		niuzibin@ubuntu:~/work/test1/cpp1$ g++ -c b.cpp
+		niuzibin@ubuntu:~/work/test1/cpp1$ g++ -o main main.cpp b.o	
+@endverbatim
+*/
+CPP两个类相互引用引发的思考;
+
+/**
+@verbatim
+1、考虑结构体，如下：
+	struct Dog
+	{
+		int		_Id;
+		int		_Age;
+		int		_Length;
+		char*	_Desc;
+	};
+	_Desc表达跟着一块内存，包含描述信息
+2、设置如下：
+	int main(int argc,char* argv[])
+	{
+		char* pc = new char[28];
+		memset(pc, 0,28);
+	
+		Dog* d = (Dog*)pc;
+		d->_Id = 1;
+		d->_Age = 2;
+		d->_Length = 28;
+	
+		sprintf(pc+12,"%s",
+			"abcdefg");
+	
+		return 0;
+	}
+3、也可以去地址，如下：
+	sprintf((char*)(&(d->_Desc)),"%s",
+		"abcdefg");
+4、仔细思考，这里的_Desc取值根本没有意义，因为这块内存紧跟着_Length，而且_Length标识了长度。
+5、可以使用更好的解决办法，使用char	_Desc[1];表示位置，因为数组实际上就是卡出一块内存，紧接着_Length。修改如下：
+	struct Dog
+	{
+		int		_Id;
+		int		_Age;
+		int		_Length;
+		char	_Desc[1];		//包含描述 16个字节
+	};
+	
+	int main(int argc,char* argv[])
+	{
+		char* pc = new char[28];
+		memset(pc, 0,28);
+	
+		Dog* d = (Dog*)pc;
+		d->_Id = 1;
+		d->_Age = 2;
+		d->_Length = 28;
+	
+		sprintf(d->_Desc,"%s",
+			"abcdefg");
+	
+		return 0;
+	}
+@endverbatim
+*/
+一块内存覆盖到对象上的处理;
+
+
+/**
+@verbatim
+1、在Debug模式下，栈上连续的两个对象，地址相差12个字节。如下：
+	struct Person
+	{
+		int		_Gentle;
+		int		_Age;
+		int		_Height;
+		int		_Weight;
+	};
+	
+	int main(int argc,char* argv[])
+	{
+		Person p1;
+		p1._Gentle = 1;
+		p1._Age = 18;
+		p1._Height = 174;
+		p1._Weight = 88;
+	
+		Person p2;
+		p2._Gentle = 1;
+		p2._Age = 18;
+		p2._Height = 174;
+		p2._Weight = 88;
+	
+		Person* pp1 = &p1;
+		Person* pp2 = &p2;
+	
+		getchar();
+		return 0;
+	}
+	在Debug模式下，p1对象和p2对象的前后各有额外的4个字节，中间有8个字节，p1到p2的起始位置相差12个字节。
+2、特别注意：对象p1内的字段之间，比如_Gentle和_Age并没有额外的字节。
+	但是如果是栈上的两个int对象_Gentle和_Age，他们之间也会补充额外的字节。
+	也就是说，完整的两个对象之间有补充字节，对象内的字段之间没有补充字节。
+3、对象中的字段，顺序排列，字段中的字节逆序排列。
+	注意：字节逆序排列是指从左到右，低位到高位。
+4、堆和栈的区别
+	栈的地址向下增长，堆的地址向上增长
+@endverbatim
+*/
+查看内存的内容;
+
+
+/**
+@verbatim
+1、发现一个奇怪的问题，就是在Debug调试的时候，发现String复制失败。
+2、原因是：犯了非常低级的错误，源String的直接修改char*的内容。如下：
+	int main()
+	{
+		string aa;
+		string bb;
+	
+		sprintf((char*)aa.c_str(),"123456");
+		bb = aa;
+		return 0;
+	}
+3、思考为什么不行？
+	直接修改aa.c_str()，aa的size等字段根本就没有变化，还是0，copy构造失败。
+	也就是说，直接修改aa.c_str()，aa根本意识不到。
+	注意：Debug的时候只能看到字段和虚方法表，其他方法是看不到的，因为其他的方法没有占用对象的内存。
+4、为什么要关联虚方法表？
+	为了要实现多态功能，根据真实类型决议方法的调用。考虑Dog继承Animal，Play是虚方法
+	Animal* pa = new Dog();
+	pa->Play();
+	在编译的时候，pa->Play();这句代码会编译为 pa->vptr[n]，也就是虚方法表的槽位调用，n表示Play对应虚方法的槽位
+	在运行的时候，pa->vptr[n]就能根据真实类型决议到方法的调用。
+@endverbatim
+*/
+Debug的时候String赋值失败;
+
+/**
+@verbatim
+1、考虑下面的代码，如下：
+	class AAA
+	{
+	public:
+		AAA():_A1(0),_A2(0),_A3(0)
+		{
+		
+		}
+	public:
+		int _A1;
+		int _A2;
+		int _A3;
+	};
+	现在增加一个构造方法，AAA(int a3) 对_A3初始化，怎么办？
+2、使用笨的办法，如下：
+	class AAA
+	{
+	public:
+		AAA():_A1(0),_A2(0),_A3(0)
+		{
+		
+		}
+	
+		AAA(int a3):_A1(0),_A2(0),_A3(a3)
+		{
+	
+		}
+	public:
+		int _A1;
+		int _A2;
+		int _A3;
+	};
+	这当然可行，有没有更好的办法，解决代码重复。
+3、容易想到的办法如下：
+	class AAA
+	{
+	public:
+		AAA():_A1(0),_A2(0),_A3(0)
+		{
+		
+		}
+	
+		AAA(int a3)
+		{
+			AAA();
+			_A3 = a3;
+		}
+	public:
+		int _A1;
+		int _A2;
+		int _A3;
+	};
+	
+	
+	int main()
+	{
+		AAA a1;
+		AAA a2(6);
+	
+		return 0;
+	}
+	这种方法是有大问题的，因为AAA a2(6); 表达的语义是构造一个临时对象，然后只对_A3赋值，_A1和_A2取值还是随机的。
+4、怎么办？
+5、方法一是，提取出一个private的init方法，用于重复代码，如下：
+	class AAA
+	{
+	public:
+		AAA()
+		{
+			init();
+		}
+	
+		AAA(int a3)
+		{
+			init();
+			_A3 = a3;
+		}
+	public:
+		int _A1;
+		int _A2;
+		int _A3;
+	
+	private:
+		void init()
+		{
+			_A1 = 0;
+			_A2 = 0;
+			_A3 = 0;
+		}
+	};
+6、方法二，使用placement new，构造方法创建对象，有两个阶段，
+	第一个阶段分配内存，第二个阶段在分配的内存上根据构造方法初始化字段。
+	placement new 就是在第二个阶段执行。如下：
+	
+	class AAA
+	{
+	public:
+		AAA():_A1(0),_A2(0),_A3(0)
+		{
+		
+		}
+	
+		AAA(int a3)
+		{
+			new (this)AAA();
+			_A3 = a3;
+		}
+	public:
+		int _A1;
+		int _A2;
+		int _A3;
+	};
+	注意：placement new 在linux下，需要包含头文件 #include <new>
+7、高版本的VS（比如VS2013），已经支持构造方法转接，也就是构造方法调用另一个构造方法，类似调用父类构造方法，如下：
+	AAA(int a3):AAA()
+	{
+		_A3 = a3;
+	}
+	这种情况下，_A3不能使用初始化列表，必须赋值，因为AAA() 已经完成初始化了，_A3不能两次进行初始化。
+@endverbatim
+*/
+构造方法调用另一个构造方法;
+
+
+/**
+@verbatim
+1、new出来一个对象，然后delete，紧接着再次new出来一个对象，两个指针一样。如下：
+	#include <stdio.h>
+	int main()
+	{
+		int* pa = new int(1);
+		printf("pa[%p:%d]\n", pa,*pa);
+		delete pa;
+	
+		int* pb = new int(2);
+		printf("pb[%p:%d]\n", pb,*pb);
+		getchar();
+		return 0;
+	}
+	也就是说，释放的内存被系统回收，马上又重新使用。
+	[niu_zibin@localhost testnew]$ g++ -o main main.cpp
+	[niu_zibin@localhost testnew]$ ./main
+	pa[0x869b008:1]
+	pb[0x869b008:2]
+2、注意：只有在delete之后，紧接着new的时候，才会出现上面的情况。
+	如果中间包含了动态内存分配，不会出现上面的情况，如下：
+	#include <stdio.h>
+	int main()
+	{
+			int* pa = new int(1);
+			printf("pa[%p:%d]\n", pa,*pa);
+			delete pa;
+	
+			int* tmp = new int(100);
+	
+			int* pb = new int(2);
+			printf("pb[%p:%d]\n", pb,*pb);
+			getchar();
+			return 0;
+	}
+	[niu_zibin@localhost testnew]$ g++ -o main main.cpp
+	[niu_zibin@localhost testnew]$ ./main
+	pa[0x91ba008:1]
+	pb[0x91ba018:2]
+3、包含栈上的内存分配，两次new出来的指针值还是一样，如下：
+	#include <stdio.h>	
+	int main()
+	{
+			int* pa = new int(1);
+			printf("pa[%p:%d]\n", pa,*pa);
+			delete pa;
+	
+			int tmp = 100;
+	
+			int* pb = new int(2);
+			printf("pb[%p:%d]\n", pb,*pb);
+			getchar();
+			return 0;
+	}
+	[niu_zibin@localhost testnew]$ g++ -o main main.cpp
+	[niu_zibin@localhost testnew]$ ./main
+	pa[0x8149008:1]
+	pb[0x8149008:2]
+4、上面的测试结果，在windows下也是同样的。
+	也就是说，new出来的内存，马上delete，紧接着再次new，系统会重新使用这块内存。两次new出来的指针值一样，这是必然的。
+	还会存在巧合的情况，之前释放的内存，又被重新使用。
+	也就是说，程序中会存在两次new使用同一块动态内存（前一次的new被释放），返回的指针值一样。
+5、这会存在什么问题？
+	使用指针作为map的key，考虑把pa保存到map，然后把pa释放，并且从map中删除。以后再从map中理论上是找不到pa的。
+	但是如果在delete pa之后，new出来pb并且保存到map中，以后还是能够从map中找到pa，因为pa与pb的取值一样。
+	这显然不是用户所期望的。
+6、怎么解决？
+	解决办法很简单，使用自增Id作为map的key来进行管理。
+@endverbatim
+*/
+使用指针作为key存在的问题;
+
+
+/**
+@verbatim
+1、有时候要求对象必须创建在堆上，比如对象包含一个很大的数组，如果在栈上创建对象，数组的内存空间也在栈上，栈溢出。
+	因此，必须在堆上创建对象，让数组随同对象分配在堆上。
+2、那么问题来了，如何禁止在栈上创建对象？
+	栈上的对象，超出作用域，会自动调用析构方法，只要把析构方法设置为private就好了。
+	但是这样会导致，delete的时候报错，因为delete 会先调用析构方法，再释放内存。
+	delete没法调用private的析构方法。
+3、怎么解决？
+	增加一个public方法Destroy，在Destroy中调用delete，类的内部可以调用private析构方法。
+4、示例代码如下：
+	class Person
+	{
+	public:
+		Person()
+		{
+			_Age = 0;
+		}
+		void Destroy()
+		{
+			delete this;
+		}
+	
+	private:
+		~Person()
+		{
+		}
+	
+	public:
+		int	   _Age;
+	};
+	
+	int main()
+	{
+		//Person aa; // 报错 无法访问 private 成员
+		Person* pa = new Person();
+		//delete pa; // 报错 无法访问 private 成员
+		pa->Destroy();
+		return 0;
+	}
+5、注意：当前对象可以调用本身的private方法，也可以调用同类对象的private方法。
+	因为方法是代码段，相对于类而言的，private也是针对类的。调用的时候关联this指针，this指针是第一个参数。
+	对象可以调用所属类的private方法，当然包含同类对象的private方法。
+@endverbatim
+*/
+禁止在栈上创建对象;
+
+/**
+@verbatim
+1、示例代码如下：
+	#include <stdio.h>
+	#include <stdlib.h>
+	#include <string.h>
+	#include <unistd.h>
+	#include <errno.h>
+	#include <signal.h>
+	
+	void catch_signal(int sign)
+	{
+		printf("Catch Signal[%d]\n", sign);
+		exit(0);
+	}
+	
+	//建议使用封装之后的mysignal
+	int mysignal(int sign,void (*func)(int))
+	{
+		struct sigaction act,oact;
+		//传入回调函数
+		act.sa_handler=func;
+		//将act的属性sa_mask设置一个初始值
+		sigemptyset(&act.sa_mask);
+		act.sa_flags=0;
+		return sigaction(sign,&act,&oact);
+	}
+	
+	int main(int arg, char *args[])
+	{
+		mysignal(SIGINT,catch_signal);
+		mysignal(SIGALRM,catch_signal);
+		mysignal(SIGKILL,catch_signal);
+		for(int i = 1; i<=64; i++)
+		{
+			mysignal(i,catch_signal);
+		}
+		
+		getchar();
+		return 0;
+	}
+2、使用kill杀掉进程
+	[root@localhost niu12]# kill -1 `pidof main`
+	[root@localhost niu12]# kill -2 `pidof main`
+	可以观察到捕获到信号，如下：
+	[root@localhost niu13]# ./main
+	Catch Signal[1]
+	[root@localhost niu13]# ./main
+	Catch Signal[2]
+	
+	注意：信号9和19不能捕获到，如下：
+	[root@localhost niu12]# kill -9 `pidof main`
+	[root@localhost niu13]# ./main
+	Killed
+	
+	[root@localhost niu12]# kill -19 `pidof main`
+	[root@localhost niu13]# ./main
+	[2]   Killed                  ./main
+	
+	[3]+  Stopped                 ./main
+3、信号9和19不能捕获到，这也就是，为什么程序可以对Ctrl+C【信号是2，SIGINT，Interrupt】进行处理，
+	而对于kill -9不能进行处理。
+	比如Redis服务，设置快照的保存策略，也就是满足某个条件，进行持久化。
+	Ctrl+C关闭服务，Redis捕捉到信号，刷新到文件，然后退出，数据不会丢失。
+	但是对于kill -9，不能捕捉到信号，Redis服务直接退出，来不及刷新到文件，导致部分数据丢失。
+4、如何查看各种信号，使用kill -l，如下：
+	[root@localhost niu12]# kill -l
+	1) SIGHUP       2) SIGINT       3) SIGQUIT      4) SIGILL
+	5) SIGTRAP      6) SIGABRT      7) SIGBUS       8) SIGFPE
+	9) SIGKILL     10) SIGUSR1     11) SIGSEGV     12) SIGUSR2
+	13) SIGPIPE     14) SIGALRM     15) SIGTERM     16) SIGSTKFLT
+	17) SIGCHLD     18) SIGCONT     19) SIGSTOP     20) SIGTSTP
+	21) SIGTTIN     22) SIGTTOU     23) SIGURG      24) SIGXCPU
+	25) SIGXFSZ     26) SIGVTALRM   27) SIGPROF     28) SIGWINCH
+	29) SIGIO       30) SIGPWR      31) SIGSYS      34) SIGRTMIN
+	35) SIGRTMIN+1  36) SIGRTMIN+2  37) SIGRTMIN+3  38) SIGRTMIN+4
+	39) SIGRTMIN+5  40) SIGRTMIN+6  41) SIGRTMIN+7  42) SIGRTMIN+8
+	43) SIGRTMIN+9  44) SIGRTMIN+10 45) SIGRTMIN+11 46) SIGRTMIN+12
+	47) SIGRTMIN+13 48) SIGRTMIN+14 49) SIGRTMIN+15 50) SIGRTMAX-14
+	51) SIGRTMAX-13 52) SIGRTMAX-12 53) SIGRTMAX-11 54) SIGRTMAX-10
+	55) SIGRTMAX-9  56) SIGRTMAX-8  57) SIGRTMAX-7  58) SIGRTMAX-6
+	59) SIGRTMAX-5  60) SIGRTMAX-4  61) SIGRTMAX-3  62) SIGRTMAX-2
+	63) SIGRTMAX-1  64) SIGRTMAX
+	注意：从1到64，并不是连续的，中间有些信号值是不存在的，比如32
+5、信号处理的流程是：
+	a、在用户态的控制流程中，由于中断，异常或者系统调用进入内核态
+	b、内核态检查到，对于信号有相关的注册方法，回调到用户态，执行回调方法
+	c、在用户态执行完注册的方法，回到内核态
+@endverbatim
+*/
+linux捕获信号;
+
+/**
+@verbatim
+1、解决的问题：
+	向系统注册方法，在程序退出的时候，回调这个方法进行额外的处理。
+2、示例代码：
+	#include<stdio.h>
+	#include<stdlib.h>
+	
+	void func1(void)
+	{
+		printf("call func1\n");
+	}
+	
+	void func2(void)
+	{
+		printf("call func2\n");
+	}
+	
+	void func3(void)
+	{
+		printf("call func3\n");
+	}
+	
+	int main()
+	{
+		atexit(func1);
+		atexit(func2);
+		atexit(func3);
+	
+		printf("exit\n");
+		return 0;
+	}
+3、注意：回调的顺序和注册的顺序相反，这是由于参数压栈导致的。
+	最多注册32个方法。
+@endverbatim
+*/
+程序退出的处理;
+
+
+/** @} */
+
+/** @} */

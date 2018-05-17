@@ -1,0 +1,25 @@
+﻿/**
+* @defgroup Windows
+* @{
+*/
+
+/**
+@verbatim
+列出进程，经常和findstr一起使用
+@endverbatim
+*/
+tasklist;
+
+
+/**
+@verbatim
+杀掉进程
+im		进程映像名称，也就是进程名称
+pid		进程id
+注意：和findstr不同，taskkill不区分大小写，同时*是通配符，匹配任意字符任意次数。
+另外，控制台程序 system("pause"); 会导致进程杀死了，但是界面还在。
+@endverbatim
+*/
+taskkill;
+
+/** @} */

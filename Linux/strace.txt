@@ -1,0 +1,78 @@
+/**
+* @defgroup Linux
+* @{
+*/
+
+/**
+@verbatim
+1、strace跟踪进程运行时的系统调用和所接受的信息。
+2、举例来说，示例代码：
+	#include <stdio.h>
+	int main(int argc, char* argv[])
+	{
+			printf("hello,world\n");
+			getchar();
+			return 0;
+	}
+3、运行strace ./main，如下：
+	[root@localhost strace]# strace ./main
+	execve("./main", ["./main"], [/* 23 vars */]) = 0
+	brk(0)                                  = 0x99da000
+	access("/etc/ld.so.preload", R_OK)      = -1 ENOENT (No such file or directory)
+	open("/etc/ld.so.cache", O_RDONLY)      = 3
+	fstat64(3, {st_mode=S_IFREG|0644, st_size=44224, ...}) = 0
+	mmap2(NULL, 44224, PROT_READ, MAP_PRIVATE, 3, 0) = 0xb7f68000
+	close(3)                                = 0
+	open("/usr/lib/libstdc++.so.6", O_RDONLY) = 3
+	read(3, "\177ELF\1\1\1\0\0\0\0\0\0\0\0\0\3\0\3\0\1\0\0\0P\234!\0024\0\0\0"..., 512) = 512
+	fstat64(3, {st_mode=S_IFREG|0755, st_size=936908, ...}) = 0
+	mmap2(NULL, 4096, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, -1, 0) = 0xb7f67000
+	mmap2(0x21da000, 961720, PROT_READ|PROT_EXEC, MAP_PRIVATE|MAP_DENYWRITE, 3, 0) = 0x21da000
+	mmap2(0x22ba000, 20480, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_FIXED|MAP_DENYWRITE, 3, 0xdf) = 0x22ba000
+	mmap2(0x22bf000, 23736, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_FIXED|MAP_ANONYMOUS, -1, 0) = 0x22bf000
+	close(3)                                = 0
+	open("/lib/libm.so.6", O_RDONLY)        = 3
+	read(3, "\177ELF\1\1\1\0\0\0\0\0\0\0\0\0\3\0\3\0\1\0\0\0\20\244\201\0004\0\0\0"..., 512) = 512
+	fstat64(3, {st_mode=S_IFREG|0755, st_size=208352, ...}) = 0
+	mmap2(0x817000, 155760, PROT_READ|PROT_EXEC, MAP_PRIVATE|MAP_DENYWRITE, 3, 0) = 0x817000
+	mmap2(0x83c000, 8192, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_FIXED|MAP_DENYWRITE, 3, 0x24) = 0x83c000
+	close(3)                                = 0
+	open("/lib/libgcc_s.so.1", O_RDONLY)    = 3
+	read(3, "\177ELF\1\1\1\0\0\0\0\0\0\0\0\0\3\0\3\0\1\0\0\0`\366\316\0074\0\0\0"..., 512) = 512
+	fstat64(3, {st_mode=S_IFREG|0755, st_size=46636, ...}) = 0
+	mmap2(0x7cee000, 48196, PROT_READ|PROT_EXEC, MAP_PRIVATE|MAP_DENYWRITE, 3, 0) = 0x7cee000
+	mmap2(0x7cf9000, 4096, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_FIXED|MAP_DENYWRITE, 3, 0xa) = 0x7cf9000
+	close(3)                                = 0
+	open("/lib/libc.so.6", O_RDONLY)        = 3
+	read(3, "\177ELF\1\1\1\0\0\0\0\0\0\0\0\0\3\0\3\0\1\0\0\0\340\357m\0004\0\0\0"..., 512) = 512
+	fstat64(3, {st_mode=S_IFREG|0755, st_size=1611564, ...}) = 0
+	mmap2(0x6c9000, 1332676, PROT_READ|PROT_EXEC, MAP_PRIVATE|MAP_DENYWRITE, 3, 0) = 0x6c9000
+	mprotect(0x808000, 4096, PROT_NONE)     = 0
+	mmap2(0x809000, 12288, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_FIXED|MAP_DENYWRITE, 3, 0x13f) = 0x809000
+	mmap2(0x80c000, 9668, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_FIXED|MAP_ANONYMOUS, -1, 0) = 0x80c000
+	close(3)                                = 0
+	mmap2(NULL, 4096, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, -1, 0) = 0xb7f66000
+	set_thread_area({entry_number:-1 -> 6, base_addr:0xb7f66ad0, limit:1048575, seg_32bit:1, contents:0, read_exec_only:0, limit_in_pages:1, seg_not_present:0, useable:1}) = 0
+	mprotect(0x809000, 8192, PROT_READ)     = 0
+	mprotect(0x83c000, 4096, PROT_READ)     = 0
+	mprotect(0x22ba000, 16384, PROT_READ)   = 0
+	mprotect(0x6c5000, 4096, PROT_READ)     = 0
+	munmap(0xb7f68000, 44224)               = 0
+	fstat64(1, {st_mode=S_IFCHR|0620, st_rdev=makedev(136, 4), ...}) = 0
+	mmap2(NULL, 4096, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, -1, 0) = 0xb7f72000
+	write(1, "hello,world\n", 12hello,world
+	)           = 12
+	fstat64(0, {st_mode=S_IFCHR|0620, st_rdev=makedev(136, 4), ...}) = 0
+	mmap2(NULL, 4096, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, -1, 0) = 0xb7f71000
+	read(0, 
+4、kill -9 6456，如下：
+	read(0,  <unfinished ...>
+	+++ killed by SIGKILL +++
+@endverbatim
+@see
+*/
+strace;
+
+
+
+/** @} */

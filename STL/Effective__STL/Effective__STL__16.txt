@@ -1,0 +1,43 @@
+﻿/**
+* @defgroup STL
+* @{
+*/
+
+/**
+* @defgroup Effective__STL
+* @{
+*/
+
+/**
+@verbatim
+1、尽量使用vector和string替换数组，但是老的代码还是使用数组。如果老的接口期望是数组，怎么办？
+	需要把vector和string，暴露出数组接口，也就是第一个元素的地址。
+2、考虑方法DoSomething(const int* pInt,size_t size)，对于vector<int> vec，调用如下：
+	DoSomething(&vec[0], v.size());
+	这里有个问题，vec的大小可能为0，更安全的做法是：
+	if(!vec.empty())
+	{
+	　　DoSomething(&vec[0], v.size());
+	}
+3、考虑，能不能使用begin()替换&vec[0]？
+	我们知道，begin返回迭代器，是对指针的封装，类似于指针。
+	但是，不能把迭代器当成指针使用，可以使用&*begin()，这种方式与&vec[0]等价，显然&vec[0]更直观。
+4、考虑DoSomething(const char* pa); 对于string str，调用如下：
+　　DoSomething(str.c_str());
+　　c_str返回一个char指针，指向字符串值，尾部再加一个空字符。str长度可以为0，返回空字符，内部也可以包含空字符。
+	但是，DoSomething的处理是以第一个空字符作为结束。
+5、vector暴露出指针，调用端修改元素的值，通常没有问题。但是不能增加新元素。
+	因为在外部增加新元素，vector不知道，不去更新size，size产生不正确的结果。如果大小和容量相等，增加元素就会踩内存了。
+	注意：对于排序的vector，修改vector的元素值，也会产生问题。因为修改元素值后，导致vector无序。
+6、考虑C API数组初始化vector，很简单。如果C API数组初始化string呢？
+	可以先初始化vector<char>，vector<char>再去初始化string。当然，还可以解决更一般化的问题。
+	先把C API数组写到vector，再把vector写到期望的STL容器中。对于逆向的转化，同样道理。先把STL容器的元素写到vector，再把vector传递给C API数组。
+	也就是说，vector是一个适配器。
+@endverbatim
+*/
+【S16】了解如何把vector和string数据传给旧的API;
+
+
+/** @} */
+
+/** @} */

@@ -1,0 +1,39 @@
+﻿/**
+* @defgroup STL
+* @{
+*/
+
+/**
+* @defgroup Effective__STL
+* @{
+*/
+
+
+/**
+@verbatim
+1、使用new动态分配内存，必须承担如下责任：
+	a、使用delete释放内存
+	b、确保使用了正确的形式，delete与new的形式要匹配
+	c、不能重复delete
+2、使用vector和string可以消除以上的负担。每当要动态分配一个数组时，都要考虑使用vector和string替代。
+	如果元素是字符char，使用string。否则使用vector。注意：有一种特殊情况，使用vector<char>更合理。
+3、vector和string的元素分配在堆上，它们内部维护一个指针，指向堆上的元素。vector和string是深拷贝，会把元素逐个拷贝。
+4、vector和string，它们自己管理内存，内存会自动增长，当它们析构时，会对每个元素逐个析构。
+5、vector和string是功能完全的STL序列容器，可以使用很多STL功能。而数组只支持部分STL算法，
+	没有begin，end，size这样的成员方法，也没有iterator这样的嵌套类型，因此STL更好用。
+6、为了支持旧的代码，将vector和string转化为数组很简单。
+7、有一种特殊情况，需要考虑。string是如此常用，它的使用效率很重要。因此，STL中的string有可能是基于引用计数来实现的。
+	这在多线程中，会出现冲突问题。如果string不是引用计数，而是整体拷贝，多线程就不会有问题，因为每个线程修改自己的副本。
+8、对于基于引用计数的string，又运行在多线程环境下，有三种可行的选择：
+	a、禁止引用计数，这种做法不可移植
+	b、寻找一个不使用引用计数的string
+	c、考虑vector<char>，代替string
+	注意：VS2010中的STL，string没有使用引用计数。
+@endverbatim
+*/
+【S13】vector和string优先于动态分配的内存;
+
+
+/** @} */
+
+/** @} */

@@ -1,0 +1,110 @@
+﻿/**
+* @defgroup 编程珠玑
+* @{
+*/
+
+/**
+@verbatim
+1、考虑字符串1234，输出全排列，如下：1234,1243,1324,1342,1423,1432，.....
+2、思路一,初始左边为"",右边为1234，递归结束条件是右边只有一个字符，输出左边，和右边的一个字符。
+3、思路二，全排列，最小是1234，最大是4321，从1234开始，找出下一个比1234大，且差值最小的排列，
+	一直找到4321结束。
+@endverbatim
+
+@verbatim
+void PrintTotalOrder(const string& str)
+{
+	//PrintOrder("",str);
+
+	PrintOrder_2(str);
+}
+
+void PrintOrder(const string& prefix,const string& other)
+{
+	if (other.size()==1)  
+	{  
+		//如果后缀只剩一个字符，输出当前顺序，递归结束  
+		printf("%s%s\n",prefix.c_str(),other.c_str());  
+	}  
+	else  
+	{  
+		//如果后缀长度大于1，每次把后缀中的一个字符添加到前缀中，递归  
+		for (int i=0;i<other.size();i++)  
+		{  
+			PrintOrder(prefix+other.substr(i,1),string(other).erase(i,1));  
+		}  
+	}  
+}
+
+void PrintOrder_2(const string& str)
+{
+	string cpy = str;
+	do
+	{
+		printf("%s\n",cpy.c_str());
+	}while(Next(cpy));
+}
+
+bool Next(string& str)
+{
+	int len = str.size();
+
+	// 从后向前，找到第一个位置，这个位置的元素小于下一个位置的元素
+	int pos = len-2; // 假定是倒数第二个元素
+	while(pos>=0 && str[pos]>str[pos+1]) // 不满足条件，向前移动
+	{
+		--pos;
+	}
+
+	if(pos==-1) // 位置不存在，已经是逆序排列，取值最大
+	{
+		return false;
+	}
+	else		
+	{
+		// 从后面找出一个比当前下标大的元，这个backpos必定存在。
+		int backPos = len-1;
+		while(backPos>0 && str[backPos] < str[pos])
+		{
+			--backPos;
+		}
+		Swap(str[pos],str[backPos]);
+
+		ReverseString(str,pos+1,str.size());
+		return true;
+	}
+}
+
+// 对string的left和right区间反转
+void ReverseString(string& str,int left,int right)
+{
+	if(left>right)
+	{
+		Swap(left,right);
+	}
+
+	if(right>str.size())
+	{
+		return;
+	}
+	
+	int mid = (left+right)/2;
+	for(int i = left;i<mid;++i)
+	{
+		Swap(str[i],str[--right]); // left下标加1，right下标减1
+	}
+}
+@endverbatim
+
+@verbatim
+int main(int argc, char* argv[])
+{
+	Pearls::PrintTotalOrder("1234");
+	getchar();
+	return 0;
+}
+@endverbatim
+*/
+全排列;
+
+/** @} */

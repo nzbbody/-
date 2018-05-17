@@ -1,0 +1,238 @@
+/**
+* @defgroup CPP工具
+* @{
+*/
+
+/**
+* @defgroup rapidxml
+* @{
+*/
+
+/**
+@verbatim
+void TestRapidXml()
+{
+	char* xmlContent = new char[1024];
+	sprintf(xmlContent,"<root><head>aaa</head><body>bbb</body></root>");
+
+	xml_document<> xmlDoc;
+	xmlDoc.parse<0>(xmlContent);
+
+	char* xmlContent2 = new char[1024];
+	sprintf(xmlContent2,"<point x=\"1\" y =\"1\"/><point x=\"2\" y =\"2\"/>");
+	xml_document<> xmlDoc2;
+	xmlDoc2.parse<0>(xmlContent2);
+
+	xml_node<>* root = xmlDoc.first_node();
+	for(xml_node<>* node = xmlDoc2.first_node();node!=NULL;node=node->next_sibling())
+	{
+		// 注意：这里使用xmlDoc，是大的xml，不要使用xmlDoc2.
+		root->append_node(xmlDoc.clone_node(node));
+	}
+
+	string xmlStr = "";
+	rapidxml::print(std::back_inserter(xmlStr),xmlDoc,0); 
+	
+	delete []xmlContent;
+	delete []xmlContent2;
+}
+@endverbatim
+*/
+节点加入另一个xml;
+
+/**
+@verbatim
+1、rapidxml修改节点的value，修改之后，序列化还是原来的值，具体原因是什么，要看rapidxml是怎么实现的。如下：
+void TestRapidXml()
+{
+	char* xmlContent = new char[1024];
+	sprintf(xmlContent,"<root><head>aaa</head><body x=\"10\">bbb</body></root>");
+
+	xml_document<> xmlDoc;
+	xmlDoc.parse<0>(xmlContent);
+
+	xml_node<>* body = xmlDoc.first_node()->first_node("body");
+	body->value("ccc");
+
+	xml_attribute<>* x = body->first_attribute("x");
+	x->value("20");    
+
+	string xmlStr = "";
+	// xmlString为 <root><head>aaa</head><body x=\"20\">bbb</body></root>
+	// 也就是说，attr的value可以修改成功，而node的value还是旧值。
+	rapidxml::print(std::back_inserter(xmlStr),xmlDoc,0); 
+	
+	delete []xmlContent;
+}
+@endverbatim
+
+@verbatim
+2、怎么解决上面的问题，笨办法，既然不能修改，我就添加一个新的，删除老的。如下：
+void TestRapidXml()
+{
+    char* xmlContent = new char[1024];
+    sprintf(xmlContent,"<root><head>aaa</head><body x=\"10\">bbb</body></root>");
+
+    xml_document<> xmlDoc;
+    xmlDoc.parse<0>(xmlContent);
+
+    xml_node<>* root = xmlDoc.first_node();
+
+    xml_node<>* body = root->first_node("body");
+    xml_node<>* newBody = xmlDoc.allocate_node(node_element,
+        xmlDoc.allocate_string("body"),xmlDoc.allocate_string("ccc"));
+    // 插入一个新的body
+    root->insert_node(body,newBody);
+    
+    // 复制老body的attr
+    for(xml_attribute<>* attr = body->first_attribute();attr!=NULL;attr=attr->next_attribute())
+    {
+        xml_attribute<>* copy = xmlDoc.allocate_attribute(xmlDoc.allocate_string(attr->name()),
+            xmlDoc.allocate_string(xmlDoc.allocate_string(attr->value())));
+        newBody->append_attribute(copy);
+    }
+    // 删除老的body
+    root->remove_node(body);
+
+    string xmlStr = "";
+    // xmlString为 <root><head>aaa</head><body x=\"10\">ccc</body></root>
+    rapidxml::print(std::back_inserter(xmlStr),xmlDoc,0); 
+    
+    delete []xmlContent;
+}
+@endverbatim
+
+@verbatim
+3、还有一个办法，就是使用 xmlDoc.parse<parse_no_data_nodes>(xmlContent); 如下：
+void TestRapidXml()
+{
+    char* xmlContent = new char[1024];
+    sprintf(xmlContent,"<root><head>aaa</head><body x=\"10\">bbb</body></root>");
+
+    xml_document<> xmlDoc;
+    //xmlDoc.parse<0>(xmlContent);
+    xmlDoc.parse<parse_no_data_nodes>(xmlContent);
+
+    xml_node<>* body = xmlDoc.first_node()->first_node("body");
+    body->value("ccc");
+    
+    xml_attribute<>* x = body->first_attribute("x");
+    x->value("20");    
+
+    string xmlStr = "";
+    // xmlString为 <root><head>aaa</head><body x=\"20\">ccc</body></root>
+    rapidxml::print(std::back_inserter(xmlStr),xmlDoc,0); 
+    
+    delete []xmlContent;
+}
+@endverbatim
+*/
+修改节点的值;
+
+
+/**
+@verbatim
+1、使用rapidxml解析的时候，也就是 调用xmlDoc.parse<0>(xmlContent)，
+	特别注意，rapidxml会修改内存的值，把右尖括号>修改为'\0'，
+	因此特别注意，如果char指针指向的内容还要使用，需要做个备份。
+2、如果char指针指向的内容，不再使用，不需要做备份，rapidxml会直接修改内存。
+	这个时候不要忘记delete []释放资源。delete释放内存，跟内存中的取值没有关系，取值为0，也会正确地释放内存。
+	比如使用new分配内存8个字节，操作系统会多分配一些内存，额外的内存记录分配了多少内存，
+	这样在释放的时候，就知道应该释放多少内存。
+3、有没有其他办法呢？
+　　使用xmlDoc.parse<parse_non_destructive>(xmlContent); 告诉rapidxml解析的时候，不要修改内存的值。
+@endverbatim
+*/
+解析xml会修改内存的值;
+
+/**
+@verbatim
+void TestRapidXml()
+{
+    char* xmlContent = new char[1024];
+    sprintf(xmlContent,"<root><head>aaa</head><body>bbb</body></root>");
+
+    xml_document<> xmlDoc;
+    xmlDoc.parse<0>(xmlContent);    
+
+    // back_inserter 返回一个输出流，rapidxml的print方法向里面写数据
+    string xmlStr = "";
+    rapidxml::print(std::back_inserter(xmlStr),xmlDoc,0); // 序列化整个doc
+
+    xmlStr = "";
+    xml_node<>* root = xmlDoc.first_node();
+    xml_node<>* node = root->first_node()->next_sibling();
+    internal::print_element_node(std::back_inserter(xmlStr), node, 0,0); // 序列化一个节点
+    
+    // 注意：要序列化之后，才能释放内存，因为rapidxml为了效率，没有使用整体拷贝，而是复制指针，
+    // 因此，在序列化的时候还要使用内存的值。
+    delete []xmlContent;
+}
+@endverbatim
+*/
+打包成string;
+
+/**
+@verbatim
+#include "rapidxml/rapidxml.hpp"
+#include "rapidxml/rapidxml_utils.hpp"
+#include "rapidxml/rapidxml_print.hpp"
+
+#include <stdio.h>
+#include <string>
+#include <map>
+using namespace std;
+using namespace rapidxml;
+
+bool ParseXml2Map(map<string,string>& outMap,const string& inXml)
+{
+	try
+	{
+		xml_document<char> doc;
+		doc.parse<0>(doc.allocate_string(inXml.c_str()));
+		xml_node<char>* root = doc.first_node("root");
+
+		for(xml_node<char>* node = root->first_node(); node != NULL; node = node->next_sibling())
+		{
+			outMap[node->name()] = node->value();
+		}
+	}
+	catch(parse_error& e)
+	{
+		printf("Parse Xml Err[%s] Where[%s]", 
+			e.what(),
+			e.where<char>());
+		return false;
+	}
+	return true;
+}
+
+bool PacketMap2Xml(string& outXml,const map<string,string>& inMap)
+{
+	try
+	{
+		xml_document<char> doc;
+		xml_node<char>* root = doc.allocate_node(node_element, "root");
+		doc.append_node(root);
+
+		for(map<string,string>::const_iterator iter = inMap.begin(); iter != inMap.end(); ++iter)
+		{
+			xml_node<char>* ele = doc.allocate_node(node_element,iter->first.c_str(),iter->second.c_str());
+			root->append_node(ele);
+		}
+		print(back_inserter(outXml), doc, 0);
+	}
+	catch (...)
+	{
+		return false;
+	}
+	return true;
+}
+@endverbatim
+*/
+map的打包和解析;
+
+
+/** @} */
+
+/** @} */

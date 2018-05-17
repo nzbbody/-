@@ -1,0 +1,32 @@
+﻿/**
+* @defgroup Mysql常见问题
+* @{
+*/
+
+/**
+@verbatim
+1、考虑下面的需求，类似Andy;Bill;Caroline，用分号分割，求出总数。
+2、简单的思路，求出原字符串长度，将分号替换为空，求出二者的长度差，如下：
+	select length('Andy;Bill;Caroline') - length(replace('Andy;Bill;Caroline',';','')) + 1;
+	注：加1是因为，三个空，会有4个栏杆。
+@endverbatim
+@see
+*/
+分割求总数;
+
+
+/**
+@verbatim
+1、考虑下面的需求，类似Andy;Bill;Caroline，用分号分割，求出第2个元素，即Bill。
+2、思路：使用substring_index，substring_index(src,delimer,n)返回一个子串，子串从src的起始，到第n个delimiter结束。
+	对于Andy;Bill;Caroline，使用substring_index(src,';',2)，取出Andy;Bill
+	reverse，为lliB;ydnA 
+	对于lliB;ydnA，使用substring_index(src,';',1)，取出lliB
+	再reverse，为Bill
+3、总的调用，select reverse(substring_index(reverse(substring_index('Andy;Bill;Caroline',';',2)),';',1));
+@endverbatim
+@see
+*/
+分割后求第n个元素;
+
+/** @} */

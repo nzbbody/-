@@ -1,0 +1,176 @@
+﻿/**
+* @defgroup 进程_线程_同步_异步
+* @{
+*/
+
+/**
+@verbatim
+1、设置回调，往往需要把用户数据设置进去，回调的时候，把用户数据取出来，进行处理。
+	一般的使用场景是：把普通方法（或者是静态方法）作为回调方法，把一个对象的this指针设置为用户数据。
+	回调上来强转为对象指针，调用对象的成员方法。
+2、回调设置的用户数据往往是全局的，如果多个对象都要设置回调，把自己的this指针传递过去，只有最后一个this指针有效。
+	这是一种情况，还有另外一种情况：即使只有一个对象，会有多次请求，每次请求都会回调上来，怎么区分是哪一次的请求？
+3、因此还需要一个标识。
+	对于第一种情况，往往不再需要用户数据。比如创建一个device对象，登录设备的时候，返回一个登录句柄。
+	用户管理好登录句柄和device对象的对应关系。以后回调上来，也都带着登录句柄，根据登录句柄就可以找到device对象。
+	对于第二种情况，还需要设置用户数据。但是每次请求都会返回一个请求序号，用于标示这次请求。
+	以后回调上来，也都带着请求序号，就知道是哪一次请求了。
+4、当然这个过程也可以在底层处理好，比如第一种情况。
+	每次设置回调的时候，参数需要登录句柄和device对象的指针（用户数据），在底层管理好登录句柄和device指针的对应关系。
+	回调上来的时候，回调上来带着登录句柄，然后根据登录句柄，把device对象的指针也设置正确。
+	上层就可以直接使用用户数据，转化为device指针。
+	也就是说，这种情况下，设置回调的用户数据不是全局的。
+@endverbatim
+*/
+设置回调的问题;
+
+/**
+@verbatim
+1、同步就是做完这个任务，再执行下一个任务。
+2、异步就是在当前线程创建一个线程，把这个任务放到新的线程上去做。
+3、任务独立是异步的前提，任务耗时是异步的理由。怎么理解？
+	任务独立就是，其他任务不依赖这个任务的完成。如果必须在这个任务完成以后，才能进行其他任务，那么这个任务就不能异步。
+	因为在新创建的线程上进行这个任务，这个任务在进行中，其他任务就做了，肯定有问题。
+	任务耗时就是指做这个任务耗费时间比较多，用户等不了，想进行一个无关的操作。如果不耗时，就没有必要进行异步。
+4、基于网络的开发，一般都是异步，先设置异步回调，发送消息，然后异步回调上来，在回调方法里进行处理。
+	同步是对异步的封装，使用PV操作。也是要设置异步回调，但是在异步回调里，进行V操作。
+	而发消息的时候，使用Timeout_P操作，卡在这里，等待异步回调上的V操作之后，才进行下去。
+	注意：Timeout_P是在当前线程执行的，而异步回调是在新创建的进程上执行的。也就是说，PV操作在这两个线程上控制访问顺序。
+	说明，代码和线程的关系，代码段可以在运行任何线程上，也可以同时运行在多个线程上（多个CPU），因为代码段是只读的。
+@endverbatim
+*/
+同步与异步;
+
+
+/**
+@verbatim
+1、多个线程访问共享资源，存在竞争关系。
+2、解决共享资源的竞争关系，只有三个思路。分别如下：
+3、多版本并发控制（Multi-Version Concurrency Control），每个线程都对共享资源的做一个副本，大家操作自己的副本，互不影响。
+	这个时候也就没有共享资源了。
+4、对于共享资源，多个线程大家排队，一个一个来访问。
+5、使用PV操作，控制线程的访问顺序。这个线程进行了V操作，那个线程的P操作才能进行下去。
+@endverbatim
+*/
+共享资源竞争的解决办法;
+
+/**
+@verbatim
+1、技术都是为了解决实际问题的，考虑下面的场景：
+	主线程创建一个子线程，子线程做一些任务，在主线程上，等待子线程完成任务，然后向下运行。代码如下：
+	#include <stdio.h>
+	#include <pthread.h>
+	#include <unistd.h>
+	
+	void* FuncA(void* arg)
+	{
+		printf("FuncA Time[%d]\n", time(NULL));
+		sleep(2);
+	}
+	
+	int main(int argc,char* argv[])
+	{
+		pthread_t threadA;
+		pthread_create(&threadA, NULL, FuncA, NULL);
+	
+		pthread_join(threadA,NULL);
+		printf("main  Time[%d]\n", time(NULL));
+		getchar();
+		return 0;
+	}
+	
+	[niu_zibin@localhost thread]$ g++ -o main main.cpp -lpthread
+	[niu_zibin@localhost thread]$ ./main
+	FuncA Time[1477297071]
+	main  Time[1477297073]
+2、可以看到，主线程阻塞在pthread_join，那么问题来了，如何让主线程不阻塞在pthread_join呢？
+3、上面产生的原因是：默认创建的线程A不是分离的，也就是被主线程关联。
+	因此，解决办法是：创建线程A的时候，把它设置成分离的，不再被别的线程关联。如下：
+	#include <stdio.h>
+	#include <pthread.h>
+	#include <unistd.h>
+	
+	void* FuncA(void* arg)
+	{
+		printf("First  FuncA Time[%d]\n", time(NULL));
+		sleep(2);
+		printf("Second FuncA Time[%d]\n", time(NULL));
+	}
+	
+	int main(int argc,char* argv[])
+	{
+		pthread_t threadA;
+		pthread_attr_t pAttr;
+		pthread_attr_init(&pAttr);
+		pthread_attr_setdetachstate(&pAttr,PTHREAD_CREATE_DETACHED);
+		pthread_create(&threadA, &pAttr, FuncA, NULL);
+	
+		int ret = pthread_join(threadA,NULL);
+		printf("pthread_join ret[%d]\n",ret);
+		printf("main  Time[%d]\n", time(NULL));
+		getchar();
+		return 0;
+	}
+	
+	[niu_zibin@localhost thread]$ g++ -o main main.cpp -lpthread
+	[niu_zibin@localhost thread]$ ./main
+	pthread_join ret[22]
+	main  Time[1477298407]
+	First  FuncA Time[1477298407]
+	Second FuncA Time[1477298409]
+	不再阻塞。
+4、注意：设置了分离状态【PTHREAD_CREATE_DETACHED】，pthread_join返回错误。
+	改成可结合状态【PTHREAD_CREATE_JOINABLE】，pthread_join返回成功，如下：
+	pthread_attr_setdetachstate(&pAttr,PTHREAD_CREATE_JOINABLE);
+	
+	[niu_zibin@localhost thread]$ g++ -o main main.cpp -lpthread
+	[niu_zibin@localhost thread]$ ./main 
+	First  FuncA Time[1477298637]
+	Second FuncA Time[1477298639]
+	pthread_join ret[0]
+	main  Time[1477298639]
+5、还有一种办法，就是创建线程A之后，也就是在线程A运行的时候，进行分离操作，如下：
+	#include <stdio.h>
+	#include <pthread.h>
+	#include <unistd.h>
+	
+	void* FuncA(void* arg)
+	{
+		printf("First  FuncA Time[%d]\n", time(NULL));
+		sleep(2);
+		printf("Second FuncA Time[%d]\n", time(NULL));
+	}
+	
+	int main(int argc,char* argv[])
+	{
+		pthread_t threadA;
+		pthread_create(&threadA, NULL, FuncA, NULL);
+	
+		pthread_detach(threadA);
+		pthread_join(threadA,NULL);
+		printf("main  Time[%d]\n", time(NULL));
+		getchar();
+		return 0;
+	}
+	
+	[niu_zibin@localhost thread]$ g++ -o main main.cpp -lpthread
+	[niu_zibin@localhost thread]$ ./main
+	main  Time[1477298924]
+	First  FuncA Time[1477298924]
+	Second FuncA Time[1477298926]
+6、线程是可结合（joinable）或者分离的（detached）。
+	对于可结合线程A，被主线程回收资源（比如A的线程栈）和杀死，在主线程join线程A之前，线程A的资源是不会被释放的。
+	对于分离式线程A，在它终止后，系统会自动释放线程A的资源。
+7、对于分离式线程A，考虑一种极端的情况，分离式线程执行特别快，在pthread_create返回之前就已经终止了。
+	这就意味着，pthread_create返回的数据是垃圾数据。
+8、怎么解决上面的问题？
+	在分离式线程A中执行pthread_cond_timewait函数，让当前线程等待一会，确保pthread_create返回的时候，当前线程还没有终止。
+	还有一种办法，使用PV操作，分离式线程内先执行P操作，卡在这里。在主线程pthread_create之后进行V操作，
+	从而确保pthread_create之后，分离式线程刚开始执行。
+@endverbatim
+*/
+分离式线程;
+
+
+
+/** @} */

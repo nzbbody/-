@@ -1,0 +1,270 @@
+/**
+* @defgroup Linux
+* @{
+*/
+
+/**
+* @defgroup 网络有关
+* @{
+*/
+
+/**
+@verbatim
+1、查看网络配置：
+	ifconfig
+2、设置网络配置：
+	ifconfig eth0 10.65.200.52 netmask 255.255.0.0
+3、设置多个IP地址：
+	ifconfig eth0:1 10.65.200.53 netmask 255.255.0.0
+@endverbatim
+*/
+ifconfig;
+
+/**
+@verbatim
+查看路由：
+	route -n
+设置路由：
+	route add default gw 10.65.0.1
+	或者 route add -net 0.0.0.0 netmask 0.0.0.0 gw 10.65.0.1
+
+添加路由报错，如下：
+	[root@localhost ~]# ifconfig eth0 10.65.200.52 netmask 255.255.255.0
+	[root@localhost ~]# route add default gw 10.65.0.1
+	SIOCADDRT: Network is unreachable
+	错误原因是：10.65.0.1是不可达的，为什么不能达？
+	添加的路由（或者说网关），当前网卡必须能够访问，能够访问必须是在一个网络，是不是一个网络要看网络掩码。
+	这里的网络掩码是255.255.255.0，对于10.65.200.52同一个网络的是10.65.200.xxx，10.65.0.1不在同一个网络。
+@endverbatim
+*/
+route;
+
+/**
+@verbatim
+1、tcpdump -i any -s 0 tcp port 9845 -w test.pcap // 抓包写入文件
+2、tcpdump -i any -s 0 tcp port 9845 -A           // 抓包直接显示
+3、-s0 获取全部数据包
+	默认的话tcpdump只显示部分数据包，参数-s snaplen 就是控制这个的，默认是68字节，会过滤掉名称服务器和NFS的协议
+	要显示全部数据包，使用-s0
+4、-a是输出交互过程，没有分组的具体内容
+5、-A以ASCII格式打印所有的分组
+6、-x表示16进制显示，如下：
+	[root@localhost ~]# tcpdump -i any -s0  tcp port 12345 -Ax
+	tcpdump: verbose output suppressed, use -v or -vv for full protocol decode
+	listening on any, link-type LINUX_SLL (Linux cooked), capture size 65535 bytes
+	10:29:40.237592 IP 10.36.65.80.italk > 172.16.2.16.35731: Flags [P.], seq 757475085:757475155, ack 2620262643, win 260, options [nop,nop,TS val 82717177 ecr 4283590537], length 70
+			0x0000:  4500 007a 1082 4000 3d06 3368 0a24 4150
+			0x0010:  ac10 0210 3039 8b93 2d26 270d 9c2e 08f3
+			0x0020:  8018 0104 7738 0000 0101 080a 04ee 29f9
+			0x0030:  ff52 6789 6162 6364 6566 6761 6263 6465
+			0x0040:  6667 6162 6364 6566 6761 6263 6465 6667
+			0x0050:  6162 6364 6566 6761 6263 6465 6667 6162
+			0x0060:  6364 6566 6761 6263 6465 6667 6162 6364
+			0x0070:  6566 6761 6263 6465 6667
+	10:29:40.237624 IP 172.16.2.16.35731 > 10.36.65.80.italk: Flags [.], ack 70, win 229, options [nop,nop,TS val 4283676801 ecr 82717177], length 0
+			0x0000:  4510 0034 6183 4000 4006 df9c ac10 0210
+			0x0010:  0a24 4150 8b93 3039 9c2e 08f3 2d26 2753
+			0x0020:  8010 00e5 e01f 0000 0101 080a ff53 b881
+			0x0030:  04ee 29f9
+7、注意：-v会显示抓到报的个数，这个选项很有用，判断当前已经抓到了多少个包。
+@endverbatim
+*/
+tcpdump;
+
+
+/**
+@verbatim
+1、traceroute程序的设计是利用ICMP及IP header的TTL（Time To Live）栏位（field）。
+	首先，traceroute送出一个TTL是1的IP datagram
+	（其实，每次送出的为3个40字节的包，包括源地址，目的地址和包发出的时间标签）到目的地，
+	当路径上的第一个路由器（router）收到这个datagram时，检查是不是目标地址，不是，它将TTL减1。
+	此时，TTL变为0了，所以该路由器会将此datagram丢掉，并送回一个[ICMP time exceeded]消息
+	（包括发IP包的源地址，IP包的所有内容及路由器的IP地址），traceroute 收到这个消息后，
+	便知道这个路由器存在于这个路径上，接着traceroute 再送出另一个TTL是2 的datagram，发现第2 个路由器...... 
+2、traceroute 每次将送出的datagram的TTL加1来发现另一个路由器，
+	这个重复的动作一直持续到某个datagram 抵达目的地。当datagram到达目的地后，该主机并不会送回ICMP time exceeded消息，
+	因为它已是目的地了，那么traceroute如何得知目的地到达了呢？
+3、traceroute在送出UDP datagrams到目的地时，它所选择送达的port number 是一个一般应用程序都不会用的
+	号码（30000 以上），所以当此UDP datagram 到达目的地后，该主机会送回一个[ICMP port unreachable]的消息，
+	而当traceroute 收到这个消息时，便知道目的地已经到达了。所以traceroute 在Server端也是没有所谓的Daemon 程式。
+4、traceroute提取发 ICMP TTL到期消息设备的IP地址并作域名解析。每次traceroute都打印出一系列数据,
+	包括所经过的路由，设备的域名及 IP地址,三个包每次来回所花时间。
+5、traceroute 有一个固定的时间等待响应(ICMP TTL到期消息)。如果这个时间过了，
+	它将打印出一系列的*号表明：在这个路径上，这个设备不能在给定的时间内发出ICMP TTL到期消息的响应。
+	然后，traceroute给TTL记数器加1，继续进行。
+	注：没有在给定的时间内发出ICMP TTL到期消息的响应，往往是因为防火墙封掉了ICMP的返回信息。
+6、知道traceroute的原理，就能明白：
+	中间任何一个router上如果封了ICMP Echo Request， traceroute就不能工作。
+	如果封了type 11 (TTL-expired)， 中间的router全看不到 ，但能看到packet 到达了最后的destination。
+	如果封了ICMP Echo Reply，中间的全能看到，最后的destination看不到。
+7、注意：windows下对应的命令是tracert
+@endverbatim
+*/
+traceroute;
+
+/**
+@verbatim
+	查看ip地址对应mac地址的缓存
+@endverbatim
+*/
+arp;
+
+/**
+@verbatim
+1、目的是在局域网内，查找ip地址对应的mac地址，因为在数据链路层，是通过mac地址传输数据的。
+2、-U是请求模式，请求ip地址对应的mac地址，如下：	
+	在10.65.200.89上，发送请求，请求10.65.200.34对应的mac地址，收到回复
+	[root@localhost tmp]# arping 10.65.200.34 -s10.65.200.89 -Ieth0 -U
+	ARPING 10.65.200.34 from 10.65.200.89 eth0
+	Unicast reply from 10.65.200.34 [90:02:AA:A9:36:1B]  3.498ms
+	Unicast reply from 10.65.200.34 [90:02:AA:A9:36:1B]  1.188ms
+	
+	在10.65.200.34抓包，收到请求，并回复
+	[root@localhost ~]# tcpdump -i any -s 0 host 10.65.200.89 -A
+	tcpdump: verbose output suppressed, use -v or -vv for full protocol decode
+	listening on any, link-type LINUX_SLL (Linux cooked), capture size 65535 bytes
+	11:26:11.648254 ARP, Request who-has 10.65.200.34 (Broadcast) tell 10.65.200.89, length 46
+	.........0d...
+	A.Y......
+	A."..................
+	11:26:11.648307 ARP, Reply 10.65.200.34 is-at 90:02:aa:a9:36:1b (oui Unknown), length 28
+	............6.
+	A.".0d...
+	A.Y
+	11:26:12.645916 ARP, Request who-has 10.65.200.34 (90:02:aa:a9:36:1b (oui Unknown)) tell 10.65.200.89, length 46
+	.........0d...
+	A.Y....6.
+	A."..................
+	11:26:12.645962 ARP, Reply 10.65.200.34 is-at 90:02:aa:a9:36:1b (oui Unknown), length 28
+	............6.
+	A.".0d...
+	A.Y
+3、-A是回复模式，主动告诉对方，自己ip地址对应的mac地址，如下：
+	在10.65.200.89，发送回复（也就是通知），告诉10.65.200.34，自己ip地址对应的mac地址
+	[root@localhost tmp]# arping 10.65.200.34 -s10.65.200.89 -Ieth0 -A
+	ARPING 10.65.200.34 from 10.65.200.89 eth0
+	^CSent 7 probes (7 broadcast(s))
+	Received 0 response(s)
+	
+	在10.65.200.34，不停地收到，10.65.200.89汇报的mac地址
+	[root@localhost ~]# tcpdump -i any -s 0 host 10.65.200.89 -A
+	tcpdump: verbose output suppressed, use -v or -vv for full protocol decode
+	listening on any, link-type LINUX_SLL (Linux cooked), capture size 65535 bytes
+	11:30:51.593318 ARP, Reply 10.65.200.89 is-at 00:30:64:10:1b:2e (oui Unknown), length 46
+	.........0d...
+	A.Y.0d...
+	A."..................
+	11:30:52.591462 ARP, Reply 10.65.200.89 is-at 00:30:64:10:1b:2e (oui Unknown), length 46
+	.........0d...
+	A.Y.0d...
+	A."..................
+4、-A的使用场景：
+	已经知道主机H的ip/mac地址，告诉主机H，自己的ip/mac地址（比如我的ip/mac变化了），让主机H进行更新，这里只有单播模式。
+	-U的使用场景：
+	对于一个ip地址，我不知道它对应的mac地址，因此，我要发送一条广播请求，谁拥有这个ip地址，告诉我你的mac地址。
+	开始的时候是广播，因为不知道谁拥有这个ip地址，一旦收到有人回复，就转化为单播。抓包可以看到，前面是广播，后面是单播。
+	如何保持广播呢？使用-b
+5、-A是告诉某个主机，自己的ip和mac映射。
+	-U是请求某个主机的ip和mac映射。
+	那么如何通知所有主机，自己的ip和mac映射呢？
+	对于-U，当前主机使用广播，请求一个ip地址对应的mac地址，收到回复后，更新自己的arp缓存。特别注意的是：
+	在广播请求的时候，当前主机会把自己的ip/mac地址带着，在当前网络，收到这个广播请求的主机，也会在arp缓存中更新请求端的ip/mac地址。
+	利用这个特点，可以在局域网广播自己的ip和mac的映射。
+	也就是在局域网内广播请求自己的mac地址，局域网内的主机（包括网关）都更新请求端ip对应的mac地址，但是没有人回复，只有自己回复。
+6、如何知道是广播呢？
+	我们知道ip地址分成两部分，前缀是网络部分，后面是主机部分。主机部分全是0表示网络本身，主机部分全是1表示广播。
+7、利用arping的特点，请求自身ip地址对应的mac地址，如果有人回复，说明ip地址冲突，否则不冲突，这就是免费arp
+8、windows下面没有arping，可以制作一个arping，如下：
+	@echo off
+	:loop
+	ping -n 1 -w 500 %1 >nul
+	for /f "tokens=1,2 delims= " %%i in ('arp -a') do if %%i == %1 echo Reply from %1 [%%j]
+	arp -d
+	goto loop
+	把上面的内容，保存为arping.bat，在cmd窗口执行arping 10.36.65.91即可。
+	也可以在批处理中，使用变量定义dstIp，直接运行arping.bat，如下：
+	@echo off
+	set dstIp=10.36.65.91
+	:loop
+	ping -n 1 -w 500 %dstIp% >nul
+	for /f "tokens=1,2 delims= " %%i in ('arp -a') do if %%i == %dstIp% echo Reply from %dstIp% [%%j]
+	arp -d
+	goto loop
+	特别注意的是，在arping.bat中并没有向10.36.65.91发送arping请求包，而是在ping地址10.36.65.91之后，紧接着查询arp缓存。
+@endverbatim
+*/
+arping;
+
+/**
+@verbatim
+1、nc也叫netcat，用于传输层的端口检测。
+2、nc既可以作为客户端，也可以作为服务端。
+	作为客户端需要指定远程的ip和port，也可以指定本地的端口，一般情况我们不指定，靠系统随机生成。
+	作为服务端使用-l表示监听，需要指定本地的监听端口。
+	nc支持tcp协议和udp协议，默认使用tcp协议，如果使用udp协议，使用-u选项。
+3、作为tcp客户端，如下：
+	nc 10.36.65.80 12345
+	如果要指定本地的ip和port，如下：
+	nc -s10.36.65.60 -p12346 10.36.65.80 12345
+	特别注意：如果要指定本地的ip和port，在这种情况下，tcp连接断开之后，处于time_wait状态，
+	这段时间内端口12346是不能使用的，报错如下：
+	[root@localhost ~]# nc -s10.36.65.60 -p12346 10.36.65.80 12345
+	nc: bind failed: Address already in use
+	要过一段时间才能使用端口12346
+4、作为tcp的服务端，使用-l 表示监听，如下：
+	nc -l 10.36.65.60 12345
+5、作为udp的客户端，使用-u表示udp，如下：
+	nc -u 10.36.65.80 12345
+	特别注意：作为udp的客户端，如果没有指定udp的端口，必须先发送数据给服务端。
+	服务端收到数据，知道了客户端的udp端口，才能发送发送数据。
+	如果让服务端先发送数据，作为客户端的udp也要指定端口，如下：
+	nc -u -p12346 10.36.65.80 12345
+6、作为udp的服务端，如下：
+	nc -l -u 10.36.65.60 12345
+7、扫描端口，如下：
+	[root@localhost ~]# nc -v -w5 0.0.0.0 -z 20-25
+	nc: connect to 0.0.0.0 port 20 (tcp) failed: Connection refused
+	nc: connect to 0.0.0.0 port 21 (tcp) failed: Connection refused
+	Connection to 0.0.0.0 22 port [tcp/ssh] succeeded!
+	nc: connect to 0.0.0.0 port 23 (tcp) failed: Connection refused
+	nc: connect to 0.0.0.0 port 24 (tcp) failed: Connection refused
+	Connection to 0.0.0.0 25 port [tcp/smtp] succeeded!
+@endverbatim
+*/
+nc;
+
+/**
+@verbatim
+1、netcat也叫nc，安装如下：
+	[root@localhost tmp]# rpm -ivh netcat-1.10-1.i386.rpm 
+	Preparing...                ########################################### [100%]
+			installing package netcat-1.10-1.i386 needs 276KB on the / filesystem
+2、报错，在根目录需要276KB，查看目录挂载情况，都没有根目录/
+	[root@localhost tmp]# df -h
+	Filesystem            Size  Used Avail Use% Mounted on
+	tmpfs                 3.9G  244K  3.9G   1% /dev/shm
+	/dev/sda5             259M   93M  153M  38% /usr/local/appfs
+	/dev/sda3             916G  9.0G  861G   2% /usr/local/datafs
+	/dev/sda6              54M  4.9M   46M  10% /usr/local/configfs
+3、怎么解决？
+	直接解压出来，如下：
+	[root@localhost tmp]# rpm2cpio netcat-1.10-1.i386.rpm | cpio -div
+	解压后，进入/usr/sbin 当前有
+	[root@localhost sbin]# ll
+	total 140
+	-rwxr-xr-x 1 root root 142308 2016-10-11 11:07 nc
+	drwxr-xr-x 2 root root      0 2016-10-11 11:07 netcat
+4、nc只能在当前目录下执行，如何能在其他地方执行
+	[root@localhost bin]# echo $PATH
+	/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin:/usr/local/appfs/bin:/usr/local/appfs/sbin:/root/bin
+	因此执行环境没有当前目录，在/usr/local/bin增加一个软连接，如下：
+	[root@localhost bin]# pwd
+	/usr/bin
+	[root@localhost bin]# ln -s /root/tmp/usr/sbin/nc nc
+@endverbatim
+*/
+在我们的系统安装netcat;
+
+/** @} */
+
+/** @} */

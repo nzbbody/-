@@ -1,0 +1,111 @@
+/**
+* @defgroup MySQL
+* @{
+*/
+
+/**
+* @defgroup Mysql数据类型
+* @{
+*/
+
+
+
+/**
+@verbatim
+1、double(5,2) 表示总的位数是5，小数点后面是2位。
+2、插入数据，整数部分超出，报错：
+	1264 - Out of range value for column 'v3' at row 1
+	小数部分超出，不会报错，四舍五入只取两位
+@endverbatim
+*/
+double类型;
+
+
+/**
+@verbatim
+1、这里的int(11) 与int的大小和存储字节，没有一毛钱关系，int的存储字节是4个字节，最大值为 65536*65536 = 40多亿，
+	对于有符号的int，是20多亿。
+2、那么这里的(11) 表示什么意思？
+	考虑下面的需求，ID字段显示宽度为2，宽度不够的补充0。
+3、测试如下：
+mysql> desc student;
+	+-------+-------------+------+-----+---------+-------+
+	| Field | Type        | Null | Key | Default | Extra |
+	+-------+-------------+------+-----+---------+-------+
+	| id    | int(11)     | NO   | PRI | 0       |       |
+	| NAME  | varchar(16) | YES  | MUL | NULL    |       |
+	| AGE   | int(11)     | YES  |     | NULL    |       |
+	+-------+-------------+------+-----+---------+-------+
+	3 rows in set (0.01 sec)
+	
+	mysql> select * from student;
+	+-----+---------+------+
+	| id  | NAME    | AGE  |
+	+-----+---------+------+
+	| 1   | Andy1   | NULL |
+	| 11  | Andy11  | NULL |
+	| 101 | Andy101 | NULL |
+	+-----+---------+------+
+	
+	mysql> alter table student modify id int(2);
+	Query OK, 0 rows affected (0.03 sec)
+	Records: 0 Duplicates: 0 Warnings: 0
+	
+	mysql> desc student;
+	+-------+-------------+------+-----+---------+-------+
+	| Field | Type        | Null | Key | Default | Extra |
+	+-------+-------------+------+-----+---------+-------+
+	| id    | int(2)      | NO   | PRI | 0       |       |
+	| NAME  | varchar(16) | YES  | MUL | NULL    |       |
+	| AGE   | int(11)     | YES  |     | NULL    |       |
+	+-------+-------------+------+-----+---------+-------+
+	3 rows in set (0.01 sec)
+	
+	mysql> select * from student;
+	+-----+---------+------+
+	| id  | NAME    | AGE |
+	+-----+---------+------+
+	| 1   | Andy1   | NULL |
+	| 11  | Andy11  | NULL |
+	| 101 | Andy101 | NULL |
+	+-----+---------+------+
+	3 rows in set (0.00 sec)
+	
+	mysql> alter table student modify id int(2) zerofill;
+	Query OK, 3 rows affected (0.04 sec)
+	Records: 3 Duplicates: 0 Warnings: 0
+	
+	mysql> desc student;
+	+-------+--------------------------+------+-----+---------+-------+
+	| Field | Type                     | Null | Key | Default | Extra |
+	+-------+--------------------------+------+-----+---------+-------+
+	| id    | int(2) unsigned zerofill | NO   | PRI | 00      |       |
+	| NAME  | varchar(16)              | YES  | MUL | NULL    |       |
+	| AGE   | int(11)                  | YES  |     | NULL    |       |
+	+-------+--------------------------+------+-----+---------+-------+
+	3 rows in set (0.01 sec)
+	
+	mysql> select * from student;
+	+-----+---------+------+
+	| id  | NAME    | AGE  |
+	+-----+---------+------+
+	| 01  | Andy1   | NULL |
+	| 11  | Andy11  | NULL |
+	| 101 | Andy101 | NULL |
+	+-----+---------+------+
+	3 rows in set (0.00 sec)
+4、得出结果：
+	a、int(N) 必须与zerofill 结合，才能有效果。
+	b、只有宽度不够的，才补充0，宽度超过的，显示实际宽度。
+	c、使用mysql客户端有效果，使用navicat等第三方软件可能没有效果。
+@endverbatim
+*/
+int_11;
+
+
+
+
+
+/** @} */
+
+/** @} */

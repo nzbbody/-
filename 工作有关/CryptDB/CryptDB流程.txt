@@ -1,0 +1,220 @@
+﻿/**
+* @defgroup CryptDB
+* @{
+*/
+
+/**
+* @defgroup CryptDB流程
+* @{
+*/
+
+/**
+@verbatim
+1、read_query
+	read_query --> read_query_real --> next_handler --> CryptDB.next
+	接收客户端的请求sql，进行转化，return proxy.PROXY_SEND_QUERY
+	改写后的sql语句，通过 proxy.queries:append 传递过去。
+2、read_query_result
+	read_query_result --> read_query_result_real --> next_handler --> CryptDB.next
+	接收mysql的返回，进行处理，return proxy.PROXY_SEND_RESULT
+	处理后，如果有结果集需要返回，通过 proxy.response.resultset 传递过去。
+3、proxy与mysql交互，从mysql返回之后，必定进入 read_query_result
+	分为几种情况：
+	a、不需要处理，比如 show databases; 直接返回
+	b、只需要处理一次，比如 show tables; 解密一些表名即可
+	c、需要处理多次，比如create table;
+4、分析show databases;的流程：
+	a、客户端发给proxy请求show databases，read_query接口返回PROXY_SEND_QUERY，同时传递改写后的sql语句，还是show databases
+	b、内部的next接口返回query-results，把skip置为true
+	b、proxy和mysql交互，从mysql收到响应包，在read_query_result_real检查到是skip，直接返回。
+5、分析show tables;的流程：
+	a、客户端发给proxy请求show tables，read_query接口返回PROXY_SEND_QUERY，同时传递改写后的sql语句，还是show tables
+	b、内部的next接口返回again
+	c、proxy和mysql交互，从mysql收到响应包，在read_query_result_real，打印响应的结果，然后 next_handler("results",
+	d、next返回"results"，解密返回，return proxy.PROXY_SEND_RESULT，也就是说，先检查next的返回，再检查从哪里来的？
+6、分析create table;的流程：
+	a、客户端发给proxy请求create table，read_query接口返回PROXY_SEND_QUERY，同时传递改写后的sql语句，create tablexxx
+	b、内部的next接口返回again
+	c、proxy和mysql交互，从mysql收到响应包，在read_query_result_real，打印响应的结果，然后 next_handler("results",
+	d、next返回"again"，告诉proxy忽略mysql的返回。
+	e、proxy和mysql交互，从mysql收到响应包，next返回"results"
+7、也就是说，
+	第一次的改写返回PROXY_SEND_QUERY，
+	中间过程的改写，返回PROXY_IGNORE_RESULT
+	最后一步的处理，返回PROXY_SEND_RESULT
+8、CryptDB.next的返回有三个值：
+	again			要求proxy和mysql交互，并且再次进来，处理mysql的响应
+	query-results	mysql的响应，到lua之后，lua直接返回
+	results			返回最后处理的结果，要求proxy转发给客户端
+9、proxy收到的回复有三个值：
+	PROXY_SEND_QUERY 	向mysql发送请求
+	PROXY_SEND_RESULT	向客户端发送最后的结果
+	PROXY_IGNORE_RESULT	忽略中间过程的结果
+10、总结一下，也就是说：
+	第一步是改写，要求proxy和mysql交互，
+	中间步骤处理返回的结果，比如剥洋葱，或者插入到remote_db，再次要求proxy和mysql交互，并且proxy忽略mysql的返回
+	最后一步，改写mysql返回的结果集。
+@endverbatim
+*/
+和lua的交互流程;
+
+/**
+@verbatim
+1、DBMeta是数据库的元数据类，子类MappedDBMeta是类模板，字段包括一个map结构，保存child数据结构。
+2、MappedDBMeta会实例化一些模板类，比如MappedDBMeta<DatabaseMeta,IdentityMetaKey>，就是包含一组DatabaseMeta的集合
+3、包含一组DatabaseMeta的集合，其实也就是 SchemaInfo，SchemaInfo继承 MappedDBMeta<DatabaseMeta,IdentityMetaKey>
+4、DatabaseMeta、TableMeta、FieldMeta也是同样的道理。
+5、TableMeta关注以下几个字段，分别为：
+	counter 因为一个表的字段，是有顺序的，counter记录当前的counter值
+	anon_table_name 是加密后的表名
+	注意：IdentityMetaKey 是由明文的表名，序列化出来的
+		  tm->addChild(IdentityMetaKey(name), std::move(fm));
+	明文的表名-->IdentityMetaKey-->TableMeta-->anno_table_name
+6、FieldMeta关注以下几个字段，分别为：
+	fname 字段名称
+	salt_name 前缀加上随机值
+	onion_layout 是字段扩展后的洋葱，表示一个字段对应一组洋葱（map），以及每个洋葱对应的一组洋葱层（vector）。
+7、OnionMeta不同于上面的结构，不是继承MappedDBMeta，而是直接继承DBMeta，因为OnionMeta直接关联vector的EncLayer，而不是map结构
+	onionname是洋葱字段名称
+8、EncLayer就是叶子结点，继承了LeafDBMeta，在LeafDBMeta中对叶子节点 do nothing
+	EncLayer代表了一个加密层次的抽象
+@endverbatim
+*/
+类的层次化结构;
+
+/**
+@verbatim
+1、剥洋葱，已经插入的数据，通过update更新掉，新插入的数据，加密层也会发生变化，少一层加密
+2、准备测试数据如下：
+	start transaction;
+	create table student(id int, name varchar(64));
+	insert into student(id ,name) value (1,"Andy");
+	insert into student(id ,name) value (2,"Bill");
+	insert into student(id ,name) value (3,"Caroline");
+	insert into student(id ,name) value (4,"David"); 
+	commit;
+	
+3、测试洋葱层调整
+	select * from student where id =2;
+4、按道理，洋葱层会少一层，在哪里处理的？
+	之前查回来的结果，和现在查回来的结果，对照一下。
+5、在哪里删除RND记录的？
+	deltaOutputBeforeQuery-->bool DeleteDelta::apply
+	" DELETE embedded_db.generic_prefix_BleedingMetaObject    FROM embedded_db.generic_prefix_BleedingMetaObject  WHERE embedded_db.generic_prefix_BleedingMetaObject.id      = 252    AND embedded_db.generic_prefix_BleedingMetaObject.parent_id      = 249;"
+	
+	deltaOutputAfterQuery-->DeleteDelta::apply
+	" DELETE embedded_db.generic_prefix_MetaObject    FROM embedded_db.generic_prefix_MetaObject  WHERE embedded_db.generic_prefix_MetaObject.id      = 252    AND embedded_db.generic_prefix_MetaObject.parent_id      = 249;"
+@endverbatim
+*/
+洋葱层调整测试;
+
+/**
+@verbatim
+1、一个字段会扩展为多个字段，用于不同的同态加密。扩展后的一个字段，也就是一个洋葱，一个洋葱对应多层加密，每层加密就是一个洋葱层。
+2、每个洋葱层，需要确定加密算法和秘钥。
+3、加密算法是由所支持的同态运算所决定的，比如 支持int的同态加密，使用DET_int。
+4、秘钥是怎么来的？
+	秘钥是创建表的时候生成的，转化的步骤很多。参数的来源在哪里？
+5、秘钥需要持久化，保存在哪里？
+	在embedded_db，递归调用读取。
+@endverbatim
+*/
+加解密元数据的读写;
+
+/**
+@verbatim
+1、类图
+	SharedProxyState<>——SchemaCache——>SchemaInfo<>——DatabaseMeta<>——TableMeta<>——FieldMeta<>——OnionMeta<>——EncLayer
+	SchemaInfo对应一个数据库的加密元数据
+2、递归调用，load加密元数据
+	std::function<DBMeta *(DBMeta *const)> loadChildren =
+    [&loadChildren, &e_conn](DBMeta *const parent) {
+        auto kids = parent->fetchChildren(e_conn);
+        for (auto it : kids) {
+            loadChildren(it);
+        }
+
+        return parent;  /* lambda */
+    };
+    loadChildren(schema.get());
+	堆栈可以看到，__lambda5::operator() rewrite_main.cc:607
+	构建秘钥，从数据库读取，然后反序列化。
+3、数据的crud操作（增删改查）涉及到加解密，那就需要用到秘钥，每次从embedded_db读取，效率太低。
+	需要把数据load到内存中，这就是涉及到同步，保持一致性。怎么解决这个问题？
+	a、SchemaCache有个字段no_loads表示是否加载元数据，初始化为 true，表示没有加载，启动proxy，第一次tlogin，no_loads设置为false
+	b、同时【INSERT INTO embedded_db.generic_prefix_staleness   (cache_id, stale) VALUES    (2313589110, TRUE);】 stale表示过时的数据，表示需要更新。
+	c、每次判断是否需要重新读取，都是 【SELECT stale FROM embedded_db.generic_prefix_staleness  WHERE cache_id = 3209647041;】检查这个取值。
+	d、在哪里更新stale？
+		SchemaCache::updateStaleness，为了保证已经存在的记录，也需要重读，把之前的设置为true
+4、哪些情况判断是否读取？直接看调用图
+	SchemaCache::getSchema
+	rewrite																				每次rewrite都要判断
+	OnionAdjustmentExecutor::nextImpl(const ResType &res, const NextParams &nparams) 	洋葱层调整，需要再次判断
+	ShowTablesExecutor::nextImpl(const ResType &res, const NextParams &nparams)			
+	SpecialUpdateExecutor::nextImpl(const ResType &res, const NextParams &nparams)		
+5、哪些情况更新stale值
+	SchemaCache::updateStaleness
+	AbstractQueryExecutor::next --> AbstractQueryExecutor::genericPreamble --> nparams.ps.getSchemaCache().updateStaleness(nparams.ps.getEConn(), this->stales());
+@endverbatim
+*/
+加解密元数据的读操作;
+
+/**
+@verbatim
+1、CreateDelta::apply
+	deltaOutputBeforeQuery insert到 generic_prefix_BleedingMetaObject
+	deltaOutputAfterQuery  insert到 generic_prefix_MetaObject
+2、这些可以怎么来的，在什么地方插入到数据库？
+	序列化写入到数据库中
+	--> " INSERT INTO " + table_name +  "    (serial_object, serial_key, parent_id, id) VALUES (
+	--> esc_child_serial = escapeString(e_conn, child_serial); // mysql转义
+	--> object.serialize(parent) // 序列化，看一下DBMeta，找到各个序列化的实现
+	--> EncLayer::serialize
+	--> return serial_pack(this->level(), this->name(), this->doSerialize());
+	--> doSerialize() 查看EncLayer 子类的doSerialize多态做法。 
+	找两个例子
+	DETJOIN_int
+		--> DET_abstract_integer::doSerialize()
+		--> getCInteger_().serialize();
+		--> CryptedInteger::serialize() 对以下字段序列化
+			serializeStrings({key,TypeText<enum enum_field_types>::toText(field_type),std::to_string(inclusiveRange.first),std::to_string(inclusiveRange.second)});
+		--> DETJOIN_int新增加了字段cinteger，重写getCInteger_()方法，在DETJOIN_int(const Create_field &cf, const std::string &seed_key)创建
+			注：DETJOIN_int(unsigned int id, const CryptedInteger &cinteger)读取时候用到的
+	DETJOIN_str
+		--> std::string doSerialize() const {return rawkey;}
+		--> rawkey(prng_expand(seed_key, key_bytes))
+	--> 都是找到seed_key
+	--> DETJOINFactory::create(const Create_field &cf,const std::string &key)
+	--> EncLayerFactory::encLayer(onion o, SECLEVEL sl, const Create_field &cf,const std::string &key)
+	--> const std::string key = m_key ? getLayerKey(m_key, uniqueFieldName, l) : "plainkey";
+	--> OnionMeta::OnionMeta(onion o, std::vector<SECLEVEL> levels,const AES_KEY * const m_key,const Create_field &cf, unsigned long uniq_count,SECLEVEL minimum_seclevel)
+	--> static bool init_onions_layout(const AES_KEY *const m_key, FieldMeta *const fm,const Create_field &cf, bool unique)
+	--> FieldMeta::FieldMeta(const Create_field &field,const AES_KEY * const m_key,SECURITY_RATING sec_rating,unsigned long uniq_count,bool unique)
+	--> a.getMasterKey().get()
+	--> createAndRewriteField(Analysis &a,xxx)
+	--> class CreateTableHandler::rewriteAndUpdate(Analysis &a, LEX *lex, const Preamble &pre) const
+	--> AbstractQueryExecutor *DDLHandler::transformLex(Analysis &a, LEX *lex) const
+	--> Rewriter::dispatchOnLex(Analysis &a, const std::string &query)
+	--> Analysis analysis(default_db, schema, ps.getMasterKey(),ps.defaultSecurityRating());
+	--> ps.getMasterKey()
+	--> Rewriter::rewrite(const std::string &q, const SchemaInfo &schema,const std::string &default_db, const ProxyState &ps)
+	--> return shared.getMasterKey(); 
+	--> const SharedProxyState &shared;
+	--> ProxyState *const ps = thread_ps = c_wrapper->ps.get();
+	--> WrapperState *const c_wrapper = clients[client];
+		clients[client]-->WrapperState-->ProxyState-->SharedProxyState
+	--> clients[client]->ps = std::unique_ptr<ProxyState>(new ProxyState(*shared_ps));
+	--> SharedProxyState::SharedProxyState(ConnectionInfo ci,const std::string &embed_dir,const std::string &master_key,SECURITY_RATING default_sec_rating)
+			: masterKey(std::unique_ptr<AES_KEY>(getKey(master_key))),
+			  embed_dir(embed_dir),
+			  mysql_dummy(SharedProxyState::db_init(embed_dir)),
+	--> getKey(master_key)获得 AES_KEY
+	--> const std::string &mkey      = "113341234"; 
+		shared_ps = new SharedProxyState(ci, embed_dir, mkey, determineSecurityRating()); //shared_ps 包含conn e_conn
+@endverbatim
+*/
+加解密元数据的写操作;
+
+/** @} */
+
+/** @} */

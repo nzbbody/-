@@ -1,0 +1,191 @@
+/**
+* @defgroup MySQL
+* @{
+*/
+
+/**
+* @defgroup Mysql分区表
+* @{
+*/
+
+
+/**
+@verbatim
+1、考虑下面的需求，alarmlog记录告警日志信息，用户查询的时候，查询条件都带着时间段。
+	alarmlog的数据量很大，如果都写到一个表里面，会导致查询效率很差。
+2、应用程序控制，每天建立一个表。但是这样导致一个问题，客户端查询的时候，只能查询一天的告警，
+	如果客户端查询的时间段跨多天，应用程序就需要找出对应的表，分别查询。
+3、有没有更好的办法？
+	使用分区表，逻辑上是一个表，物理上是多个表组成。
+4、创建表的时候，创建分区，如下：
+	create table alarmlog(ID int, MSG varchar(32), TIME datetime)
+	engine=innodb 
+	partition by range(to_days(TIME))
+	(
+		partition p1 values less than (to_days('2015-12-20')),
+		partition p2 values less than (to_days('2015-12-21')),
+		partition p3 values less than (to_days('2015-12-22')),
+		partition p4 values less than (to_days('2015-12-23')),
+		partition p5 values less than (to_days('2015-12-24')),
+		partition p6 values less than (to_days('2015-12-25')),
+		partition p7 values less than (to_days('2015-12-26'))
+	);
+5、添加测试数据
+	BEGIN
+		declare vI int default 0;
+		declare vRand int default 0;
+	
+		start transaction;
+		while (vI<=100) do 
+			set vI = vI +1;
+			set vRand=floor(rand()*6);
+			insert into alarmlog(id,msg,time) value(vI,concat('alarm',vI),date_add(now(),interval vRand day));		
+		end while;
+		commit;
+	END
+6、查看执行计划
+	mysql> desc partitions select * from alarmlog where time <'2015-12-20';
+	+----+-------------+----------+------------+------+---------------+------+---------+------+------+-------------+
+	| id | select_type | table    | partitions | type | possible_keys | key  | key_len | ref  | rows | Extra       |
+	+----+-------------+----------+------------+------+---------------+------+---------+------+------+-------------+
+	|  1 | SIMPLE      | alarmlog | p1         | ALL  | NULL          | NULL | NULL    | NULL |    9 | Using where |
+	+----+-------------+----------+------------+------+---------------+------+---------+------+------+-------------+
+	1 row in set
+	
+	mysql> desc partitions select * from alarmlog where time <'2015-12-21';
+	+----+-------------+----------+------------+------+---------------+------+---------+------+------+-------------+
+	| id | select_type | table    | partitions | type | possible_keys | key  | key_len | ref  | rows | Extra       |
+	+----+-------------+----------+------------+------+---------------+------+---------+------+------+-------------+
+	|  1 | SIMPLE      | alarmlog | p1,p2      | ALL  | NULL          | NULL | NULL    | NULL |   30 | Using where |
+	+----+-------------+----------+------------+------+---------------+------+---------+------+------+-------------+
+	1 row in set
+	可以看到mysql直接定位到分区表，进行扫描，缩小了扫描的范围，提高效率
+7、删除分区
+	alter table alarmlog drop partition p1;
+8、添加分区
+	alter table alarmlog add partition (partition p8 values less than (to_days('2015-12-27')));
+	注意：对表增加一个分区，表之前必须创建过分区。
+9、随着时间的过去，运行到 2015-12-27，考虑插入一条告警，如下：
+	mysql> insert into alarmlog(id,msg,time) value(1001,concat('alarm',1001),'2015-12-27');
+	1526 - Table has no partition for value 736324
+	也就是说，没有分区存放这条记录。
+	因此，需要动态增加分区。同时，很早以前的分区，数据不再使用，需要删除分区。
+10、动态管理分区，删除老的分区，增加新的分区。使用mysql的事件调度器。
+@endverbatim
+*/
+创建分区表;
+
+
+/**
+@verbatim
+1、python生成分区表，如下：
+	#coding=gb18030
+	from datetime import *
+	class GeneMysqlPartition:
+		def Gene(self):        
+			pFile = open('MysqlPartition.txt','w')
+			i=0
+			curDate=date.today()-timedelta(days=10)
+			while(i<10):
+				ss= "partition p%04d%02d%02d values less than (to_days('%s-%s-%s')),\n" %(curDate.year,curDate.month,curDate.day,curDate.year,curDate.month,curDate.day)
+				pFile.write(ss)
+				i=i+1
+				curDate=curDate+timedelta(days=1)
+			pFile.close()
+	
+	if __name__ == '__main__':
+		geneA = GeneMysqlPartition();
+		geneA.Gene();
+2、创建表，如下：
+	use niu_test;
+	create table alarm_log(ID int, MSG varchar(32), TIME datetime)
+	engine=innodb 
+	partition by range(to_days(TIME))
+	(
+		partition p20151220 values less than (to_days('2015-12-20'))
+	);
+3、动态管理分区表
+	DROP PROCEDURE IF EXISTS `exe_dynamic_sql`;
+	DELIMITER ;;
+	CREATE DEFINER=`root`@`%` PROCEDURE `exe_dynamic_sql`(iDynamicSql TEXT)
+	BEGIN
+		set @exeSql = iDynamicSql;
+		prepare stmt from @exeSql;
+		execute stmt;
+		deallocate prepare stmt; -- 释放掉预处理段
+	END
+	;;
+	DELIMITER ;
+	
+	
+	DROP PROCEDURE IF EXISTS `manage_partitions`;
+	DELIMITER ;;
+	CREATE DEFINER=`root`@`%` PROCEDURE `manage_partitions`(iDataBaseName varchar(100), iTableName varchar(100), iOldPartitionSaveDays int, iPartitionPreserverDays int, iPartitionIntervalDays int)
+	BEGIN
+		declare vPartitionName varchar(32) default '';
+		declare vIsOver int default 0;
+		declare vCurDate date default curdate();
+		declare vOldDate date default curdate();
+		declare vLastDate date default curdate();
+		declare vExpectDate date default curdate();
+		declare vLastPartitionName varchar(32) default '';
+	
+		declare vDynamicSql text default '';
+	
+		declare vCursorPartitionName cursor for select partition_name from information_schema.partitions where table_schema=iDataBaseName and table_name=iTableName;
+		declare continue handler for sqlstate '02000' set vIsOver = 1;
+	
+		-- delete old partition
+		open vCursorPartitionName;
+		fetch vCursorPartitionName into vPartitionName;
+	
+		while(vIsOver = 0) do 
+			set vOldDate =  substr(vPartitionName,2);
+			-- select datediff(vCurDate,vOldDate);
+			if(datediff(vCurDate,vOldDate)> iOldPartitionSaveDays) then 
+				set vDynamicSql = concat('alter table ',iTableName,' drop partition ',vPartitionName);
+				-- select vDynamicSql;
+				call exe_dynamic_sql(vDynamicSql);
+			end if;
+			fetch vCursorPartitionName into vPartitionName;
+		end while;
+	
+		close vCursorPartitionName;
+		-- delete old partition
+		
+	
+		-- add new partition
+		set vLastPartitionName = (select max(partition_name) from information_schema.partitions where table_schema=iDataBaseName and table_name=iTableName);
+		set vLastDate =  substr(vLastPartitionName,2);
+		select date_add(curdate(),interval iPartitionPreserverDays day) into vExpectDate;
+	
+		while(vLastDate < vExpectDate) do 
+			set vLastDate = vLastDate + interval iPartitionIntervalDays day;
+			set vDynamicSql = concat('alter table ',iTableName,' add partition (partition p',date_format(vLastDate,'%Y'),date_format(vLastDate,'%m'),date_format(vLastDate,'%d'),' values less than (to_days(\'', vLastDate,'\')))');
+			-- select vDynamicSql;
+			call exe_dynamic_sql(vDynamicSql);
+		end while;
+		-- add new partition
+	
+	END
+	;;
+	DELIMITER ;
+4、计划任务
+	DROP EVENT IF EXISTS `event_day`;
+	DELIMITER ;;
+	CREATE EVENT `event_day` ON SCHEDULE EVERY 1 DAY STARTS '2015-06-20 08:05:00' ENDS '2025-06-20 08:00:00' ON COMPLETION PRESERVE ENABLE DO begin 
+	call manage_partitions('niu_test','alarm_log',365*2,30,7);
+	call manage_partitions('niu_test','realdata_log',365*2,30,7);
+	end
+	;;
+	DELIMITER ;
+@endverbatim
+*/
+动态管理分区;
+
+
+
+
+/** @} */
+
+/** @} */

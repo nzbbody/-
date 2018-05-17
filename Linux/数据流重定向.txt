@@ -1,0 +1,35 @@
+/**
+* @defgroup Linux
+* @{
+*/
+
+
+/**
+@verbatim
+1、标准输出：代码是1，使用>和>>，前者是覆盖，后者是追加。
+	xxx > aaa.txt 
+	xxx >> aaa.txt
+2、对于错误的数据，需要使用标准错误输出，标准错误输出：代码是2，使用2>和2>>
+3、正常信息和错误信息输出到不同的文件，如下：
+	xxx >info.txt 2>err.txt
+4、正常信息和错误信息输出到同一个文件，
+	xxx >info.txt 2>info.txt 是错误的写法，info.txt的内容会乱掉。正确的写法是：
+	xxx >info.txt 2>&1
+5、如果信息既不想显示也不想存储呢，比如操作的历史记录，为了安全，不想存储。怎么办？
+	使用黑洞设备，xxx >/dev/null 2>&1
+6、标准输入，代码是0，使用<和<<，解决的问题将原本需要键盘输出的数据，改由从文件读取。
+7、cat >tmp.txt 从键盘输入数据到tmp.txt，ctrl+d结束输入。如果从其他文件读取，是：cat >tmp.txt <aaa.txt。
+8、标准输入，<<表示遇到某个输入，结束输入。如下：
+	[root@localhost home]# cat >tmp.txt <<'0'
+	> aaa
+	> bbb
+	> 0
+	[root@localhost home]# 
+	输入0之后，按下enter 就结束了输入，不需要ctrl+d退出输入。
+@endverbatim
+*/
+Linux数据流重定向;
+
+
+
+/** @} */

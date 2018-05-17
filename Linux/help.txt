@@ -1,0 +1,49 @@
+/**
+* @defgroup Linux
+* @{
+*/
+
+/**
+* @defgroup help
+* @{
+*/
+
+/**
+@verbatim
+命令如下：
+	man route
+注意：man和info，都是使用less输出结果，q退出后，输出的结果不保留屏幕。如果要保留屏幕，需要执行：
+export PAGER='less -X'		// 保留屏幕
+export PAGER='less'			// 不保留屏幕
+
+对于less命令也是同样的道理，
+less config.xml				//退出不保留屏幕
+less -X config.xml			//退出保留屏幕
+
+注意：是否保留屏幕还和系统，终端有关，有可能默认就是保留。
+
+man是使用less输出结果，查找关键字参考less命令。
+@endverbatim
+@see info
+*/
+man;
+
+/**
+@verbatim
+和man，一样，信息更全面
+@endverbatim
+@see man
+*/
+info;
+
+/**
+@verbatim
+一般的命令都提供了 xxx --help, 描述简单用法
+@endverbatim
+@see
+*/
+help;
+
+/** @} */
+
+/** @} */

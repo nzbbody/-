@@ -1,0 +1,39 @@
+﻿/**
+* @defgroup 网络层
+* @{
+*/
+
+/**
+* @defgroup ICMP
+* @{
+*/
+
+/**
+@verbatim
+ICMP(Internet Control Message Protocol)：Internet控制信息协议，ICMP的任务主要是路由行为，可达性，主机之间的路由，传输错误信息。
+ping 和 traceroute 是使用ICMP实现的，消息类型echo request 和 echo reply
+@endverbatim
+@see
+*/
+ICMP说明;
+
+/**
+@verbatim
+使用ICMP可以为主机指向更好的路由，考虑A向B发数据，A根据子网掩码检查，B不在同一个网络。
+而这个时候只配置了R1，于是发给R1，R1检查自己的路由，发现下一跳是R2，而且R2和A在同一个网络。
+于是R1发一个ICMP Redirect数据包（包含R2的IP地址）给A，告诉A，你个笨蛋，下次直接发给R2就好了，不需要经过我转发。
+
+注意：
+1、假设A配置的多个路由，A查找的是顺序是从小范围到大范围。
+2、路由转发过程中，在网络层，源IP和目标IP不变，在链路层，源MAC地址和目标MAC地址会变化。
+	也就是说，在链路层，两个MAC地址连通，才能发送数据。
+	路由器根据目标IP找到下一跳的IP地址，根据ARP找到下一跳的MAC，发送过去，下一跳也做同样的事情，直到目标IP收到数据。
+@endverbatim
+@see
+*/
+重定向到更好的路由;
+
+
+/** @} */
+
+/** @} */

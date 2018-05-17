@@ -1,0 +1,519 @@
+/**
+* @defgroup Linux
+* @{
+*/
+
+/**
+* @defgroup 进程管理
+* @{
+*/
+
+/**
+@verbatim
+1、ps 结合管道，使用grep找到pid，kill -9 pid 强制杀死进程，如下：
+	[root@localhost lib_linux]# ps aux|grep cmu
+	root      4971  0.0  0.1   4492   792 pts/2    S    09:32   0:00 /bin/sh ./ibpctrl start cmu
+	root      4973  0.4  2.3  97156 12156 pts/2    Sl   09:32   0:00 ./cmu_main -f cmu_linux.xml
+	root      4988  0.0  0.1   3920   708 pts/2    R+   09:32   0:00 grep cmu
+	[root@localhost lib_linux]# kill -9 4973
+	[root@localhost lib_linux]# ps aux|grep cmu
+	root      5004  0.0  0.1   3920   688 pts/2    R+   09:32   0:00 grep cmu
+	注：kill的工作原理是，向Linux系统的内核发送一个系统操作信号（signal）和进程标识号（pid），
+	然后系统内核就可以对指定的进程进行操作。通常终止前台进程我们使用ctrl+c，终止后台进程使用kill命令。
+2、使用pidof 找到进程id，然后杀死，需要注意的是，pidof 必须给出进程的全名。如下：
+	[root@localhost lib_linux]# pidof cmu_main
+	5549
+	[root@localhost lib_linux]# kill -9 5549
+3、使用pgrep直接找到pid，杀死进程，pgrep就是 process grep，只要包含模式【也就是关键字】就行，如下：
+	[root@localhost lib_linux]# pgrep cmu
+	5240
+	[root@localhost lib_linux]# kill -9 5240
+	[root@localhost lib_linux]# pgrep cmu
+4、使用xargs对找到pid直接杀死，如下：
+	[root@localhost lib_linux]# pgrep mu           
+	6175
+	6212
+	[root@localhost lib_linux]# pgrep mu|xargs kill -9
+	[root@localhost lib_linux]# pgrep mu
+	注意：xargs相当于遍历前面的输出，作为下一个命令的输入，逐个执行。
+5、使用pkill，pkill=pgrep+kill，根据进程名称，杀死进程，如下：
+	[root@localhost lib_linux]# pgrep dmu          
+	7407
+	[root@localhost lib_linux]# pkill -9 dmu
+	[root@localhost lib_linux]# pgrep dmu
+6、使用killall，根据进程名称杀死进程，如下：
+	[root@localhost lib_linux]# pgrep dmu          
+	7453
+	[root@localhost lib_linux]# killall -9 dmu
+	dmu: no process killed
+	[root@localhost lib_linux]# killall -9 dmu_main
+	[root@localhost lib_linux]# pgrep dmu
+	需要注意的是：和pidof类似，使用killall必须给出进程的全名称。
+@endverbatim
+*/
+杀死进程;
+
+
+/**
+@verbatim
+1、proc文件系统是伪文件系统，不存在硬盘上，而是在内存中。它以文件系统的方式，对外暴露接口，
+	允许调用者访问系统内核数据。
+2、比如查看cpu信息，如下：
+	[root@localhost proc]# more /proc/cpuinfo 
+	processor       : 0
+	vendor_id       : GenuineIntel
+	cpu family      : 6
+	model           : 60
+	model name      : Intel(R) Core(TM) i7-4712MQ CPU @ 2.30GHz
+	stepping        : 3
+	cpu MHz         : 2294.740
+	cache size      : 6144 KB
+	fdiv_bug        : no
+	hlt_bug         : no
+	f00f_bug        : no
+	coma_bug        : no
+	fpu             : yes
+	fpu_exception   : yes
+	cpuid level     : 13
+	wp              : yes
+	flags           : fpu vme de pse tsc msr pae mce cx8 apic mtrr pge mca cmov pat pse36 clflush dts mmx fxsr sse sse2 ss nx rdtscp constant_t
+	sc up ida nonstop_tsc arat pni ssse3 sse4_1 sse4_2 popcnt [8]
+	bogomips        : 4589.48
+3、查看进程信息，需要使用进程Id，如下：
+	[root@localhost proc]# pgrep cmu
+	8155
+	[root@localhost proc]# ll ./8155
+	total 0
+	dr-xr-xr-x  2 root root 0 Aug 28 11:02 attr
+	-r--------  1 root root 0 Aug 28 11:02 auxv
+	-r--r--r--  1 root root 0 Aug 28 11:01 cmdline
+	-rw-r--r--  1 root root 0 Aug 28 11:02 coredump_filter
+	-r--r--r--  1 root root 0 Aug 28 11:02 cpuset
+	lrwxrwxrwx  1 root root 0 Aug 28 11:02 cwd -> /usr/local/IBP/lib_linux/cmu
+	-r--------  1 root root 0 Aug 28 11:02 environ
+	lrwxrwxrwx  1 root root 0 Aug 28 11:02 exe -> /usr/local/IBP/lib_linux/cmu/cmu_main
+	dr-x------  2 root root 0 Aug 28 11:01 fd
+	-r--r--r--  1 root root 0 Aug 28 11:02 io
+	-r--------  1 root root 0 Aug 28 11:02 limits
+	-rw-r--r--  1 root root 0 Aug 28 11:02 loginuid
+	-r--r--r--  1 root root 0 Aug 28 11:02 maps
+	-rw-------  1 root root 0 Aug 28 11:02 mem
+	-r--r--r--  1 root root 0 Aug 28 11:01 mounts
+	-r--------  1 root root 0 Aug 28 11:02 mountstats
+	-rw-r--r--  1 root root 0 Aug 28 11:02 oom_adj
+	-r--r--r--  1 root root 0 Aug 28 11:02 oom_score
+	lrwxrwxrwx  1 root root 0 Aug 28 11:02 root -> /
+	-r--r--r--  1 root root 0 Aug 28 11:02 schedstat
+	-r--r--r--  1 root root 0 Aug 28 11:02 smaps
+	-r--r--r--  1 root root 0 Aug 28 11:01 stat
+	-r--r--r--  1 root root 0 Aug 28 11:02 statm
+	-r--r--r--  1 root root 0 Aug 28 11:01 status
+	dr-xr-xr-x 10 root root 0 Aug 28 11:02 task
+	-r--r--r--  1 root root 0 Aug 28 11:01 wchan
+@endverbatim
+*/
+proc目录;
+
+/**
+@verbatim
+1、ps列出进程，常用的两个选项为 aux 和 -ef
+2、使用aux
+	[root@localhost ~]# ps aux|grep main
+	root      2972  0.0  0.0   3808   716 pts/3    S+   20:00   0:00 grep main
+	root     15577  0.6  0.1  85148  3964 ?        Sl   Oct19  10:29 ./hau_main /f hau_linux.xml
+	root     19929  3.0  0.4 317540 16952 ?        Sl   17:26   4:45 ./dmu_main -f dmu_linux.xml
+	root     19989  1.7  0.4 226520 15824 ?        Sl   17:26   2:43 ./vtdu_main -f vtdu_linux.xml
+	root     20032  1.1  0.4 281116 14948 ?        Sl   17:26   1:47 ./vru_main -f vru_linux.xml
+	root     20133  0.3  0.5 171728 19020 ?        Sl   17:26   0:28 ./uas_main -f uas_linux.xml
+	root     20174  0.7  0.3 102256 13064 ?        Sl   17:26   1:12 ./lku_main -f lku_linux.xml
+	root     20379  0.4  0.4  81384 16220 ?        Sl   17:26   0:45 ./cmu_main -f cmu_linux.xml
+	root     27523  2.8  0.7 307272 26228 ?        Sl   17:38   4:02 ./uac_main
+	表示意思分别如下：
+	USER：该 process 属于那个使用者账号的
+	PID ：该 process 的号码
+	%CPU：该 process 使用掉的 CPU 资源百分比
+	%MEM：该 process 所占用的物理内存百分比
+	VSZ ：该 process 使用掉的虚拟内存量 (Kbytes)
+	RSS ：该 process 占用的固定的内存量 (Kbytes)
+	TTY ：该 process 是在那个终端机上面运作，若与终端机无关，则显示 ?，另外， tty1-tty6 是本机上面的登入者程序，
+			若为 pts/0 等等的，则表示为由网络连接进主机的程序。
+	STAT：该程序目前的状态，主要的状态有
+			R：该程序目前正在运作，或者是可被运作
+			S：该程序目前正在睡眠当中 (可说是 idle 状态)，但可被某些讯号 (signal) 唤醒。
+			T：该程序目前正在侦测或者是停止了
+			Z：该程序应该已经终止，但是其父程序却无法正常的终止他，造成 zombie (疆尸) 程序的状态
+	START：该 process 被触发启动的时间
+	TIME ：该 process 实际使用 CPU 运作的时间
+	COMMAND：该程序的实际指令
+3、使用-ef，可以查看父子进程之间的关系
+	[root@localhost ~]# ps -ef|grep main
+	root      6397 29980  0 20:08 pts/3    00:00:00 grep main
+	root     15577 15574  0 Oct19 ?        00:10:32 ./hau_main /f hau_linux.xml
+	root     19929 19926  3 17:26 ?        00:04:58 ./dmu_main -f dmu_linux.xml
+	root     19989 19986  1 17:26 ?        00:02:49 ./vtdu_main -f vtdu_linux.xml
+	root     20032 20029  1 17:26 ?        00:01:52 ./vru_main -f vru_linux.xml
+	root     20133 20130  0 17:26 ?        00:00:29 ./uas_main -f uas_linux.xml
+	root     20174 20171  0 17:26 ?        00:01:16 ./lku_main -f lku_linux.xml
+	root     20379 20376  0 17:26 ?        00:00:47 ./cmu_main -f cmu_linux.xml
+	root     27523 27520  2 17:38 ?        00:04:14 ./uac_main
+4、查看进程启动时间和运行时间，如下：
+	先找到进程pid：
+	[root@localhost ~]# ps aux|grep ping
+	root      3131  0.0  0.0   3808   668 pts/2    S+   16:20   0:00 ping 10.36.65.80
+	root     18421  0.0  0.0   3812   740 pts/3    S+   16:35   0:00 grep ping
+	然后列出启动时间和运行时间：
+	[root@localhost ~]# ps -eo pid,lstart,etime|grep 3131
+	3131 Sun Sep 18 16:20:25 2016       16:07
+	[root@localhost ~]# date
+	Sun Sep 18 16:36:33 CST 2016
+	运行时间为16:07，也就是当前时间【16:36:33】减去启动时间【16:20:25】，多了1秒是因为执行date有个延迟时间。
+@endverbatim
+*/
+ps查看进程;
+
+/**
+@verbatim
+1、pstree查看进程树，如下：
+	[root@localhost ~]# pstree
+	init─┬─atd
+		├─auditd───{auditd}
+		├─crond
+		├─dbus-daemon
+		├─ibpctrl───hau_main───5*[{hau_main}]
+		├─ibpctrl───dmu_main───27*[{dmu_main}]
+		├─ibpctrl───vtdu_main───19*[{vtdu_main}]
+		├─ibpctrl───vru_main───24*[{vru_main}]
+		├─ibpctrl───uas_main───14*[{uas_main}]
+		├─ibpctrl───lku_main───7*[{lku_main}]
+		├─ibpctrl───cmu_main───5*[{cmu_main}]
+		├─ibpctrl───uac_main───26*[{uac_main}]
+		├─ibplogbk.sh───sleep
+		├─java───93*[{java}]
+		├─login───bash
+		├─5*[mingetty]
+		├─mysqld_safe───mysqld───13*[{mysqld}]
+		├─rsyslogd───3*[{rsyslogd}]
+		├─sshd─┬─5*[sshd───bash]
+		│      ├─sshd───bash───7*[tcpdump]
+		│      └─sshd───bash───pstree
+		├─udevd───2*[udevd]
+		└─watch_dog
+2、查看进程已经子进程，如下：
+	[root@localhost init.d]# pstree -p 3677
+	sshd(3677)───sshd(10819)─┬─bash(9700)───ping(11719)
+							├─bash(10822)
+							└─bash(13914)───pstree(11834)
+	注意：p后面必须有一个空格
+@endverbatim
+*/
+pstree查看进程树;
+
+
+/**
+@verbatim
+1、测试代码如下：
+	#include <stdio.h>
+	#include <pthread.h>
+	#include <unistd.h>
+	#include <stdlib.h>
+	
+	pthread_mutex_t mutexA;
+	pthread_mutex_t mutexB;
+	
+	void* thread_func1(void*)
+	{
+			pthread_mutex_lock(&mutexA);
+			printf("thread1 lock A\n");
+			sleep(5);
+	
+			{
+					pthread_mutex_lock(&mutexB);
+					printf("thread1 lock B\n");
+					sleep(5);
+					pthread_mutex_unlock(&mutexB);
+			}
+	
+			pthread_mutex_unlock(&mutexA);
+	}
+	void* thread_func2(void*)
+	{
+			pthread_mutex_lock(&mutexB);
+			printf("thread2 lock B\n");
+			sleep(5);
+	
+			{
+					pthread_mutex_lock(&mutexA);
+					printf("thread2 lock A\n");
+					sleep(5);
+					pthread_mutex_unlock(&mutexA);
+			}
+	
+			pthread_mutex_unlock(&mutexB);
+	}
+	
+	int main()
+	{
+			pthread_t thread1;
+			pthread_t thread2;
+			pthread_mutex_init(&mutexA,NULL);
+			pthread_mutex_init(&mutexB,NULL);
+	
+	
+			if(pthread_create(&thread1,NULL,thread_func1,NULL) == -1)
+			{
+					printf("create thread1 error !\n");
+					exit(1);
+			}
+	
+			if(pthread_create(&thread2,NULL,thread_func2,NULL) == -1)
+			{
+					printf("create thread2 error!\n");
+					exit(1);
+			}
+	
+			pthread_join(thread1,NULL);
+			pthread_join(thread2,NULL);
+	
+			pthread_mutex_destroy(&mutexA);
+			pthread_mutex_destroy(&mutexB);
+	
+			return 0;
+	}
+2、编译
+	g++ -o main main.cpp -lpthread
+3、运行，使用pstack查看，每个线程的调用堆栈。
+	[root@localhost ~]# pstack 26438
+	Thread 3 (Thread 0xb7f4db90 (LWP 26439)):
+	#0  0x00f53402 in __kernel_vsyscall ()
+	#1  0x0084c6e9 in __lll_lock_wait () from /lib/libpthread.so.0
+	#2  0x00847d9f in _L_lock_885 () from /lib/libpthread.so.0
+	#3  0x00847c66 in pthread_mutex_lock () from /lib/libpthread.so.0
+	#4  0x08048822 in thread_func1(void*) ()
+	#5  0x00845832 in start_thread () from /lib/libpthread.so.0
+	#6  0x0079ae0e in clone () from /lib/libc.so.6
+	Thread 2 (Thread 0xb754cb90 (LWP 26440)):
+	#0  0x00f53402 in __kernel_vsyscall ()
+	#1  0x0084c6e9 in __lll_lock_wait () from /lib/libpthread.so.0
+	#2  0x00847d9f in _L_lock_885 () from /lib/libpthread.so.0
+	#3  0x00847c66 in pthread_mutex_lock () from /lib/libpthread.so.0
+	#4  0x080487ba in thread_func2(void*) ()
+	#5  0x00845832 in start_thread () from /lib/libpthread.so.0
+	#6  0x0079ae0e in clone () from /lib/libc.so.6
+	Thread 1 (Thread 0xb7f4e6d0 (LWP 26438)):
+	#0  0x00f53402 in __kernel_vsyscall ()
+	#1  0x00846a77 in pthread_join () from /lib/libpthread.so.0
+	#2  0x0804874a in main ()
+4、一共3个线程，每个线程从下到上，显示调用堆栈，可以看到Thread 2 和 Thread 3都死锁在 __lll_lock_wait ()
+@endverbatim
+*/
+pstack查看线程死锁;
+
+
+/**
+@verbatim
+1、linux程序崩溃，发生segmentation fault段错误，会把程序运行时的内存，堆栈指针，寄存器状态，
+	函数调用堆栈等信息保存为一个coredump文件，通过gdb可以查看这些信息，方便我们定位问题。
+2、首先一点，要生成coredump文件，必须设置 ulimit -c unlimited。
+	ulimit -c unlimited 表示生成coredump文件，不限制生成的coredump文件大小。
+	否则会因为要生成的coredump文件过大，导致系统不生成。
+3、生成的coredump文件，生成的位置在执行文件的当前目录，如果要修改生成的目录怎么办？
+	程序可能会多次崩溃，如果每次生成的文件名相同，会导致这一次崩溃生成的coredump文件覆盖掉上一次的coredump文件。怎么办？
+4、这就需要设置生成的coredump文件目录和文件名，通过/proc/sys/kernel目录下面的文件core_pattern来设置。如下：
+	echo "./core.%p.%e" > /proc/sys/kernel/core_pattern 覆盖文件core_pattern的内容	
+	选项表示的意义如下：
+	%% 单个%字符
+	%p 所dump进程的进程ID
+	%u 所dump进程的实际用户ID
+	%g 所dump进程的实际组ID
+	%s 导致本次core dump的信号
+	%t core dump的时间 (由1970年1月1日计起的秒数)
+	%h 主机名
+	%e 程序文件名
+	
+	一个启动脚本如下：
+	ulimit -c unlimited
+	ulimit -n 65535
+	PROXY_HOME=`dirname $0`
+	cd ${PROXY_HOME}
+	if [ -d "/mnt/data_bank" ]
+	then
+		echo "/mnt/data_bank/core.%p.%e" > /proc/sys/kernel/core_pattern
+	else
+		echo "./core.%p.%e" >  /proc/sys/kernel/core_pattern
+	fi
+	export LD_LIBRARY_PATH=./:$LD_LIBRARY_PATH
+	./vmu_main -f vmu_linux.xml
+5、注意：在/proc/sys/kernel目录，除了文件core_pattern，还有两个文件core_pipe_limit和core_uses_pid
+	[root@localhost kernel]# pwd
+	/proc/sys/kernel
+	[root@localhost kernel]# ll |grep core
+	-rw-r--r-- 1 root root 0 2015-10-21 15:18 core_pattern
+	-rw-r--r-- 1 root root 0 2015-10-21 15:13 core_pipe_limit
+	-rw-r--r-- 1 root root 0 2015-10-21 15:13 core_uses_pid
+	[root@localhost kernel]# more core_pattern 
+	./core.%p.%e
+	[root@localhost kernel]# more core_pipe_limit 
+	0
+	[root@localhost kernel]# more core_uses_pid 
+	1
+6、对于文件core_uses_pid，如果这个文件的内容被配置成1，那么即使core_pattern中没有设置%p，
+	最后生成的coredump文件名仍会加上进程ID。
+7、core_pipe_limit和core_pattern结合使用，当core_pattern以”|“ 开头，也就是管道模式，才起作用。
+	这种情况，coredump不是生成文件，而是作为一个程序的标准输入，这个程序充当了coredump的处理程序。
+	
+	当配置成管道core文件模式时，内核通过管道搜集core信息，偶尔部分有用的数据信息要从崩溃程序的/proc/pid目录中活动。
+	为了能够安全的获得数据，不能过早的清除崩溃程序的/proc/pid目录，而必须等待搜集数据信息完毕。
+	反过来，如果用户空间的一个行为不正确的数据搜集程序从/proc/pid目录中获得数据，
+	就可能一直阻止内核对/proc/pid的崩溃进程进行回收。
+	
+	core_pipe_limit这个文件定义了，coredump处理程序可以并发处理多少个崩溃的程序。
+	也就是有多少个并发的崩溃程序可以通过管道模式传递给指定的coredump处理程序。
+	如果超过了指定数，则后续的程序将不会处理，只在内核日志中做记录。
+	0是个特殊的值，当设置为0时，不限制并行捕捉崩溃的进程，但不会等待用户程序搜集完毕方才回收/proc/pid目录
+	（就是说，崩溃程序的相关信息可能随时被回收，搜集的信息可能不全）。发布时，默认值为0
+@endverbatim
+*/
+Linux生成core文件;
+
+
+/**
+@verbatim
+Linux 技巧：让进程在后台可靠运行的几种方法
+1、考虑下面的需求，通过ssh连接10.65.40.186，然后ping 10.65.200.168
+	Ctrl+c 结束ping程序。
+2、Ctrl+c 会终止ping程序，现在不想终止ping程序，怎么办？
+	使用 ping 10.65.200.168 & 在后台运行。
+3、ping 10.65.200.168 & 在后台运行，但是结果还是打印在标准输出，影响在ssh的输入，怎么办？
+	把程序的输出，重定向到设备黑洞，如下：
+	ping 10.65.200.168 >/dev/null &
+	注意：设备黑洞是/dev/null，而不是nul，通过 ll |grep null 查看，这个文件大小不会变化 
+4、上面的方式存在一个问题：通过ssh连接，然后执行 ping 10.65.200.168 >/dev/null &
+	也就是说，ping程序是ssh连接的子进程，因为ping是通过ssh连接来执行的。
+	当ssh连接断开，ping程序也会自动终止。
+5、具体如下：
+	建立一个ssh连接A，执行ping，如下：
+	[root@localhost ~]# ping 10.65.200.168 >/dev/null &
+	[1] 10995
+	再建立一个ssh连接B，查看进程关系，10977是ssh连接A，10995是ping程序，如下：
+	[root@localhost dev]# ps -ef|grep ping
+	root     10995 10977  0 17:11 pts/0    00:00:00 ping 10.65.200.168
+	root     12035  4157  0 17:15 pts/2    00:00:00 grep ping
+
+	[root@localhost dev]# pstree -p
+	init(1)─┬─atd(1040)
+			├─auditd(956)───{auditd}(957)
+			├─crond(1029)
+			├─dbus-daemon(989)
+			├─login(1071)───bash(1083)─┬─tailf(2299)
+			│                          └─tailf(3032)
+			├─mingetty(1073)
+			├─rsyslogd(972)─┬─{rsyslogd}(973)
+			│               ├─{rsyslogd}(974)
+			│               └─{rsyslogd}(975)
+			├─sshd(1021)─┬─sshd(4155)─┬─bash(4157)───pstree(12993)
+			│            │            └─bash(10977)───ping(10995)
+			│            ├─sshd(7687)───bash(7691)
+			│            ├─sshd(10495)───bash(10501)─┬─ibpctrl(15286)───tail(15407)
+			│            │                           ├─tailf(29764)
+			│            │                           └─tailf(30139)
+			│            └─sshd(11553)───sftp-server(11559)
+			├─udevd(143)─┬─udevd(741)
+			│            └─udevd(1075)
+			└─watch_dog(1057)
+	进程关系如下：init(1)─sshd(1021)─sshd(4155)─bash(10977)───ping(10995)
+	特别注意：sshd下面是bash，然后才是ping
+6、也就是说，关闭10977，10995也会终止。怎么办？
+7、使用小括号，让ping程序成为init的子进程，而不是当前终端的子进程。如下：
+	(ping 10.65.200.168 >/dev/null &)
+	查看进程的关系，如下：
+	[root@localhost dev]# ps -ef|grep ping
+	root     15484     1  0 17:26 pts/0    00:00:00 ping 10.65.200.168
+	root     15508  4157  0 17:26 pts/2    00:00:00 grep ping
+	通过pstree，也可以看到15484直接挂在init下面
+	通过这种方式，关闭终端连接A，也不会影响到ping程序。
+8、上面情况的原理是：当用户注销或者网络断开，终端收到HUP（hangup）信号，从而关闭所有子进程。
+	使用小括号，相当于让ping程序不是终端的子进程，而是init的子进程，从而不受终端的影响。
+	有没有其他的办法呢？
+9、使用nohup，让提交的ping命令忽略 hangup 信号，如下：
+	在终端A，如下：
+	[root@localhost ~]# nohup ping 10.65.200.168 >/dev/null &
+	[1] 18524
+	[root@localhost ~]# ps -ef |grep ping
+	root     18524 18506  0 17:36 pts/0    00:00:00 ping 10.65.200.168
+	root     18543 18506  0 17:36 pts/0    00:00:00 grep ping
+	
+	在终端B，如下：
+	[root@localhost dev]# ps -ef|grep ping
+	root     18524 18506  0 17:36 pts/0    00:00:00 ping 10.65.200.168
+	root     19013  4157  0 17:37 pts/2    00:00:00 grep ping
+	关闭终端A，如下：
+	[root@localhost dev]# ps -ef|grep ping
+	root     18524     1  0 17:36 ?        00:00:00 ping 10.65.200.168
+	root     19018  4157  0 17:37 pts/2    00:00:00 grep ping
+10、使用nohup，特别注意：
+	a、关闭终端A，ping的父进程变为init，也就是说，init会收留没有父进程的孤儿。
+	b、如果不输出到设备黑洞，nohup ping 10.65.200.168 & 会输出到当前目录的nohup.out文件（没有的话会新建）
+11、nohup是忽略hangup信号的影响，另一种思路，让ping程序不要成为终端的子进程，这和括号的本质一样。
+	使用setsid，如下：
+	setsid ping 10.65.200.168 >/dev/null &
+@endverbatim
+*/
+进程在后台运行;
+
+/**
+@verbatim
+1、进程间的通信方法有：管道、消息队列、共享内存、信号、信号量、套接口。
+2、管道
+	管道是进程间通信中最古老的方式，它包括无名管道和有名管道两种。
+	前者用于父进程和子进程间的通信，后者用于运行于同一台机器上的任意两个进程间的通信。 
+3、消息队列
+	消息队列用于运行于同一台机器上的进程间通信，它和管道很相似。
+	是一个在系统内核中用来保存消息的队列，它在系统内核中是以消息链表的形式出现，消息链表中节点的结构用msg声明。
+	事实上，它是一种正逐渐被淘汰的通信方式，我们可以用流管道或者套接口的方式来取代它。
+4、共享内存 
+	共享内存是运行在同一台机器上的进程间通信最快的方式，因为数据不需要在不同的进程间复制。
+	通常由一个进程创建一块共享内存区，其余进程对这块内存区进行读写。得到共享内存有两种方式：映射/dev/mem设备和内存映像文件。
+	前一种方式不给系统带来额外的开销，但在现实中并不常用，因为它控制存取的将是实际的物理内存。
+	在Linux系统下，这只有通过限制Linux系统存取的内存才可以做到，这当然不太实际。
+	常用的方式是通过shmXXX函数族来实现利用共享内存进行存储的。 
+5、信号
+	发送信号给某个进程，这个进程接收到信号后，进行相应的处理。
+6、信号量
+	通过PV操作来协调不同进程间的数据对象的，而最主要的应用是共享内存方式的进程间通信。
+	本质上，信号量是一个计数器，它用来记录对某个资源（如共享内存）的存取状况。
+7、套接字
+	套接字（socket）是进程间通信的主要方式，分为网络套接字（TCP/IP套接字）和UNIX域套接字。
+	UNIX域套接字解决什么样的问题？
+	对于CS架构，一般情况下客户端和服务端在不同的机器上，因此，二者需要TCP/IP网络连接来交互，也就是网络套接字。
+	但是有些情况下，客户端和服务端在同一台机器上，二者没有必要再经过网络来交互，这就是UNIX域套接字要解决的问题。
+	UNIX域套接字比网络套接字的效率更高，UNIX域数据报服务是可靠的，不会丢失消息，也不会传递出错。
+	实际上，UNIX域套接字是套接字和管道之间的混合物，同时与网络套接字保持了一致的接口。
+@endverbatim
+*/
+Linux下进程间通信;
+
+/**
+@verbatim
+1、进程A启动进程B，进程A就是进程B的父进程。
+2、使用ps -ef|grep dmu列出父子进程之间的关系，就可以找到一个进程是由谁启动的。
+@endverbatim
+*/
+如何判断一个进程是谁启动的;
+
+
+/**
+@verbatim
+1、在终端（包括仿真终端）上启动进程，当用户退出或者关闭终端，这个终端上启动的进程都会收到SIGHUP信号。
+	而对于这个信号，默认的处理方式是进程退出。表现为终端上的进程都被关闭。
+2、如何解决这个问题？
+	使用nohup命令启动进程，让这个进程忽略SIGHUP信号，从而不被关闭。
+@endverbatim
+*/
+理解nohup;
+
+
+
+
+/** @} */
+
+/** @} */

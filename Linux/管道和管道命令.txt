@@ -1,0 +1,82 @@
+/**
+* @defgroup Linux
+* @{
+*/
+
+/**
+* @defgroup 管道和管道命令
+* @{
+*/
+
+
+/**
+@verbatim
+1、考虑下面的需求，获取当前时间的小时取值，如下
+	[root@localhost Pacific]# date '+%Y-%m-%d %H:%M:%S'
+	2016-01-19 18:17:56
+	[root@localhost Pacific]# date '+%Y-%m-%d %H:%M:%S'|cut -c 12-13
+	18
+2、获取时间，如下：
+	[root@localhost Pacific]# date '+%Y-%m-%d %H:%M:%S'
+	2016-01-19 18:18:35
+	[root@localhost Pacific]# date '+%Y-%m-%d %H:%M:%S'|cut -c 12-19
+	18:18:44
+	[root@localhost Pacific]# date '+%Y-%m-%d %H:%M:%S'|cut -c 12-
+	18:18:49
+3、上面都是使用-c取出字符的范围，数据是的格式是确定的，也就是占用的宽度是确定的。如果不确定，怎么办？
+	考虑export，取出所有的取值，如下：
+	[root@localhost Pacific]# export |head -n 5
+	declare -x CVS_RSH="ssh"
+	declare -x G_BROKEN_FILENAMES="1"
+	declare -x HISTSIZE="1000"
+	declare -x HOME="/root"
+	declare -x HOSTNAME="localhost.localdomain"
+	取出"ssh"，"1" 等，怎么办？
+4、使用-d分割，然后-f取出第几段，如下：
+	[root@localhost Pacific]# export |head -n 5|cut -d'=' -f2
+	"ssh"
+	"1"
+	"1000"
+	"/root"
+	"localhost.localdomain"
+@endverbatim
+*/
+cut;
+
+
+/**
+@verbatim
+1、xargs的作用是把前一个命令的输出，作为后一个命令的输入，这不是和管道一样吗？
+2、举例来说，如下：
+	[root@localhost tmp]# ll
+	total 4
+	-rw-r--r-- 1 root root 17 2015-10-28 17:13 aaa
+	[root@localhost tmp]# ll|grep -v total|cut -d ' ' -f 8|cat
+	aaa
+	[root@localhost tmp]# ll|grep -v total|cut -d ' ' -f 8|xargs cat
+	This is file aaa
+3、如上所示，
+	只使用管道，cat把前面的输出，只是作为字符串，输出aaa，这个是文件名的字符串。
+	使用xargs，cat把前面的输出，作为一个文件，输出文件的内容。
+	这里就看出使用xargs的区别了。
+	也就是说：
+	管道是把前面的标准输出作为后面的标准输入。
+	而xargs是把前面的标准输出作为后一个命令的参数。
+4、这样就能解释，rm一部分文件，必须使用xargs，如下：
+	[root@localhost tmp]# ll
+	total 0
+	-rw-r--r-- 1 root root 0 2015-10-28 17:37 aaa
+	[root@localhost tmp]# ll|grep -v total|cut -d ' ' -f 8|rm
+	rm: missing operand
+	Try `rm --help' for more information.
+	[root@localhost tmp]# ll|grep -v total|cut -d ' ' -f 8|xargs rm
+	之所以ll|grep -v total|cut -d ' ' -f 8|rm失败，是因为只使用通道，rm把前面的输出作为字符串，而不是文件。
+5、注意：在windows下面的cmd，也有xargs命令。
+@endverbatim
+*/
+xargs;
+
+
+/** @} */
+
+/** @} */

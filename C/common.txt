@@ -1,0 +1,417 @@
+/**
+* @defgroup C
+* @{
+*/
+
+
+/**
+@verbatim
+1、函数原型 size_t fread ( void *buffer, size_t size, size_t count, FILE *stream) ;
+	参 数
+	buffer
+	用于接收数据的内存地址
+	size
+	要读的每个数据项的字节数，单位是字节
+	count
+	要读count个数据项，每个数据项size个字节.
+	stream
+	输入流
+2、特别注意：size和count，不是表示每次读取多少和读取多少次。
+	而是只读取一次，但是指定读取每个数据项的大小，以及读取多少个数据项。
+	因为只读取一次，fread(buf,1,1024,pFile)和fread(buf,1024,1,pFile)没有性能上的区别，效率是一样的。
+3、另外一点特别注意：int readed = fread(buf,size,count,pFile); 返回值readed是实际上读取了多少个数据项。
+	必定满足条件 readed<=count，因此readed不能表示实际读取了多少个字节。
+4、考虑下面的测试用例
+	#include <stdio.h>
+	#include <string.h>
+	#include <time.h>	
+	
+	int main(int argc,char* argv)
+	{
+		int	bufSize = 64; 
+		char* buf = new char[bufSize];
+		memset(buf,0,bufSize);
+	
+		FILE* pFile = fopen("aaa.txt","r");
+	
+		printf("[%d] Start Read\n",(int)time(NULL));
+		while(feof(pFile) == false)
+		{
+			int readed = fread(buf,1,5,pFile);
+			printf("readed[%d]\n",readed);
+		}
+		printf("[%d] Stop  Read\n",(int)time(NULL));
+	
+		fclose(pFile);
+		getchar();
+	
+		return 0;
+	}
+	假定内容是8个字节，int readed = fread(buf,1,5,pFile); 打印结果是
+	[1479693243] Start Read
+	readed[5]
+	readed[3]
+	[1479693243] Stop  Read
+	最后一次只能读取3个数据项
+	
+	int readed = fread(buf,5,1,pFile); 打印结果是
+	[1479693338] Start Read
+	readed[1]
+	readed[0]
+	[1479693338] Stop  Read
+	最后一次只能读取0个数据项，因为一个数据项是5个字节，3个字节不够一个数据项
+	
+	int readed = fread(buf,3,3,pFile); 打印结果是
+	[1479693519] Start Read
+	readed[2]
+	[1479693519] Stop  Read
+	只够读取一次，去读3个数据项，不够3个，因此实际上只读取了2个数据项。
+5、因此，int readed = fread(buf,size,count,pFile); readed不能表示实际上读取了多少个字节。
+	但是，当数据项大小为1的时候，比如fread(buf,1,1024,pFile)，readed就可以表示实际上读取了多少个字节
+	因为，fread(buf,1,1024,pFile)和fread(buf,1024,1,pFile)没有性能上的区别，强烈建议：
+	使用int readed = fread(buf,1,1024,pFile)，用readed表示实际读取了多少个字节。
+6、对于fwrite，道理和fread类似。
+@endverbatim
+*/
+fread的注意事项;
+
+
+/**
+@verbatim
+1、例子如下：
+	#define PRINT_STR(s) printf("%s",s.c_str())
+	string str = "abcd";
+	PRINT_STR(str);
+	结果如下：abcd
+2、现在我期望打印出，str=abcd, 容易想到的解决办法是：
+	#define PRINT_STR(s) printf("s" "=" "%s",s.c_str())
+	打印出来的结果是 s=abcd，不是我们所期望的，想一下，为什么？
+	在这里，编译器不认为"s"中s就是前面的s，不进行替换。如果进行替换，那么"%s" 也就换成了"%str"，这显然错误。
+3、怎么解决上面的问题？使用另一种方式，也就是#（字符串替换，前后加上双引号），如下：
+	#define PRINT_STR(s) printf(#s "=" "%s",s.c_str())
+	可以认为，对于#s，编译器对s进行替换，并且在s前后加上双引号
+
+4、考虑下面的情况，
+	int token8 = 102;
+	PRINT_TOKEN(8);  
+	期望打印出 token8，容易想到的解决办法是：
+	#define PRINT_TOKEN(d) printf("%d",tokend)
+	这样是明显错误的，编译器认为tokend是一个整体，不可能只去替换d，怎么解决？
+5、怎么解决这个问题？要进行替换，必须把d隔离出来，而一旦隔离出来，替换是可以了，但是不能与token合在一起构成一个变量了。
+	这就要使用##（宏连接符），可以认为## 进行分割，分割后替换，替换之后，再把##去除，如下：
+	#define PRINT_TOKEN(d) printf("%d",token##d)
+6、一个# 字符串替换，两个# 宏连接符
+@endverbatim
+*/
+宏;
+
+
+/**
+@verbatim
+#include <sys/stat.h>
+#include <io.h>
+#include <fcntl.h>
+int  GetFieSize(const string& filePath)
+{
+	// linux下的fpos_t是个结构体，不兼容
+	FILE* pFile1 = fopen(filePath.c_str(), "r"); 
+	fseek(pFile1, 0, SEEK_END);
+	fpos_t fPos = 0;
+	fgetpos(pFile1, &fPos);
+	fclose(pFile1);
+	printf("Method1[%d]",
+		fPos);
+
+	FILE* pFile2 = fopen(filePath.c_str(), "r"); 
+	fseek(pFile2, 0, SEEK_END);
+	int size = ftell(pFile2);
+	printf("Method2[%d]",
+		size);
+
+	int pFile3 = open(filePath.c_str(),O_RDONLY); 
+	int length = filelength(pFile3);
+	printf("Method3[%d]",
+		length);
+
+	struct stat fileInfo;
+	stat(filePath.c_str(),&fileInfo);
+	printf("Method4[%d]",
+		fileInfo.st_size);
+	return fileInfo.st_size;
+}
+@endverbatim
+*/
+获取文件大小的方法;
+
+/**
+@verbatim
+1、打印格式如下：
+	字符		对应数据类型		含义
+	d/i			int					接受整数值并将它表示为有符号的十进制整数，i是老式写法
+	o			unsigned int		无符号8进制整数(不输出前缀0）
+	u			unsigned int		无符号10进制整数
+	x/X			unsigned int		无符号16进制整数，x对应的是abcdef，X对应的是ABCDEF（不输出前缀0x)
+	f(lf)		float(double)		单精度浮点数用f,双精度浮点数用lf(尤其scanf不能混用)
+	e/E			double				科学计数法表示的数，此处"e"的大小写代表在输出时用的“e”的大小写
+	g/G			double				有效位数，如：%8g表示单精度浮点数保留8位有效数字。双精度用lg
+	c			char				字符型。可以把输入的数字按照ASCII码相应转换为对应的字符
+	s/S			char*/wchar_t*		字符串。输出字符串中的字符直至字符串中的空字符（字符串以'\0‘结尾，这个'\0'即空字符）
+	p			void *				以16进制形式输出指针
+	n			int *				到此字符之前为止，一共输出的字符个数，不输出文本
+	%			无输入				不进行转换，输出字符‘%’（百分号）本身
+	m			无					打印errno值对应的出错内容,(例: printf("%m\n"); )
+2、int和小于int的整数都使用%d
+3、%c和%d的区别是：对于整数65，%c打印出来【A】，%d打印出来【65】
+4、%ld是指4个字节整数，%lld是指8个字节整数
+5、怎么理解printf的打印格式？
+	打印格式其实就是，告诉计算器把后面的参数当成什么类型来解释。
+6、因此这会存在不匹配的问题，比如参数a的真实类型是int，前面使用%lf，也就是当成float来解释。
+	这会存在严重的问题，首先a打印出来不正确，其次，lf是8个字节，读取8个字节来解释，会踩到其他的内存。
+7、整数不能当成浮点数解释，一方面是它们的表示方式不同，另一方面是占用的字节不一样，double是8个字节。
+8、对于整数，int也不能使用%lld，因为字节个数不同。
+	但是有一个特殊，int以及比int小的整数（char、short）都可以使用%d
+	可以认为，中间过渡了一下，有个临时变量，强转为int，来解释。
+9、注意%d和%u的区别，对于最大的int值 0xffffffff
+	当成%d打印是 -1，当成%u打印是4294967295（42亿）
+10、关于%f和%lf的问题
+	C++是非常微妙的语言，%f和%lf对于printf()和scanf()的效果是不同的。
+	事实上，对于printf()，无论是%f还是%lf，效果都是一样的。
+	因为遇到float，printf()会将float类型自动提升到double，所以不会有什么问题。
+	实际上，对于printf()的%lf，虽然很多编译器接受，但严格地讲，printf()并没有对于%lf的定义，所以最好使用%f。
+	而对于scanf()，由于接受的是指针，并没有类型提升的说法，所以对于float就应该用%f，double就是%f。
+@endverbatim
+*/
+printf打印格式;
+
+/**
+@verbatim
+1、测试代码，如下：
+	#include <stdio.h>
+	
+	int main()
+	{
+			char tmp[6]={0};
+			sprintf(tmp,"%s","abcde");
+			sprintf(tmp,"%s","123");
+			return 0;
+	}
+2、测试
+	[root@localhost niu5]# g++ -g -o main main.cpp
+	[root@localhost niu5]# gdb main
+	GNU gdb (GDB) Red Hat Enterprise Linux (7.0.1-23.el5)
+	Copyright (C) 2009 Free Software Foundation, Inc.
+	License GPLv3+: GNU GPL version 3 or later <http://gnu.org/licenses/gpl.html>
+	This is free software: you are free to change and redistribute it.
+	There is NO WARRANTY, to the extent permitted by law.  Type "show copying"
+	and "show warranty" for details.
+	This GDB was configured as "i386-redhat-linux-gnu".
+	For bug reporting instructions, please see:
+	<http://www.gnu.org/software/gdb/bugs/>...
+	Reading symbols from /home/niu5/main...done.
+	(gdb) b 5
+	Breakpoint 1 at 0x8048405: file main.cpp, line 5.
+	(gdb) info b
+	Num     Type           Disp Enb Address    What
+	1       breakpoint     keep y   0x08048405 in main() at main.cpp:5
+	(gdb) r
+	Starting program: /home/niu5/main 
+	
+	Breakpoint 1, main () at main.cpp:5
+	5               char tmp[6]={0};
+	(gdb) n
+	6               sprintf(tmp,"%s","abcde");
+	(gdb) p tmp
+	$1 = "\000\000\000\000\000"
+	(gdb) n
+	7               sprintf(tmp,"%s","123");
+	(gdb) p tmp
+	$2 = "abcde"
+	(gdb) p &tmp
+	$3 = (char (*)[6]) 0xbfffea2e
+	(gdb) p *(char*)0xbfffea2e
+	$4 = 97 'a'
+	(gdb) p *(char*)0xbfffea2f
+	$5 = 98 'b'
+	(gdb) p *(char*)0xbfffea30
+	$6 = 99 'c'
+	(gdb) p *(char*)0xbfffea31
+	$7 = 100 'd'
+	(gdb) p *(char*)0xbfffea32
+	$8 = 101 'e'
+	(gdb) p *(char*)0xbfffea33
+	$9 = 0 '\000'
+	(gdb) n
+	8               return 0;
+	(gdb) p tmp
+	$10 = "123\000e"
+	(gdb) p *(char*)0xbfffea2e
+	$11 = 49 '1'
+	(gdb) p *(char*)0xbfffea2f
+	$12 = 50 '2'
+	(gdb) p *(char*)0xbfffea30
+	$13 = 51 '3'
+	(gdb) p *(char*)0xbfffea31
+	$14 = 0 '\000'
+	(gdb) p *(char*)0xbfffea32
+	$15 = 101 'e'
+	(gdb) p *(char*)0xbfffea33
+	$16 = 0 '\000'
+	(gdb) 
+3、需要说明的是：
+	a、加上-g才能使用gdb调试
+	b、p *(char*)0xbfffea2e 表示把地址0xbfffea2e强转为char*，然后再去解引用，打印出char的取值
+4、可以看到，sprintf并没有清空之前的内容。
+	这里没有问题，是因为对于文本字符串("abcde"或者"123") 末尾有一个字节\0，执行sprintf之后，
+	当成字符串来处理，后面的e看不到了。
+5、在windows下测试，使用内存查看，也是同样的结果。
+@endverbatim
+*/
+sprintf不会清空之前的数据;
+
+
+
+/**
+@verbatim
+1、<stdio.h>   标准输入输出库
+2、<stdlib.h>  标准工具库 
+@endverbatim
+*/
+c语言常用的头文件;
+
+
+/**
+@verbatim
+1、下面的这些函数，不是标准的C库函数，在windows下VC有实现，linux没有实现，需要自己实现。
+	// WINDOWS中有，LINUX中没有的库函数
+	#ifndef WIN32
+	char*	strupr(char *string);
+	char*	strlwr(char *string);
+	int		stricmp(const char *string1, const char *string2);
+	char*	strrev(char *string);
+	char*	itoa(int value, char *string, int radix);
+	#endif
+2、实现如下：
+	#ifndef WIN32
+	
+	char*	strupr(char *string)
+	{
+		for (char *p = string; p < string + strlen(string); p++)
+		{
+			if (islower(*p))
+			{
+				*p = toupper(*p);
+			}
+		}
+	
+		return string;
+	}
+	
+	char*	strlwr(char *string)
+	{
+		for (char *p = string; p < string + strlen(string); p++)
+		{
+			if (isupper(*p))
+			{
+				*p = tolower(*p);
+			}
+		}
+	
+		return string;
+	}
+	
+	int		stricmp(const char *string1, const char *string2)
+	{
+		int strLen1 = strlen(string1);
+		int strLen2 = strlen(string2);
+	
+		char *szString1 = new char[strLen1 + 1];
+		char *szString2 = new char[strLen2 + 1];
+	
+		strcpy(szString1, string1);
+		strcpy(szString2, string2);
+	
+		strupr(szString1);
+		strupr(szString2);
+	
+		int nRet = strcmp(szString1, szString2);
+	
+		delete[] szString1;
+		delete[] szString2;
+	
+		return nRet;
+	}
+	
+	char*	strrev(char *string)
+	{
+		if (!string)
+			return NULL;
+	
+		int i = strlen(string);
+		int t = !(i%2)? 1 : 0;
+		for(int j = i-1, k = 0; j > (i/2 - t); j--)
+		{
+			char ch = string[j];
+			string[j] = string[k];
+			string[k++] = ch;
+		}
+	
+		return string;
+	}
+	
+	char*	itoa(int value, char *string, int radix)
+	{
+		int  rem = 0;
+		int  pos = 0;
+		char ch  = '!';
+		do
+		{
+			rem    = value % radix;
+			value /= radix;
+			if (16 == radix)
+			{
+				if(rem >= 10 && rem <= 15)
+				{
+					switch(rem)
+					{
+					case 10:
+						ch = 'a';
+						break;
+					case 11:
+						ch ='b';
+						break;
+					case 12:
+						ch = 'c';
+						break;
+					case 13:
+						ch ='d';
+						break;
+					case 14:
+						ch = 'e';
+						break;
+					case 15:
+						ch ='f';
+						break;
+					}
+				}
+			}
+			if('!' == ch)
+			{
+				string[pos++] = (char)(rem + 0x30);
+			}
+			else
+			{
+				string[pos++] = ch;
+			}
+		}while(value != 0);
+		string[pos] = '\0';
+	
+		return strrev(string);
+	}
+	
+	#endif
+@endverbatim
+*/
+非标准C库函数的实现;
+
+
+/** @} */

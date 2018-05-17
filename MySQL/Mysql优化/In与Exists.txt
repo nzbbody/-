@@ -1,0 +1,168 @@
+/**
+* @defgroup MySQL
+* @{
+*/
+
+/**
+* @defgroup 优化
+* @{
+*/
+
+
+/**
+@verbatim
+1、使用5.6版本，准备表和存储过程
+	mysql> create table a(ID int,NAME varchar(64));
+	Query OK, 0 rows affected
+	
+	mysql> create table b(ID int,NAME varchar(64));
+	Query OK, 0 rows affected
+	
+	BEGIN
+	
+	declare vI int default 0;
+		
+	start transaction;
+	while(vI < 100000) do 
+		insert into a(id,name) values(vI,concat('Andy',vI));
+		set vI= vI+1;
+	end while;
+	commit;
+			
+	END
+2、添加10万条记录，下面两个查询是等价的，大概耗时不到0.1秒
+	select sql_no_cache * from a where name ='Andy100' or name ='Andy200';
+	select sql_no_cache * from a where name in ('Andy100','Andy200');
+3、对name加上索引，create index index_a_name on a(name); 上面的两个查询耗时不到0.01秒
+	查看执行计划，可以看到使用了a表上面的索引index_a_name，如下：
+	mysql> desc select sql_no_cache * from a where name in ('Andy100','Andy200');
+	+----+-------------+-------+-------+---------------+--------------+---------+------+------+-----------------------+
+	| id | select_type | table | type  | possible_keys | key          | key_len | ref  | rows | Extra                 |
+	+----+-------------+-------+-------+---------------+--------------+---------+------+------+-----------------------+
+	|  1 | SIMPLE      | a     | range | index_a_name  | index_a_name | 195     | NULL |    2 | Using index condition |
+	+----+-------------+-------+-------+---------------+--------------+---------+------+------+-----------------------+
+	1 row in set
+4、理解in的原理，in的执行流程如下：
+	对于in后面的集合，遍历，对于每一个元素，使用索引index_a_name 定位到记录，因此很快。
+5、但是特别注意的是：对于not in没有办法执行上面的流程，因为没有办法遍历in后面的集合
+	只能先遍历表a的记录，检查不在in的集合中，因此没有办法使用索引。
+	执行计划如下：
+	mysql> desc select sql_no_cache * from a where name not in ('Andy100','Andy200');
+	+----+-------------+-------+------+---------------+------+---------+------+-------+-------------+
+	| id | select_type | table | type | possible_keys | key  | key_len | ref  | rows  | Extra       |
+	+----+-------------+-------+------+---------------+------+---------+------+-------+-------------+
+	|  1 | SIMPLE      | a     | ALL  | index_a_name  | NULL | NULL    | NULL | 97617 | Using where |
+	+----+-------------+-------+------+---------------+------+---------+------+-------+-------------+
+	1 row in set
+	也就是说，对于in，使用表a的索引。
+6、现在考虑，a，b两个表都不使用索引，分别加上10万条记录，1千条记录，对于下面的操作：
+	select sql_no_cache * from a where a.name in (select b.name from b);      // 15秒
+	select sql_no_cache * from a where a.name not in (select b.name from b);  // 0.5秒
+	这是为什么？
+7、查看执行计划，使用desc extended + show warnings，如下：
+	mysql> desc extended select sql_no_cache * from a where name in (select name from b);
+	+----+--------------+-------------+------+---------------+------+---------+------+-------+----------+----------------------------------------------------+
+	| id | select_type  | table       | type | possible_keys | key  | key_len | ref  | rows  | filtered | Extra                                              |
+	+----+--------------+-------------+------+---------------+------+---------+------+-------+----------+----------------------------------------------------+
+	|  1 | SIMPLE       | <subquery2> | ALL  | NULL          | NULL | NULL    | NULL | NULL  |        0 | NULL                                               |
+	|  1 | SIMPLE       | a           | ALL  | NULL          | NULL | NULL    | NULL | 97617 |      100 | Using where; Using join buffer (Block Nested Loop) |
+	|  2 | MATERIALIZED | b           | ALL  | NULL          | NULL | NULL    | NULL |  1000 |      100 | NULL                                               |
+	+----+--------------+-------------+------+---------------+------+---------+------+-------+----------+----------------------------------------------------+
+	3 rows in set
+	
+	mysql> show warnings;
+	+-------+------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+	| Level | Code | Message                                                                                                                                                                        |
+	+-------+------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+	| Note  | 1003 | /* select#1 */ select sql_no_cache `niu1`.`a`.`ID` AS `ID`,`niu1`.`a`.`NAME` AS `NAME` from `niu1`.`a` semi join (`niu1`.`b`) where (`niu1`.`a`.`NAME` = `<subquery2>`.`name`) |
+	+-------+------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+	1 row in set
+	
+	mysql> desc extended select sql_no_cache * from a where name not in (select name from b);
+	+----+-------------+-------+------+---------------+------+---------+------+-------+----------+-------------+
+	| id | select_type | table | type | possible_keys | key  | key_len | ref  | rows  | filtered | Extra       |
+	+----+-------------+-------+------+---------------+------+---------+------+-------+----------+-------------+
+	|  1 | PRIMARY     | a     | ALL  | NULL          | NULL | NULL    | NULL | 97617 |      100 | Using where |
+	|  2 | SUBQUERY    | b     | ALL  | NULL          | NULL | NULL    | NULL |  1000 |      100 | NULL        |
+	+----+-------------+-------+------+---------------+------+---------+------+-------+----------+-------------+
+	2 rows in set
+	
+	mysql> show warnings;
+	+-------+------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+	| Level | Code | Message                                                                                                                                                                                                                                                                                                                                                                                                            |
+	+-------+------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+	| Note  | 1003 | /* select#1 */ select sql_no_cache `niu1`.`a`.`ID` AS `ID`,`niu1`.`a`.`NAME` AS `NAME` from `niu1`.`a` where (not(<in_optimizer>(`niu1`.`a`.`NAME`,`niu1`.`a`.`NAME` in ( <materialize> (/* select#2 */ select `niu1`.`b`.`NAME` from `niu1`.`b` where 1 having 1 ), <primary_index_lookup>(`niu1`.`a`.`NAME` in <temporary table> on <auto_key> where ((`niu1`.`a`.`NAME` = `materialized-subquery`.`name`))))))) |
+	+-------+------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+	1 row in set
+	原因找到了，也就是对于not in， mysql使用了<in_optimizer>优化
+8、对表a的name字段加上索引，查询时间如下：
+	select sql_no_cache * from a where a.name in (select b.name from b);      // 0.015秒
+	select sql_no_cache * from a where a.name not in (select b.name from b);  // 0.5秒
+	也就是说，对表a的name字段加上索引，大幅度提高效率，性能提高了1000倍。
+	查看执行计划，如下：
+	mysql> desc extended select sql_no_cache * from a where name in (select name from b);
+	+----+-------------+-------+------+---------------+--------------+---------+-------------+------+----------+------------------------------+
+	| id | select_type | table | type | possible_keys | key          | key_len | ref         | rows | filtered | Extra                        |
+	+----+-------------+-------+------+---------------+--------------+---------+-------------+------+----------+------------------------------+
+	|  1 | SIMPLE      | b     | ALL  | NULL          | NULL         | NULL    | NULL        | 1000 |      100 | Using where; Start temporary |
+	|  1 | SIMPLE      | a     | ref  | index_a_name  | index_a_name | 195     | niu1.b.NAME |    1 |      100 | End temporary                |
+	+----+-------------+-------+------+---------------+--------------+---------+-------------+------+----------+------------------------------+
+	2 rows in set
+	
+	mysql> show warnings;
+	+-------+------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+	| Level | Code | Message                                                                                                                                                                     |
+	+-------+------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+	| Note  | 1003 | /* select#1 */ select sql_no_cache `niu1`.`a`.`ID` AS `ID`,`niu1`.`a`.`NAME` AS `NAME` from `niu1`.`a` semi join (`niu1`.`b`) where (`niu1`.`a`.`NAME` = `niu1`.`b`.`NAME`) |
+	+-------+------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+	1 row in set
+9、现在考虑使用exists，如下：
+	select sql_no_cache * from a where exists (select 1 from b where b.name=a.name); // 60秒
+	执行计划，如下：
+	mysql> desc extended select sql_no_cache * from a where exists (select 1 from b where b.name=a.name);
+	+----+--------------------+-------+------+---------------+------+---------+------+-------+----------+-------------+
+	| id | select_type        | table | type | possible_keys | key  | key_len | ref  | rows  | filtered | Extra       |
+	+----+--------------------+-------+------+---------------+------+---------+------+-------+----------+-------------+
+	|  1 | PRIMARY            | a     | ALL  | NULL          | NULL | NULL    | NULL | 97617 |      100 | Using where |
+	|  2 | DEPENDENT SUBQUERY | b     | ALL  | NULL          | NULL | NULL    | NULL |  1000 |      100 | Using where |
+	+----+--------------------+-------+------+---------------+------+---------+------+-------+----------+-------------+
+	2 rows in set
+10、理解exists的原理，exists的执行流程如下：
+	遍历表a的记录，把字段name拿到exists后面的查询中，检查是否满足条件。
+	要解决问题，需要在表b上，建立索引。
+11、建立索引之后，查询耗时1秒，执行计划如下：
+	mysql> desc extended select sql_no_cache * from a where exists (select 1 from b where b.name=a.name);
+	+----+--------------------+-------+------+---------------+--------------+---------+-------------+-------+----------+-------------+
+	| id | select_type        | table | type | possible_keys | key          | key_len | ref         | rows  | filtered | Extra       |
+	+----+--------------------+-------+------+---------------+--------------+---------+-------------+-------+----------+-------------+
+	|  1 | PRIMARY            | a     | ALL  | NULL          | NULL         | NULL    | NULL        | 97617 |      100 | Using where |
+	|  2 | DEPENDENT SUBQUERY | b     | ref  | index_b_name  | index_b_name | 195     | niu1.a.NAME |     1 |      100 | Using index |
+	+----+--------------------+-------+------+---------------+--------------+---------+-------------+-------+----------+-------------+
+	2 rows in set
+12、总结in与exists，如下：
+	a、in的执行流程：对于in后面的集合，遍历每一个元素，去和前面表的字段比较，因此速度取决于前面表的字段是否有索引。
+	b、exists的执行流程：遍历前面表的记录，把字段拿到exists后面表的查询中，检查是否满足条件，因此速度取决于后面表的字段是否有索引。
+		既然是检查是否满足条件，不关心后面的select内容，可以直接是select 1
+	c、也就是说，in使用前面表的索引，exists使用后面表的索引。
+		not in不能使用前面表的索引，因为后面的集合是不确定的，相反只能先遍历前面表的记录
+		不同的是，not exists也可以使用后面的索引。
+	d、现在比较下面的两种查询方式：
+		select sql_no_cache * from a where name in (select name from b);
+		select sql_no_cache * from a where exists (select 1 from b where b.name=a.name);
+		表a的记录个数是10万，表b的记录个数是1千。
+		in相当于使用了1千次10万记录的索引
+		exists相当于使用了10万次1千记录的索引
+		我们知道，索引是使用B+tree（一种排序多叉树），1千记录的索引和10万记录的索引，单次查询的差别不是很大，
+		（可以想象二叉树是log2的关系，多叉树是是logn的关系），速度主要取决于查询索引的次数。
+		因此，肯定是exists的速度慢很多。
+	e、根据上面的推论，使用exists，反过来查询速度就很快，
+		select sql_no_cache * from b where exists (select 1 from a where a.name=b.name);
+		因为使用了1千次10万记录的索引
+@endverbatim
+*/
+in与exists的区别;
+
+
+/** @} */
+
+/** @} */

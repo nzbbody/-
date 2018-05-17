@@ -1,0 +1,94 @@
+﻿
+/**
+* @defgroup Mysql常见问题
+* @{
+*/
+
+/**
+@verbatim
+方法1：
+1、创建一个临时表，选取需要的数据。
+2、清空原表。
+3、临时表数据导入到原表。
+4、删除临时表。
+mysql> select * from student;
++----+------+
+| ID | NAME |
++----+------+
+| 11 | aa |
+| 12 | aa |
+| 13 | bb |
+| 14 | bb |
+| 15 | bb |
+| 16 | cc |
++----+------+
+6 rows in set
+
+mysql> create temporary table temp as select min(id),name from student group by name;
+Query OK, 3 rows affected
+Records: 3 Duplicates: 0 Warnings: 0
+
+mysql> truncate table student;
+Query OK, 0 rows affected
+
+mysql> insert into student select * from temp;
+Query OK, 3 rows affected
+Records: 3 Duplicates: 0 Warnings: 0
+
+mysql> select * from student;
++----+------+
+| ID | NAME |
++----+------+
+| 11 | aa |
+| 13 | bb |
+| 16 | cc |
++----+------+
+3 rows in set
+
+mysql> drop temporary table temp;
+Query OK, 0 rows affected
+这个方法，显然存在效率问题。
+
+方法2：按name分组，把最小的id保存到临时表，删除id不在最小id集合的记录，如下：
+mysql> create temporary table temp as select min(id) as MINID from student group by name;
+Query OK, 3 rows affected
+Records: 3 Duplicates: 0 Warnings: 0
+
+mysql> delete from student where id not in (select minid from temp);
+Query OK, 3 rows affected
+
+mysql> select * from student;
++----+------+
+| ID | NAME |
++----+------+
+| 11 | aa |
+| 13 | bb |
+| 16 | cc |
++----+------+
+3 rows in set 
+
+方法3：直接在原表上操作，容易想到的sql语句如下：
+
+mysql> delete from student where id not in (select min(id) from student group by name);
+执行报错：1093 - You can't specify target table 'student' for update in FROM clause
+原因是：更新数据时使用了查询，而查询的数据又做了更新的条件，mysql不支持这种方式。
+怎么规避这个问题？
+再加一层封装，如下：
+mysql> delete from student where id not in (select minid from (select min(id) as minid from student group by name) b);
+Query OK, 3 rows affected
+
+mysql> select * from student;
++----+------+
+| ID | NAME |
++----+------+
+| 11 | aa |
+| 13 | bb |
+| 16 | cc |
++----+------+
+3 rows in set
+@endverbatim
+*/
+删除重复记录_保存Id最小的一条;
+
+
+/** @} */

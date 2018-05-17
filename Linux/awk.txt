@@ -1,0 +1,51 @@
+﻿/**
+* @defgroup Linux
+* @{
+*/
+
+/**
+* @defgroup awk
+* @{
+*/
+
+/**
+@verbatim
+1、考虑下面的文件，login_record记录了系统的登录名，从哪里来的，登录时间，如下：
+	[root@2 tmp]# more login_record 
+	username        from            time
+	root            10.36.65.80     2015-11-21 09:41:25
+	andy            10.36.65.42     2015-11-20 15:16:31
+	bill            10.36.65.60     2015-10-13 10:36:02
+	caroline        10.36.65.91     2015-11-18 19:25:46
+2、获取所有的登录名，如下：
+	[root@2 tmp]# cat login_record | awk '{print $1}'
+	username
+	root
+	andy
+	bill
+	caroline
+	或者使用printf，如下：
+	[root@2 tmp]# cat login_record | awk '{printf ("%s\n",$1)}'
+	username
+	root
+	andy
+	bill
+	caroline
+3、获取所有的登录名，登录时间，具体到小时
+	[root@2 tmp]# cat login_record |grep -v user| awk -F "[\t]+|:" '{printf ("%s\t%s %d\n",$1,$2,$4)}'
+	root    10.36.65.80 41
+	andy    10.36.65.42 16
+	bill    10.36.65.60 36
+	carl    10.36.65.91 25
+	其中，-F "[\t]+|:" 指定分隔符，多个制表符或者冒号作为分隔符
+@endverbatim
+@see
+*/
+awk简单示例;
+
+
+
+
+/** @} */
+
+/** @} */

@@ -1,0 +1,167 @@
+/**
+* @defgroup MySQL
+* @{
+*/
+
+/**
+* @defgroup Mysql语法
+* @{
+*/
+
+
+/**
+@verbatim
+1、名称在前，类型在后
+2、中划线与下划线有时候是等价的
+3、value与values有时候是等价的
+@endverbatim
+*/
+Mysql语法注意事项;
+
+/**
+@verbatim
+DROP PROCEDURE IF EXISTS `exe_dynamic_sql`;
+DELIMITER ;;
+CREATE DEFINER=`root`@`%` PROCEDURE `exe_dynamic_sql`(iDynamicSql TEXT)
+BEGIN
+	set @exeSql = iDynamicSql;
+	prepare stmt from @exeSql;
+	execute stmt;
+	deallocate prepare stmt; -- 释放掉预处理段
+END
+;;
+DELIMITER ;
+@endverbatim
+*/
+Mysql执行动态sql语句;
+
+/**
+@verbatim
+BEGIN
+	declare vPartitionName varchar(32) default '';
+	declare vIsOver int default 0;
+	
+	declare vCursorPartitionName cursor for select partition_name from information_schema.partitions where table_name='alarmlog';
+	declare continue handler for sqlstate '02000' set vIsOver = 1;
+
+	open vCursorPartitionName;
+	fetch vCursorPartitionName into vPartitionName;
+
+	while(vIsOver = 0) do 
+		-- do sth
+		fetch vCursorPartitionName into vPartitionName;
+	end while;
+		
+	close vCursorPartitionName;
+END
+@endverbatim
+@see
+*/
+Mysql游标示例;
+
+
+/**
+@verbatim
+1、使用while
+	DROP PROCEDURE IF EXISTS `addstudent`;
+	DELIMITER ;;
+	CREATE PROCEDURE `addstudent`(iNum int)
+	BEGIN
+	declare vI int default 0;
+	
+	start transaction;
+	
+	while(vI < iNum) do 
+	insert into student(id,name) values(vI,concat('Andy',vI));
+	set vI = vI+1;
+	end while;
+	
+	commit;
+	END
+	;;
+	DELIMITER ;
+2、使用repeat
+	BEGIN
+	declare vI int default 0;
+	
+	start transaction;
+	
+	repeat 
+	insert into student(id,name) values(vI,concat('Andy',vI));
+	set vI = vI+1;
+	until vI >= iNum end repeat;
+	
+	commit;
+	END
+3、使用loop
+	BEGIN
+	declare vI int default 0;
+	
+	start transaction;
+	
+	label_insert: LOOP
+	
+	insert into student(id,name) values(vi,concat('Andy',vi));
+	set vI = vI+1;
+	if(vI >= iNum) then 
+	leave label_insert; 
+	end if;
+	
+	end LOOP label_insert;
+	
+	commit;
+	END
+4、考虑下面的需求，在编程语言中循环控制中有continue，如何实现continue的功能？
+	使用 iterate label_insert; 对于LOOP如下：
+	BEGIN
+	declare vI int default 0;
+	
+	start transaction;
+	
+	label_insert: LOOP
+	
+	if(vI=2) then 
+	set vI = vI+1;
+	iterate label_insert;
+	end if;
+	
+	insert into student(id,name) values(vi,concat('Andy',vi));
+	set vI = vI+1;
+	if(vI >= iNum) then 
+	leave label_insert; 
+	end if;
+	
+	end LOOP label_insert;
+	
+	commit;
+	END
+5、注意：对于while和repeat也是同样的道理，但是需要在while和repeat 前面增加一个标签，表示再次循环的位置，如下：
+	label_insert: while
+	label_insert: repeat
+	mysql中暂时没有for循环。
+@endverbatim
+*/
+mysql循环控制;
+
+/**
+@verbatim
+1、mysql存储过程没有return语句，怎么办？
+2、使用变通的办法，在BEGIN处打一个标签，leave这个标签，就等价于return，如下：
+	label_1:BEGIN
+	if(i > 5) then 
+		leave label_1;
+	end if;
+	
+	select "aaa";
+	END
+3、注意：标签一般只能打在begin和loop
+@endverbatim
+*/
+mysql的return语句;
+
+
+
+
+/** @} */
+
+/** @} */

@@ -1,0 +1,127 @@
+﻿/**
+* @defgroup 编程珠玑
+* @{
+*/
+
+
+
+/**
+@verbatim
+1、考虑下面的需求，对文件中的1亿个32位整数排序，这些整数不重复。
+	使用new int[1亿]，从文件中读取所有的整数，放入数组，排序。这种方法不可以行，因为需要的内存太大。
+	怎么解决这个问题？
+2、使用位向量表示整数，也就是第n个bit，表示整数n，bit的取值为整数出现的次数，0没有出现,1出现。
+	而上面的方法，整数需要4个字节，32bit表示。因此，位向量只用到原来的32分之1。
+	注意：如果重复次数不超过3，使用两个bit表示一个整数。也就是第2n-1和第2n个bit表示整数n，
+	这两个bit的取值表示出现次数。
+3、为了简化问题，考虑30个整数，使用位向量排序。
+	new出32bit的内存，也就是4个字节。从文件中遍历读取整数，在对应的第n个bit，把bit置为1
+	遍历位向量，输出bit值为1的位置。
+4、位向量也就是，第n个bit表示整数n，bit的取值为整数n出现的次数。
+5、考虑，如果文件中的数字更多，比如说有40亿，怎么处理？
+	多趟处理，第一趟遍历40亿整数，过滤出大于等于0,小于1亿[0,1亿)，排序输出到目标文件,
+	第二趟遍历40亿整数，过滤出大于等于1亿,小于2亿[1亿,2亿)，排序输出到目标文件。
+@endverbatim
+
+头文件
+@verbatim
+#ifndef PEARLS_H_
+#define PEARLS_H_
+typedef unsigned char uint_8;
+
+namespace Pearls
+{
+	void SetBitValue(uint_8* start,int index,int value);
+	int  GetBitValue(uint_8* start,int index);
+}
+#endif
+@endverbatim
+
+源代码
+@verbatim
+#include "pearls.h"
+
+namespace Pearls
+{
+	void SetBitValue(uint_8* start,int index,int value)
+	{		
+		int bytePos = index/8; // 第几个字节
+		int bitPos  = index%8; // 字节内的第几个bit
+
+		start+=bytePos;
+		if(value == 0)
+		{
+			(*start)&=(~(1<<bitPos)); // 把某一个bit置成0，与上一个对应位是0，其它位是1的数，这里有个取反
+		}
+		else if(value == 1)
+		{
+			(*start)|=(1<<bitPos);   // 把某一个bit置成1，或上一个对应位是1，其它位是0的数
+		}		
+	}
+
+	int GetBitValue(uint_8* start,int index)
+	{		
+		int bytePos = index/8; // 第几个字节
+		int bitPos  = index%8; // 字节内的第几个bit
+
+		// 做个副本，转化为unsigned，再移位
+		uint_8 ch = *(start+=bytePos);
+		return ((ch)&=(1<<bitPos))>>bitPos;
+	}
+}
+@endverbatim
+
+测试
+@verbatim
+#include "pearls.h"
+#include <stdio.h>
+#include <string.h>
+#include <fstream>
+
+void ReadFileAndSetBitVec(uint_8* bitVec)
+{
+	FILE* pf = fopen("./ints.txt","r");
+	char readBuf[4] = {0};
+	char* pBuf = readBuf;
+
+	while(feof(pf) == false)
+	{
+		if((*pBuf++ = fgetc(pf)) == ' ')
+		{
+			int value = atoi(readBuf);
+			Pearls::SetBitValue(bitVec,value,1);
+			memset(readBuf,0,4);
+			pBuf = readBuf;
+		}
+	}
+}
+
+void PrintBitVec(uint_8* bitVec)
+{
+	for(int i = 0; i<32; ++i)
+	{
+		int dd = Pearls::GetBitValue(bitVec,i);
+		if(Pearls::GetBitValue(bitVec,i) == 1)
+		{
+			printf("%d ",i);
+		}
+	}
+}
+
+int main(int argc, char* argv[])
+{
+	uint_8* bitVec = new uint_8[4];
+	memset(bitVec,0,4);
+
+	ReadFileAndSetBitVec(bitVec);
+
+	PrintBitVec(bitVec);
+
+	getchar();
+	return 0;
+}
+@endverbatim
+
+*/
+一亿整数排序;
+/** @} */

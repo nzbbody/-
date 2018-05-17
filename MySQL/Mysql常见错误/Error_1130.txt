@@ -1,0 +1,32 @@
+/**
+* @defgroup Mysql常见错误
+* @{
+*/
+
+/**
+@verbatim
+ERROR 1130 (00000): Host '172.16.1.9' is not allowed to connect to this MySQL server
+错误原因是：不允许从其他主机连接mysql服务
+解决办法是：本机登录，授权，允许从其他主机登录。如下：
+grant all privileges on *.* to 'root'@'%' identified by '123456' with grant option;
+flush privileges;
+
+上面赋予的权限过大，可以使用下面的方法，赋予适当的权限。
+允许myuser使用mypassword从任何主机连接到mysql服务器
+GRANT ALL PRIVILEGES ON *.* TO 'myuser'@'%' IDENTIFIED BY 'mypassword' WITH GRANT OPTION;
+FLUSH PRIVILEGES;
+
+允许用户myuser从ip为10.22.4.45的主机连接到mysql服务器，并使用mypassword作为密码
+GRANT ALL PRIVILEGES ON *.* TO 'myuser'@'10.22.4.45' IDENTIFIED BY 'mypassword' WITH GRANT OPTION;
+FLUASH PRIVILEGES;
+
+允许myuser从ip为10.22.4.45的主机连接到mysql服务器的test数据库，并使用mypassword作为密码；
+GRANT ALL PRIVILEGES ON test.* TO 'myuser'@'10.22.4.45' IDENTIFIED BY 'mysqlpassword' WITH GRANT OPTION;
+FLUSH PRIVILEGES;
+@endverbatim
+@see
+*/
+Error_1130;
+
+
+/** @} */

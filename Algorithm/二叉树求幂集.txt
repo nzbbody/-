@@ -1,0 +1,53 @@
+/**
+* @defgroup Algorithm
+* @{
+*/
+
+/**
+@verbatim
+// C++实现
+void GetPowerSetByBTree(int i,const string& src,string& oneEle,vector<string>& powerSet)
+{
+	if(i>=src.size())
+	{
+		powerSet.push_back(oneEle);
+	}
+	else
+	{
+		oneEle+=src[i];
+		GetPowerSetByBTree(i+1,src,oneEle,powerSet);
+
+		//oneEle=oneEle.substr(0,oneEle.size()-1);
+		oneEle.erase(oneEle.size()-1);
+		GetPowerSetByBTree(i+1,src,oneEle,powerSet);
+	}
+}
+
+void GetPowerSet(const string& src,vector<string>& powerSet)
+{
+	string oneEle;
+	GetPowerSetByBTree(0,src,oneEle,powerSet);
+}
+@endverbatim
+
+@verbatim
+## Python实现
+def GetPowerSet(i,aTuple,oneEle):
+    if i >= len(aTuple):
+        print oneEle
+    else:
+        oneEle+=str(aTuple[i])
+        GetPowerSet(i+1,aTuple,oneEle)
+
+        oneEle=oneEle[0:len(oneEle)-1]
+        GetPowerSet(i+1,aTuple,oneEle)
+
+aTuple=(1,2,3)
+oneEle=''
+GetPowerSet(0,aTuple,oneEle)
+@endverbatim
+*/
+二叉树求幂集;
+
+
+/** @} */

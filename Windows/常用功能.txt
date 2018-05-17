@@ -1,0 +1,254 @@
+﻿/**
+* @defgroup Windows
+* @{
+*/
+
+/**
+@verbatim	
+1、检查当前飞秋是不是截图了，并且没有发送。
+2、关闭飞秋，不要使用飞秋了，使用微信就很好。
+@endverbatim
+*/
+粘贴变成灰色，原来是飞秋的问题;
+
+
+/**
+@verbatim
+1、考虑下面的需求，把aaa目录下面的111.txt 拷贝到 bbb，如下：
+	echo on
+	xcopy .\aaa\111.txt .\bbb\ /y
+	pause
+	当bbb作为目录已经存在的情况下，上面等价于xcopy .\aaa\111.txt .\bbb /y
+	如果bbb目录不存在，.\bbb\ 自动建立目录，并拷贝
+	.\bbb 会提示bbb是目录，还是文件。
+2、注意这里表示路径要用右斜杠，因为左斜杠表示命名的选项，如test.exe /f cfg.xml
+3、考虑下面的需求，把aaa目录下面的111.txt 拷贝到 bbb，并且重命名为222.txt，如下：
+	echo on
+	xcopy .\aaa\111.txt .\bbb\222.txt /y
+	pause
+	执行过程，会提示 
+	目标 .\bbb\222.txt 是文件名 
+	还是目录名
+	(F = 文件，D = 目录)?
+	需要用户输入。
+4、原因是，xcopy不知道222.txt是个文件还是目录？怎么解决这个问题，消除提示。
+	这就需要用户，显示地告诉xcopy，222.txt是目录还是文件。
+	如果希望222.txt是个目录，把111.txt拷贝到222.txt，修改为 xcopy .\aaa\111.txt .\bbb\222.txt\ /y
+
+	如果希望222.txt是个文件，也就是copy并且重命名，使用下面的方法，自动输入f 如下：
+	echo f| xcopy .\aaa\111.txt .\bbb\222.txt /y
+
+	原理是通道的概念，前一个命令的标准输出作为后一个命令的标准输入。
+	echo f 输出f，xcopy 提示输入，前一个输出f作为xcopy的标准输入
+	注意：通道是将前一个命令的输出，作为字符串传递给下一个命令，也就是作为下一个命令的标准输入。
+	对于有些情况，需要使用xargs，xargs是把前一个命令的输出作为下一个命令的参数，比如：
+	后一个命令是rm，rm要求将前一个命令的输出作为文件，而不是字符串，因此必须使用xargs
+5、当然希望222.txt是个目录，也可以使用echo d，如下：
+	echo d| xcopy .\aaa\111.txt .\bbb\222.txt /y
+@endverbatim
+@see
+*/
+xcopy;
+
+
+/**
+@verbatim
+rename .\aaa\111.txt 222.txt
+@endverbatim
+@see
+*/
+rename;
+
+
+/**
+@verbatim
+1、查看帮助，如下：
+	D:\test>dir /?
+	显示目录中的文件和子目录列表。
+	
+	DIR [drive:][path][filename] [/A[[:]attributes]] [/B] [/C] [/D] [/L] [/N]
+	[/O[[:]sortorder]] [/P] [/Q] [/R] [/S] [/T[[:]timefield]] [/W] [/X] [/4]
+	
+	[drive:][path][filename]
+				指定要列出的驱动器、目录和/或文件。
+	
+	/A          显示具有指定属性的文件。
+	属性         D  目录                R  只读文件
+				H  隐藏文件            A  准备存档的文件
+				S  系统文件            I  无内容索引文件
+				L  解析点             -  表示“否”的前缀
+	/B          使用空格式(没有标题信息或摘要)。
+	/C          在文件大小中显示千位数分隔符。这是默认值。用 /-C 来
+				禁用分隔符显示。
+	/D          跟宽式相同，但文件是按栏分类列出的。
+	/L          用小写。
+	/N          新的长列表格式，其中文件名在最右边。
+	/O          用分类顺序列出文件。
+	排列顺序     N  按名称(字母顺序)     S  按大小(从小到大)
+				E  按扩展名(字母顺序)   D  按日期/时间(从先到后)
+				G  组目录优先           -  反转顺序的前缀
+	/P          在每个信息屏幕后暂停。
+	/Q          显示文件所有者。
+	/R          显示文件的备用数据流。
+	/S          显示指定目录和所有子目录中的文件。
+	/T          控制显示或用来分类的时间字符域。
+	时间段      C  创建时间
+				A  上次访问时间
+				W  上次写入的时间
+	/W          用宽列表格式。
+	/X          显示为非 8.3 文件名产生的短名称。格式是 /N 的格式，
+				短名称插在长名称前面。如果没有短名称，在其位置则
+				显示空白。
+	/4          用四位数字显示年
+	
+	可以在 DIRCMD 环境变量中预先设定开关。通过
+2、列出所有目录和文件的名称，如下：
+	D:\test>dir /b
+	aaa
+	bbb
+	dmu1.cpp
+	dmu2.cpp
+	dmu2.h
+	file1
+	log1
+	log2
+	test.bat
+3、只列出目录，如下：
+	D:\test>dir /b /a:d
+	aaa
+	bbb
+4、只列出文件，如下：
+	D:\test>dir /b /a:-d
+	dmu1.cpp
+	dmu2.cpp
+	dmu2.h
+	file1
+	log1
+	log2
+	test.bat
+5、只列出前缀为log的文件，如下：
+	D:\test>dir /b /a:-d log*
+	log1
+	log2
+@endverbatim
+@see
+*/
+dir;
+
+
+/**
+@verbatim
+1、Windows下面是 Sleep(毫秒)，注意是大写的S
+2、Linux下面，sleep(秒)，usleep(微秒)
+3、比如睡眠100毫秒，实现为
+	#ifdef WIN32
+		::Sleep(100);
+	#else
+		::usleep(100*1000);
+	#endif
+@endverbatim
+*/
+Windows和Linux下面的线程睡眠;
+
+/**
+@verbatim
+1、考虑下面的需求，从svn服务器Checkout出来的内容，包含了.svn目录，如何递归删除这些目录？	
+	注：这里只是为了举例子，实际情况，如果不想要.svn目录，应该使用svn的Export命令。
+2、批处理脚本如下：
+	echo on
+	setlocal enabledelayedexpansion
+	
+	call:DelFile "D:\Python"
+	pause
+	exit /b 0
+	
+	:DelFile
+	cd %1
+	for /f %%i in ('dir /b /a') do (
+		echo %%i|findstr "^.svn$">nul
+		if !errorlevel! equ 0 (rmdir /q /s %%i)
+		
+		set str=%%~ai
+		if "!str:~0,1!"=="d" (call:DelFile %%i)
+	)
+	cd ..
+	goto :eof
+	
+3、有几个地方需要特别注意：
+	a、函数的退出使用 goto :eof
+	b、pause之后，必须调用exit /b 0，否者批处理继续向下执行（因为批处理是解释语言），cd %1 继续执行
+	c、删除目录使用 rmdir /q /s %%i
+	d、!str:~0,1! 前后两个感叹号去变量的内容，str:~0,1从位置0开始，取一个字符
+4、如果删除指定的文件，比如txt，如下：
+	echo on
+	setlocal enabledelayedexpansion
+	
+	call:DelFile "D:\Python"
+	pause
+	exit /b 0
+	
+	:DelFile
+	cd %1
+	for /f %%i in ('dir /b /a') do (
+		echo %%i|findstr ".txt$">nul
+		if !errorlevel! equ 0 (rm /f %%i)
+		
+		set str=%%~ai
+		if "!str:~0,1!"=="d" (call:DelFile %%i)
+	)
+	cd ..
+	goto :eof
+	
+5、需要注意的地方：
+	a、使用 rm /f %%i删除文件
+	b、匹配的条件，^.svn$是匹配 .svn目录，.txt$是匹配.txt后缀，^匹配行头，$匹配行尾
+@endverbatim
+*/
+批处理递归删除指定的目录或者文件;
+
+
+/**
+@verbatim
+1、查找满足条件的行
+	. 	匹配任意一个字符
+	* 	前面的字符出现0次或多次
+	^	匹配行头
+	$	匹配行尾
+	/i	不区分大小写
+	注意：findstr没有语法表示匹配一次或多次，使用替代的方法。如下：
+	比如匹配27，7出现一次或多次，使用替代的方法 findstr 277*
+2、类似Linux下面的grep，查找文件的内容，文件内容：
+	111
+	AAA
+	222
+	aaa
+	333
+	aaa
+	444
+	bbb
+	555
+3、执行如下：
+	d:\>findstr /in "aaa" test.txt
+	2:AAA
+	4:aaa
+	6:aaa
+@endverbatim
+*/
+findstr;
+
+/**
+@verbatim
+1、在windows的资源管理器，访问其他设备的共享目录，格式如下：
+	\\10.30.6.201\Software
+	不能写成 \\10.30.6.201/Software，否则报错：
+	Windows 无法访问\\10.30.6.201/Software，请检查名称的拼写...
+2、对于本地的目录，如下：E:\软件\Redis
+	可以写成 E:\软件/Redis，Windows会自动转化为 E:\软件\Redis
+@endverbatim
+*/
+访问共享目录的注意事项;
+
+
+
+
+/** @} */

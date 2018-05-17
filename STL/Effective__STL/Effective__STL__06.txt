@@ -1,0 +1,57 @@
+﻿/**
+* @defgroup STL
+* @{
+*/
+
+/**
+* @defgroup Effective__STL
+* @{
+*/
+
+/**
+@verbatim
+1、考虑一个包含int的文件，复制到list，如下：
+	ifstream dataFile("ints.bat");
+	list<int> data(istream_iterator<int>(dataFile),istream_iterator<int>());
+2、上面的代码不是预期的行为。
+3、先从最简单开始，声明方法 int f(double d); 等价的写法有 int f (double (d)); int f (double);
+	也就是说，形参名称可以使用括号括起来，形参名称也可以省略，只保留形参的类型。
+4、考虑int g(double (*pf) ()); 形参是一个方法指针，等价的写法有 int g(double pf ()); 
+	我们省略形参名称，就变成了 int g(double ());
+5、现在考虑list<int> data(istream_iterator<int>(dataFile),istream_iterator<int>()); C++编译器会认为这个一个方法声明，
+	第一个形参是：形参类型是istream_iterator<int>，形参名称是 dataFile，只不过使用括号括起来了，
+	第二个形参是：形参类型是一个方法指针，指向的方法是返回istream_iterator<int>，接受形参void，省略了形参名称。
+6、C++中有一条规律，语句优先解释成 方法声明。当这个解释失败，才进行其他解释。最常见的如下：
+	Student s; // OK
+	Print(s);
+	
+	Student s = Student(); // OK
+	Print(s);
+	
+	Print(Student()); // OK
+	
+	Student* s = new Student(); // OK
+	Print(*s);
+	
+	Student* s = new Student; // OK
+	Print(*s);
+	
+	Student s(); // Error
+	Print(s);
+	因为C++会把Student s();当成一个方法声明。
+7、怎么解决上面的问题？
+	两种办法：
+	办法一，对于方法调用，实参可以使用括号括起来，而对于方法声明，把整个形参（包括形参类型和形参名称）括起来是错误的，
+	因此可以如下：
+	list<int> data( (istream_iterator<int>(dataFile) ),istream_iterator<int>());
+	办法二：不使用匿名对象，使用具名对象，如下：
+	istream_iterator<int> begin(dataFile);
+	istream_iterator<int> end;
+	list<int> data(begin,end);
+@endverbatim
+*/
+【S06】当心CPP编译器最烦人的分析机制;
+
+/** @} */
+
+/** @} */

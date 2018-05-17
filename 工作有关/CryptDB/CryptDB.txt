@@ -1,0 +1,210 @@
+﻿/**
+* @defgroup 工作有关
+* @{
+*/
+
+/**
+* @defgroup CryptDB
+* @{
+*/
+
+/**
+@verbatim
+1、这里分为两个阶段，
+	第一个阶段写入到 generic_prefix_BleedingMetaObject
+	第二个阶段写入到 generic_prefix_MetaObject
+2、需要保证这两个表的数据保持一致？
+	先考虑 generic_prefix_BleedingMetaObject，是个树形结构，通过parent_id 和 id 体现父子关系
+	id是主键，并且自增，每次insert的时候，id的value写成0，mysql会自行计算这个值如何自增，并写成自增的的值。
+	注意：如果不是写成0，比如当前的值为200，id的value写成300，那么以后从300开始自增。
+3、因为要保持一致，所以要保存起来id，后面写入到 generic_prefix_MetaObject
+@endverbatim
+*/
+DBMeta写入到embedded_db;
+
+
+/**
+@verbatim
+1、MjcgSE9NIEhPTSAxNiBIT00gSE9NIAko13oqF7NHoGBJCTcuj4M=
+	base64解码后为 27 HOM HOM 16_XXX
+2、然后构建HOM，如下：
+	return std::unique_ptr<EncLayer>(new HOM(id, serial));
+	这里存在一个问题，把整个 27 HOM HOM 16_XXX 作为seed_key，实际上应该是 16_XXX 作为seed_key
+3、再次序列化的时候，前面一些固定的参数，加上seed_key，如下：
+	38 HOM HOM 27 HOM HOM 16_XXX
+4、然后base64编码为
+	MzggSE9NIEhPTSAyNyBIT00gSE9NIDE2IEhPTSBIT00gCSjXeioXs0egYEkJNy6Pgw==
+	导致发生了变化
+5、怎么解决这个问题？
+	就是再构建HOM的时候，使用16_XXX作为seed_key
+6、这里引申出一个问题，HOM是同态加法，如果秘钥发生了变化，就没法支持同态加法。
+	那么原来写入数据库的时候，为什么没有问题？
+	因为数据库只写入一次HOM的这条记录，以后都是读取。
+	但是对于文件，涉及到读取，写入，重启又涉及到读取，写入。
+@endverbatim
+*/
+对于HOM反序列化，再序列化之后发生变化，为什么;
+
+/**
+@verbatim
+1、启动
+	/home/niuzibin/work/cryptdb/bins/proxy-bin/bin/mysql-proxy --plugins=proxy --event-threads=4 --max-open-files=1024 --proxy-lua-script=$EDBDIR/mysqlproxy/wrapper.lua  --proxy-address=0.0.0.0:3307  --proxy-backend-addresses=localhost:3306
+	
+	export EDBDIR=/home/niuzibin/work/cryptdb	
+2、连接
+	mysql -uroot -pletmein -h127.0.0.1 -P3307
+3、环境创建
+	create database yytest;
+	create table student(id int, age int, name varchar(64));
+	insert into student value(1,18,"Andy");
+	insert into student value(2,17,"Bill");
+	
+	create table teacher(id int, age int, name varchar(64));
+	insert into teacher value(1,18,"T_Andy");
+	insert into teacher value(2,17,"T_Bill");
+	
+
+@endverbatim
+*/
+运行环境有关;
+
+/**
+@verbatim
+1、Client<--->Proxy<--->Mysql
+2、站在Client的角度，是和Mysql交互，不需要了解后面的机制。
+3、站在Mysql的角度，内部存储的是加密信息，但是要支持同态运算。
+4、这些工作，都是Proxy做的处理，接收客户端的正常sql请求，经过处理，关键信息加密，发给Mysql，
+	特别注意，发给Mysql的信息，还必须要符合sql语法，只不过关键信息加密了。
+@endverbatim
+*/
+CryptDB原理介绍;
+
+/**
+@verbatim
+1、一个字段为什么分成多个字段？
+	不能支持全同态加密，需要分成多个字段，支持不同模式的同态加密。
+2、同态加密的字段为什么要多次加密？
+	同态加密字段按道理加密一次就够了，但是这样不够安全。因为同态加密算法，往往是相同的明文加密得到相同的密文。
+	因此，增加一次RND，对同态加密的结果再执行一个加盐。需要保存盐值，用于解密。
+@endverbatim
+*/
+QA常见问题解答;
+
+
+/**
+@verbatim
+1、删除mysql中的数据库cryptdb_udf、remote_db和yytest
+2、删除 /home/niuzibin/work/heming/cryptdb/shadow目录中的文件全部删除
+@endverbatim
+*/
+出现问题，怎么恢复;
+
+
+/**
+@verbatim
+1、准备工作
+	mysql> create database yytest;
+	Query OK, 1 row affected (0.01 sec)
+	
+	mysql> use yytest;
+	Database changed
+	mysql> 
+	mysql> 
+	mysql> create table t1(c1 int);
+	Query OK, 0 rows affected (0.01 sec)
+	
+	mysql> show tables;+------------------+
+	| Tables_in_yytest |
+	+------------------+
+	| t1               |
+	+------------------+
+	1 row in set (0.00 sec)
+	
+	mysql> insert into t1(c1) value(100);
+	Query OK, 1 row affected (0.02 sec)
+2、在shadow目录会多出来一些文件，如下：
+	niuzibin@ubuntu:~/work/heming/cryptdb/shadow$ ll
+	total 28688
+	drwxrwxr-x  4 niuzibin niuzibin     4096 Apr  9 23:35 ./
+	drwxrwxr-x 15 niuzibin niuzibin     4096 Apr  3 22:45 ../
+	drwx------  2 niuzibin niuzibin     4096 Apr  9 23:29 embedded_db/
+	-rw-rw----  1 niuzibin niuzibin 18874368 Apr  9 23:36 ibdata1
+	-rw-rw----  1 niuzibin niuzibin  5242880 Apr  9 23:36 ib_logfile0
+	-rw-rw----  1 niuzibin niuzibin  5242880 Apr  9 23:29 ib_logfile1
+	drwx------  2 niuzibin niuzibin     4096 Apr  9 23:36 yytest/
+3、关闭mysql和proxy
+4、拷贝文件，到另一个mysql
+	注意：不要拷贝到当前的这个mysql，否则会影响yytest
+	sudo scp -r ./* niuzibin@192.168.29.128:~/aaa
+5、再到目标mysql，拷贝一下，修改所有者
+	cp /home/niuzibin/aaa/* ./ -r
+	root@ubuntu:/var/lib/mysql# chown mysql ./ -R
+6、重新启动mysql，然后连接mysql测试一把
+
+还有另外一种办法：
+1、set @cryptdb="show";
+2、修改代码，如下：
+	/*const std::string &query =
+        "SELECT * FROM " + MetaData::Table::showDirective() + ";"; */
+    std::string query =
+            "SELECT * FROM " + MetaData::Table::showDirective() + ";";
+	设置query可以修改
+3、打上断点，修改查询语句
+	"select * from generic_prefix_BleedingMetaObject;"
+	"select * from generic_prefix_MetaObject;"
+	"select * from generic_prefix_embeddedQueryCompletion;"
+	"select * from generic_prefix_showDirective;"
+	"select * from generic_prefix_staleness;"
+@endverbatim
+*/
+查看嵌入数据库embedded_db;
+
+/**
+@verbatim
+1、proxy启动后，第一次tlogin的时候
+	bf(cinteger.getKey())
+	const CryptedInteger cint = CryptedInteger::deserialize(serial);
+	DBMeta::doFetchChildren 读取出来的，执行下面的语句
+	" SELECT embedded_db.generic_prefix_MetaObject.serial_object,        embedded_db.generic_prefix_MetaObject.serial_key,        embedded_db.generic_prefix_MetaObject.id FROM embedded_db.generic_prefix_MetaObject WHERE embedded_db.generic_prefix_MetaObject.parent_id   = 4;"
+2、得到三条记录，如下：
+	67 DETJOIN DETJOIN_int 16_PF???g?鈳r?9_MYSQL_TYPE_LONGLONG1_020_18446744073709551615 | 1_0        |  5 |
+	67 DET DET_int 16_+DoL8;颜*+攝擪19_MYSQL_TYPE_LONGLONG1_020_18446744073709551615     | 1_1        |  6 |
+	67 RND RND_int 16_紅Q╠6z柎?19_MYSQL_TYPE_LONGLONG1_020_18446744073709551615         | 1_2        |  7 |
+	分别是child_serial_object，child_key，child_id
+3、其中的child_serial_object，67 RND RND_int 16_紅Q╠6z柎?19_MYSQL_TYPE_LONGLONG1_020_18446744073709551615
+	构建出来 const CryptedInteger cint = CryptedInteger::deserialize(serial); 
+	得到 
+	struct SerialLayer 
+	{
+		SECLEVEL l;					SECLEVEL::RND
+		std::string name;			RND_int
+		std::string layer_info;		16_紅Q╠6z柎?19_MYSQL_TYPE_LONGLONG1_020_18446744073709551615
+	};
+4、再看create table的时候，怎么构建出来的？
+	bool CreateDelta::apply 构建出来秘钥，然后insert一下
+	" INSERT INTO embedded_db.generic_prefix_BleedingMetaObject    (serial_object, serial_key, parent_id, id) VALUES ( '16_table_DLMEMQPBCJ4_TRUE4_TRUE20_tableSalt_WQTBEQVBGY1_1', '2_t2', 1, 0);"
+	
+	" INSERT INTO embedded_db.generic_prefix_BleedingMetaObject    (serial_object, serial_key, parent_id, id) VALUES ( '67 DETJOIN DETJOIN_int 16_P\377F\315>\217\035?g\340;\342\216r\024\370\061\071_MYSQL_TYPE_LONGLONG1_020_18446744073709551615', '1_0', 15, 0);"
+5、serial_object是怎么来的？
+	child_serial		"67 RND RND_int 16_+\310\356$\245\270\337\021\321;J\"4*\247\030\061\071_MYSQL_TYPE_LONGLONG1_020_18446744073709551615"
+	esc_child_serial	"67 RND RND_int 16_+\310\356$\245\270\337\021\321;J\\\"4*\247\030\061\071_MYSQL_TYPE_LONGLONG1_020_18446744073709551615"
+	esc_child_serial是对双引号转义一下
+6、child_serial怎么来的？
+	const std::string &child_serial = object.serialize(parent);
+7、找到不同的加密方法
+	std::string OnionMeta::serialize(const DBObject &parent) const
+	{
+		const std::string &serial =
+		serialize_string(this->onionname) +
+		serialize_string(std::to_string(this->uniq_count)) +
+		serialize_string(TypeText<SECLEVEL>::toText(this->minimum_seclevel));
+	
+		return serial;
+	}
+@endverbatim
+*/
+blowfish的秘钥key哪里来的;
+
+/** @} */
+
+/** @} */

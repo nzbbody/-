@@ -1,0 +1,169 @@
+﻿/**
+* @defgroup CPP
+* @{
+*/
+
+/**
+* @defgroup CPP常用方法
+* @{
+*/
+
+/**
+@verbatim
+// 字符串表示的当前时间
+string NzbUtils::GetNowTimeAsString()
+{
+	char buf[64] = {0};
+	time_t now = time(NULL);
+	//方法1：
+	/*tm* ptm = localtime(&now);
+	sprintf(buf, "%04d-%02d-%02d %02d:%02d:%02d", 
+		ptm->tm_year+1900, 
+		ptm->tm_mon+1, 
+		ptm->tm_mday,
+		ptm->tm_hour,
+		ptm->tm_min, 
+		ptm->tm_sec);*/
+
+	//方法2：
+	strftime(buf, 64, "%Y-%m-%d %H:%M:%S",localtime(&now));
+	return buf;
+}
+@endverbatim
+*/
+GetNowTimeAsString;
+
+/**
+@verbatim
+// 由"2016-09-06 14:18:16" 得到 1473142696
+int NzbUtils::GetUnixTimeStamp(const string& timeStr)
+{
+	char year[5] = {0};
+	char month[3] = {0};
+	char day[3] = {0};
+	char hour[3] = {0};
+	char min[3] = {0};
+	char sec[3] = {0};
+
+	if(sscanf(timeStr.c_str(), "%4c-%2c-%2c %2c:%2c:%2c", year,month,day,hour,min,sec) != 6)
+	{
+		return -1;
+	}
+
+	struct tm tmLocal = {0};
+	tmLocal.tm_year = atoi(year) - 1900;
+	tmLocal.tm_mon = atoi(month) -1;
+	tmLocal.tm_mday = atoi(day);
+	tmLocal.tm_hour = atoi(hour);
+	tmLocal.tm_min = atoi(min);
+	tmLocal.tm_sec = atoi(sec);
+
+	return (int)mktime(&tmLocal);
+}
+
+// 由1473142696 得到 "2016-09-06 14:18:16"
+string NzbUtils::GetTimeStr(int unixTimeStamp)
+{
+	char buf[64] = {0};
+	time_t now = (time_t)(unixTimeStamp);
+	//方法1：
+	//tm* ptm = localtime(&now);
+	//sprintf(buf, "%04d-%02d-%02d %02d:%02d:%02d", 
+	//	ptm->tm_year+1900, 
+	//	ptm->tm_mon+1, 
+	//	ptm->tm_mday,
+	//	ptm->tm_hour,
+	//	ptm->tm_min, 
+	//	ptm->tm_sec);
+
+	//方法2：
+	strftime(buf, 64, "%Y-%m-%d %H:%M:%S",localtime(&now));
+	return buf;
+}
+
+特别注意：这里的tm* ptm = localtime(&now); 年份与真实年份偏移1900，月份与真实月份偏移1
+这里偏移的1900与Unix纪元【1970-1-1 0:0:0】中的1970，是两个不同的概念，不要混淆。
+@endverbatim
+*/
+时间字符串与unix时间戳的转化;
+
+
+/**
+@verbatim
+1、c语言的time()方法，返回从Unix纪元【1970-1-1 0:0:0】至当前的秒数。
+	注意：time()只能获取系统时间，不能设置系统时间。
+2、使用time()方法获取系统时间，有两种用法：
+	time_t aa = time(NULL);
+	
+	time_t bb;
+	time(&bb);
+	当然，下面的方法也可以获取系统时间，cc和dd的取值相同。
+	time_t cc;
+	time_t dd = time(&cc);
+3、那么如何设置系统时间呢？
+	使用windows的库函数，如下：
+	SYSTEMTIME sysTime;
+	GetLocalTime(&sysTime);
+	
+	sysTime.wYear = 2015;
+	sysTime.wMonth = 10;
+	sysTime.wDay = 20;
+	sysTime.wHour = 14;
+	sysTime.wMinute = 38;
+	sysTime.wSecond = 30;
+
+	int ret = SetLocalTime(&sysTime);
+	int errCode = GetLastError();
+4、Linux下面可以使用 date -s命令设置时间。
+@endverbatim
+*/
+设置系统时间;
+
+/**
+@verbatim
+1、int范围比枚举大，从枚举到int一般没有问题，不会超出范围。
+2、但是从int到枚举，强制转化，有可能会出现问题。
+	如果int是个有效的枚举值，没有问题。
+	如果int是个无效的枚举值，枚举取值为真实的int值。
+@endverbatim
+
+@verbatim
+enum Male
+{
+	Man,
+	Woman,
+};
+int main(int argc, char* argv[])
+{
+	Male a = (Male)(0);		// a取值为Man
+	Male b = (Male)(2);		// 无效的枚举值，b取值为真实的int值，也就是2
+}
+@endverbatim
+*/
+int与枚举的转化;
+
+/**
+@verbatim
+1、string的大小是32个字节。
+2、当string的内容不超过16个字节的时候，string的内容就放在string本身的内存上。
+3、当string的内容超过16个字节（加上\0）的时候，string的内容会放在其他内存，string中有个指针关联那块内存。
+4、测试代码如下：
+	int main()
+	{
+		string aa;
+		int d = sizeof(aa);
+		string* ps = &aa;
+	
+		// 使用内存窗口，观察ps
+		aa = "123456781234567";  // 16个字节（包含\0），分配至string本身上
+		aa = "1234567812345678"; // 17个字节（包含\0），分配其他内存，里面有个指针关联
+		return 0;
+	}
+@endverbatim
+*/
+VS中string实现的小秘密;
+
+
+/** @} */
+
+/** @} */

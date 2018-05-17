@@ -1,0 +1,95 @@
+﻿/**
+* @defgroup 编程珠玑
+* @{
+*/
+
+
+
+/**
+@verbatim
+1、考虑下面的需求，给出包含单词的文档，找出其中的变位词。所谓的变位词，比如dog，god互为变位词。
+2、最笨的办法是，dog不动，对god，cat进行排列组合，看看是否存在于dog相同的情况，存在就是变位词。
+3、上面的办法效率太差，很长的单词，排列组合很多，cpu开销太大。怎么解决？
+4、变位词的特点是，大家所包含的字符相同，只不过排列组合不同。包含的字符，可以认为是单词的标识符，
+	标识符按字符顺序排列好，互为变位词，也就是说标识符相同。因此，解决思路是，对每个单词求标识符，
+	比较标识符，相同就是变位词。
+5、使用map，key是标识符（可能是一个无效的单词），value是vector，保存互为变位词的单词集合。
+6、更广泛的用处，比如使用搜狗输入法输入 ty，就会提示 统一，同意，同义等等。这种情况也类似，对
+	统一，同意，同义求标识符，放入map的key，value保存这些词。
+@endverbatim
+
+@verbatim
+	string GetIdentifier(const string& word)
+	{
+		char buf[64] = {0};
+		sprintf(buf,word.c_str());
+		qsort(buf,strlen(buf),sizeof(char),CharCmp);
+
+		return buf;
+	}
+
+	int CharCmp(const void* a,const void* b)
+	{
+		return *(char*)a - *(char*)b;
+	}
+
+	bool IsSeparator(char ch)
+	{
+		return (ch == ' ' || ch == ',' || ch == '.'|| ch == '\r'|| ch == '\n');
+	}
+
+	void GetWord(vector<string>& wordVec,char* buf)
+	{
+		buf[strlen(buf)-1] = '\0'; //去除分隔符
+		if(strlen(buf) > 0)
+		{
+			wordVec.push_back(buf);
+		}
+	}
+
+	void ReadWordFromFile(vector<string>& wordVec)
+	{
+		FILE* pf = fopen("./words.txt","r");
+		char readBuf[64] = {0};
+		char* pBuf = readBuf;
+
+		while(feof(pf) == false)
+		{
+			*pBuf = fgetc(pf);
+			if(IsSeparator(*pBuf))
+			{
+				GetWord(wordVec,readBuf);
+				memset(readBuf,0,64);
+				pBuf = readBuf;
+			}
+			else
+			{
+				++pBuf;
+			}
+		}
+	}
+	
+	
+@endverbatim
+
+@verbatim
+int main(int argc, char* argv[])
+{
+	vector<string> wordVec;
+	Pearls::ReadWordFromFile(wordVec);
+
+	map<string,vector<string> > wordMap;
+	for(vector<string>::iterator iter = wordVec.begin();
+		iter != wordVec.end();++iter)
+	{
+		wordMap[Pearls::GetIdentifier(*iter)].push_back(*iter);
+	}
+
+	getchar();
+	return 0;
+}
+@endverbatim
+*/
+变位词;
+
+/** @} */

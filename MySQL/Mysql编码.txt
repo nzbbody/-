@@ -1,0 +1,193 @@
+/**
+* @defgroup MySQL
+* @{
+*/
+
+
+/**
+@verbatim
+1、分为几个层次来看：
+	a、Mysql服务端数据保存的编码，小范围的设置会覆盖大范围的设置。
+	b、当前环境的编码，比如VS2005或者ssh客户端的编码
+	c、交互的编码，交互的编码又分为两部分，请求和回复。
+2、现在考虑交互的编码，如下：
+	a、Mysql客户端发送的SQL语句，由character_set_client来指定。
+	b、Mysql服务端收到SQL语句，会把编码集从character_set_client转化为character_set_connection，
+		然后转化为字段设置的编码，保存起来。
+	c、Mysql服务端执行完SQL语句，把数据库中查询的结果，转化为character_set_results发给客户端。
+3、特别注意：乱码往往不是转化导致的，而是因为用一种编码去解释另一种编码。编码转化也会存在乱码的情况，比如：
+	另一种编码中没有这个字符。
+4、Mysql的整个交互过程都是转化，转化过程中有可能出现乱码。只有两个口子是解释：
+	a、当前环境有自己的编码，Mysql客户端用character_set_client来解释当前编码，不一致可能会乱码。
+	b、结果返回来的编码是character_set_results，当前环境用自己的编码来解释character_set_results，不一致可能会乱码。
+5、测试场景1：
+	字段保存编码utf8
+	set names utf8
+	当前环境编码为utf8
+	
+	插入查询，都正确。
+	mysql> insert into t1(v1) values('cn中国');
+	Query OK, 1 row affected (0.00 sec)
+	
+	mysql> select * from t1;
+	+----------+
+	| v1       |
+	+----------+
+	| cn中国 |
+	+----------+
+	1 row in set (0.00 sec)
+	
+	a、现在把character_set_results修改为gb2312，查询，如下：
+		mysql> set character_set_results=gb2312;
+		Query OK, 0 rows affected (0.00 sec)
+		
+		mysql> select * from t1;
+		+--------+
+		| v1     |
+		+--------+
+		| cn |
+		+--------+
+		1 row in set (0.00 sec)
+		原因是：当前环境用utf8去解释gb2312，当然乱码
+	b、当前环境修改为gb2312，查询如下：
+		mysql> select * from t1;
+		+--------+
+		| v1     |
+		+--------+
+		| cn中国 |
+		+--------+
+		1 row in set (0.00 sec)
+		原因是：服务端把utf8转为gb2312，传给客户端，客户端用gb2312解释gb2312
+6、测试场景2：
+	字段保存编码utf8
+	set names utf8
+	当前环境编码为utf8
+	设置character_set_client=gb2312; 插入查询，如下：
+		mysql> set names utf8;
+		Query OK, 0 rows affected (0.00 sec)
+		
+		mysql> set character_set_client=gb2312;
+		Query OK, 0 rows affected (0.00 sec)
+		
+		mysql> insert into t1(v1) values('cn中国');
+		Query OK, 1 row affected (0.00 sec)
+		
+		mysql> select * from t1;
+		+---------+
+		| v1      |
+		+---------+
+		| cn涓?? |
+		+---------+
+		1 row in set (0.00 sec)
+		原因是：Mysql客户端用gb2312来解释utf8
+7、测试场景3：
+	字段保存编码utf8
+	set names utf8
+	当前环境编码为utf8
+	设置character_set_connection=gb2312; 插入查询，如下：
+		mysql> set names utf8;
+		Query OK, 0 rows affected (0.00 sec)
+		
+		mysql> set character_set_connection=gb2312;
+		Query OK, 0 rows affected (0.00 sec)
+		
+		mysql> insert into t1(v1) values('cn中国');
+		Query OK, 1 row affected (0.00 sec)
+		
+		mysql> select * from t1;
+		+----------+
+		| v1       |
+		+----------+
+		| cn中国 |
+		+----------+
+		1 row in set (0.00 sec)
+		原因是：Mysql客户端用utf8来解释utf8，然后转化为gb2312
+8、总结，也就是说，character_set_client要与当前环境的编码保持一致。
+	当前环境的编码要与character_set_results保持一致，通过set names utf8一步到位。
+@endverbatim
+@see
+*/
+mysql编码;
+
+/**
+@verbatim
+insert into t1(v1) values('cn中国'); 
+select * from t1;
+
+1、输入gbk，交互latin1，数据库latin1
+insert，客户端把gbk的输入当成latin1来解释，传给服务，服务不需要转码，把gbk当成latin1存入数据库，显示乱码。
+select，服务不转码，返回给客户端，客户端latin1当成gbk解释，显示正确。
+2、输入gbk，交互latin1，数据库gbk 
+insert 报错：ERROR 1366 (HY000): Incorrect string value: '\xD6\xD0\xB9\xFA' for column 'v1' at row 1
+原因是：客户端把gbk的输入当成latin1来解释，传给服务，服务转码，把latin1转化为gbk，出错。
+3、输入gbk，交互latin1，数据库utf8
+和1一样，这是因为utf8英文字符一个字节，多字节字符三个字节。
+4、输入gbk，交互gbk，数据库latin1
+insert 报错：ERROR 1366 (HY000): Incorrect string value: '\xD6\xD0\xB9\xFA' for column 'v1' at row 1
+原因是：客户端把gbk的输入当成gbk来解释，传给服务，服务把gbk转化为latin1，转化失败。 
+5、输入gbk，交互gbk，数据库gbk
+insert，客户端把gbk的输入当成gbk来解释，传给服务，服务不需要转码，直接存入数据库，存入数据库正常。
+select，服务不转码，返回给客户端，客户端gbk当成gbk解释，显示正确。 
+6、输入gbk，交互gbk，数据库utf8
+insert，客户端把gbk的输入当成gbk来解释，传给服务，服务把gbk转成utf8，存入数据库，存入数据库正常。
+select，服务把utf8转成gbk，返回给客户端，客户端gbk当成gbk解释，显示正确。 
+7、输入gbk，交互utf8，数据库latin1
+insert 报错：ERROR 1366 (HY000): Incorrect string value: '\xD6\xD0\xB9\xFA' for column 'v1' at row 1
+原因是：客户端把gbk的输入当成utf8来解释，解释错误。
+8、输入gbk，交互utf8，数据库gbk
+同7
+9、输入gbk，交互utf8，数据库utf8
+同7
+
+考虑下面的情况，输入gbk，交互gbk，数据库gbk，插入一条记录，查询回来正常。现在把交互改成utf8，会出现什么问题？
+mysql> select * from t1;
++--------+
+| v1 |
++--------+
+| cn中国 |
++--------+
+1 row in set (0.00 sec)
+
+mysql> set names utf8;
+Query OK, 0 rows affected (0.00 sec)
+
+mysql> select * from t1;
++----------+
+| v1 |
++----------+
+| cn涓浗 |
++----------+
+1 row in set (0.00 sec)
+
+这是因为把utf8的中国，当成gbk解释，就是显示涓浗，也就是说，他们对应的Id是一样的。
+反过来，也是一样，把gbk的涓浗当成utf8解释，就是中国，如下：
+mysql> insert into t1(v1) values('cn涓浗');
+Query OK, 1 row affected (0.08 sec)
+
+mysql> select * from t1;
++----------+
+| v1 |
++----------+
+| cn涓浗 |
+| cn涓浗 |
++----------+
+2 rows in set (0.00 sec)
+
+mysql> set names gbk;
+Query OK, 0 rows affected (0.00 sec)
+
+mysql> select * from t1;
++--------+
+| v1 |
++--------+
+| cn中国 |
+| cn中国 |
++--------+
+2 rows in set (0.00 sec)
+@endverbatim
+@see
+*/
+mysql编码测试;
+
+
+/** @} */

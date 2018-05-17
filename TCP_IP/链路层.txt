@@ -1,0 +1,50 @@
+﻿/**
+* @defgroup TCP_IP
+* @{
+*/
+
+/**
+* @defgroup 链路层
+* @{
+*/
+
+/**
+@verbatim
+1、以太网头部长度是14字节，前6个字节是目的mac地址，接着的6个字节源mac地址，后面两个字节表示协议类型。
+	注：以太网网头部是目的mac在前，源mac地址在后。这一点和IP头部，TCP头部有些不同。
+	IP头部和TCP头部，都是源在前面，目的在后面。
+2、常用的协议类型有：
+	0x0800[IPv4]	IP数据报长度[46~1500字节]
+	0x0806[ARP]		请求回复[28字节]	PAD[18字节]
+	0x0835[RARP]	请求回复[28字节]	PAD[18字节]
+	注：ARP是地址解析协议，根据Ip地址获取mac地址，RARP是逆地址解析协议，根据mac地址获取Ip地址
+3、在windows下使用wireshark抓包，空负荷的TCP包长度为66字节，链路层名称为 Ethernet II
+	而在linux下，使用tcpdump抓包保存下来，可以看到空负荷的TCP包长度为68字节，链路层名称为 Linux cooked capture
+	tcpdump多出来的两个字节在源mac地址之后，取值为00 00，
+	对于目的mac地址，主动连接的一方取值固定为00 00 00 01 00 06，被动连接的一方取值固定为00 04 00 01 00 06
+4、为什么这样？
+	这是因为包是在linux中使用tcpdump抓包，指定参数-i any来捕获设备上所有网卡上的包。
+	它会把所有包的以太网头都换成linux cooked capture，wireshark对此解释为虚假的协议。
+5、如果tcpdump使用 -i eth0来抓包，就会显示和windows一样。
+6、以太网尾部还有4字节，是CRC，用于数据校验。
+@endverbatim
+*/
+以太网头部;
+
+/**
+@verbatim
+ARP(Address Resolution Protocol)：地址解析协议，作用是根据IP地址获取MAC地址。
+@endverbatim
+*/
+ARP;
+
+/**
+@verbatim
+RARP(Reverse Address Resolution Protocol)：反向地址解析协议，作用是根据MAC地址获取IP地址。
+@endverbatim
+*/
+RARP;
+
+/** @} */
+
+/** @} */

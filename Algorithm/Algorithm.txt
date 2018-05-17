@@ -1,0 +1,16 @@
+﻿/**
+ * Copyright (c) 2015~2016, Andy Niu All rights reserved.
+ * \file		Algorithm.txt
+ * \brief		Algorithm
+ * \author		牛自宾
+ * \date		2015年7月5日
+ * \note		Algorithm帮助文档
+ */
+
+/**
+* @defgroup Algorithm
+* @{
+*/
+
+
+/** @} */

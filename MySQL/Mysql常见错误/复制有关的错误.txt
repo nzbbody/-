@@ -1,0 +1,36 @@
+﻿/**
+* @defgroup Mysql常见错误
+* @{
+*/
+
+/**
+* @defgroup 复制有关的错误
+* @{
+*/
+
+
+/**
+@verbatim
+1、在Slave端配置Master的信息，启动Mysql，报错：错误:1067 进程意外终止
+2、出现错误一定要去看mysql的错误日志，通过 show variables like '%dir%';
+	找到数据存放的目录，打开文件 xxx.err文件
+3、看到错误 unknown variable 'master-host=192.168.0.223'
+4、错误原因是，从5.1.7以后，在mysql配置文件中，不支持使用master-host选项，必须在Slave使用执行
+	change master to
+	通过help change master to 可以看到语法。
+5、从5.1.7以后，在mysql配置文件中，不支持使用master-host选项，但是支持下面的选项：
+	slave-skip-errors=all
+	replicate-do-db=rep
+	replicate-ignore-db=mysql
+6、另外一点，mysql复制必须要给mysql一个唯一的标识，如下：
+	server-id=6580
+@endverbatim
+*/
+Error_1067_进程意外终止;
+
+
+
+/** @} */
+
+/** @} */
+

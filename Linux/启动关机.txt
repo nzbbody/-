@@ -1,0 +1,100 @@
+/**
+* @defgroup Linux
+* @{
+*/
+
+/**
+* @defgroup 启动关机
+* @{
+*/
+
+
+/**
+@verbatim
+1、启动执行过程：/etc/rc.d/rc.sysinit，然后 /etc/rc.d/rc.local
+2、在我们的系统中是，
+	rc.sysinit 调用 sh /usr/local/configfs/config.sh
+	config.sh 执行 \cp -fr /usr/local/configfs/etc/* /etc/
+@endverbatim
+@see
+*/
+启动;
+
+/**
+@verbatim
+1、reboot是重启，平时用的最多。
+2、注意：关机之前通过下面的命令，查看系统的使用状态
+	谁在线:				who
+	联网状态:			netstat -a
+	后台执行的程序:		ps -aux
+3、shutdown命令
+	-t：后面跟着秒数，比如-t 10，表示发送关机警告信息后，等待10秒再执行关机命令。
+		注意：真正的关机时间取决于必选项时间，这个时间单位是分钟，而且是必选项
+		shutdown now # 立即关机
+		shutdown +2  # 2min 后关机
+		shutdown 10:01 # 10:01关机
+		shutdown +2 "The machine will shutdown" # 2min后关机，并通知在线者
+	-h：halt，将系统关机
+	-r：重启
+	-k：只发关机的警告信息，但并不关机
+4、halt相当于 shutdown -h now
+5、poweroff是halt的软连接，如下：
+	[root@localhost ~]# ll /sbin/poweroff
+	lrwxrwxrwx 1 root root 4 Dec 28  2011 /sbin/poweroff -> halt
+6、使用init，init是所有进程的祖先，他是Linux系统操作中不可缺少的程序之一。
+	它的进程号始终为1，通过init可以切换系统的运行等级，如下：
+	run level 0: 关机
+	run level 1: 单用户模式，系统维护
+	run level 3: 纯文本模式
+	run level 5: 含图形接口模式
+	run level 6: 重新启动
+	运行，init 6就是重启
+@endverbatim
+@see
+*/
+关机重启;
+
+
+/**
+@verbatim
+1、Linux系统有7个运行级别(runlevel)
+	0：系统停机状态，系统默认运行级别不能设为0，否则不能正常启动
+	1：单用户工作状态，root权限，用于系统维护，禁止远程登陆
+	2：多用户状态(没有NFS)
+	3：完全的多用户状态(有NFS)，登陆后进入控制台命令行模式
+	4：系统未使用，保留
+	5：X11控制台，登陆后进入图形GUI模式
+	6：系统正常关闭并重启，默认运行级别不能设为6，否则不能正常启动
+2、runlevel可以查看当前运行级别，如下：
+	[root@localhost ~]# runlevel
+	N 5
+3、在/etc/rc.d目录下面有下面一些目录，如下：
+	[root@localhost rc.d]# ll
+	total 108
+	drwxr-xr-x 2 root root  4096 Apr 16 11:07 init.d
+	-rwxr-xr-x 1 root root  2255 Jul  4  2009 rc
+	drwxr-xr-x 2 root root  4096 Apr 16 10:16 rc0.d
+	drwxr-xr-x 2 root root  4096 Apr 16 10:16 rc1.d
+	drwxr-xr-x 2 root root  4096 Apr 16 10:16 rc2.d
+	drwxr-xr-x 2 root root  4096 Apr 16 10:16 rc3.d
+	drwxr-xr-x 2 root root  4096 Apr 16 10:16 rc4.d
+	drwxr-xr-x 2 root root  4096 Apr 16 10:16 rc5.d
+	drwxr-xr-x 2 root root  4096 Apr 16 10:16 rc6.d
+	-rwxr-xr-x 1 root root   347 Sep 24 11:30 rc.local
+	-rwxr-xr-x 1 root root 27239 Jul  4  2009 rc.sysinit
+4、init.d目录下面是service脚本文件，而rcN.d中的文件都是连接文件，这些文件都指向init.d中的service脚本文件
+	这些连接文件的命名规则为K+nn+服务名或S+nn+服务名，系统根据运行级别，进入到对应的rcN.d目录，
+	对于K开头的，终止对应的服务
+	对于S开头的，启动对应的服务
+5、在文件/etc/inittab中，保存了系统默认的运行级别，如下：
+	id:5:initdefault:
+	注意：这里的运行级别不能是6，如果是6，导致关闭重启，关闭重启死循环下去。
+@endverbatim
+@see
+*/
+运行级别;
+
+
+/** @} */
+
+/** @} */

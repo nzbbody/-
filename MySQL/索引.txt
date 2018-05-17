@@ -1,0 +1,91 @@
+/**
+* @defgroup MySQL
+* @{
+*/
+
+/**
+* @defgroup 索引
+* @{
+*/
+
+/**
+@verbatim
+1、MyISAM 使用B+Tree 作为索引结构，叶子节点的data存放指针，也就是记录的地址。对于主键索引和辅助索引都是一样的。
+2、InnoDB 也使用B+Tree作为索引结构，也别需要注意的是，对于主键索引，InnoDB使用聚集索引，
+	InnoDB的数据文件本身就是就是索引文件。而MyISAM，主键索引和数据文件是分离的。
+3、InnoDB数据文件，要按主键聚集索引，这就要求InnoDB的表必须要有主键（MyISAM可以没有）。如果没有显式指定主键，
+	InnoDB会自动选择一个可以唯一标识记录的字段作为主键，比如auto_increment的字段，如果不存在这样的列，
+	InnoDB会自动生成一个隐含字段作为主键，这个隐含字段6个字节，是长整形。
+4、对于InnoDB的辅助索引，叶子节点的data存放的是主键的值。这就意味着，使用辅助索引定位记录，需要使用两次索引：
+	首先使用辅助索引找到主键的值，根据主键的值，使用主键索引找到记录。
+5、InnoDB的辅助索引为什么要这样设计？
+	如果辅助索引data存放的行指针，当行移动或者数据页分裂时，需要更新data域行指针的值，这就增加维护成本。
+	data存在主键的值，就没有这个问题。行移动和数据页分裂，主键索引会自动更新。data关联主键的值，不需要更新，
+	相当于增加一个间接层。这个间接层对性能的影响也很小，因为通过主键定位记录是非常快的。注：对于主键字段的增删改，
+	和辅助索引字段的增删改，辅助索引还是要更新的。
+6、了解了innoDB的索引实现，有几个地方需要注意：
+	不要使用过长的字段作为主键，因为辅助索引都要使用主键索引定位记录，这个字段过长，使用内存更大，影响性能。
+	使用单调的字段作为主键，特别是insert的时候，如果是非单调的，B+Tree维护成本很高。
+7、这就能很好解释，隔离级别 repeatable-read, 不使用索引锁住整个表，使用索引（主键索引或者辅助索引）只会锁住对应的行。
+8、在查询执行计划中，有一个字段 type， eq_ref 表示使用主键索引，直接定位到记录。
+	而ref 表示先使用辅助索引，找到主键的值，再使用主键索引定位到记录。
+@endverbatim
+@see
+*/
+MyISAM与InnoDB的索引实现;
+
+
+/**
+@verbatim
+1、通过desc 描述表结构，key字段显示有 PRI，UNI，MUL，如下：
+	mysql> desc student;
+	+--------+-------------+------+-----+---------+----------------+
+	| Field  | Type        | Null | Key | Default | Extra          |
+	+--------+-------------+------+-----+---------+----------------+
+	| id     | int(11)     | NO   | PRI | NULL    | auto_increment |
+	| SCHOOL | varchar(64) | YES  |     | NULL    |                |
+	| NAME   | varchar(16) | YES  | UNI | NULL    |                |
+	| AGE    | int(11)     | NO   | MUL | NULL    |                |
+	+--------+-------------+------+-----+---------+----------------+
+2、表示的意思如下：
+	PRI：主键
+	UNI：唯一键索引
+	MUL：非唯一键索引
+3、特别注意：对于多列索引，也就是多个字段组成的索引，往往只显示前导字段，也就是索引的第一个字段。
+	而且显示的规则有些复杂，可以通过show index查看具体的信息。如下：
+	mysql> create index index_name_age_school on student(name,age,school);
+	Query OK, 0 rows affected
+	Records: 0  Duplicates: 0  Warnings: 0
+	
+	mysql> desc student;
+	+--------+-------------+------+-----+---------+----------------+
+	| Field  | Type        | Null | Key | Default | Extra          |
+	+--------+-------------+------+-----+---------+----------------+
+	| id     | int(11)     | NO   | PRI | NULL    | auto_increment |
+	| SCHOOL | varchar(64) | YES  |     | NULL    |                |
+	| NAME   | varchar(16) | YES  | UNI | NULL    |                |
+	| AGE    | int(11)     | NO   | MUL | NULL    |                |
+	+--------+-------------+------+-----+---------+----------------+
+	4 rows in set
+	
+	mysql> show index from student;
+	+---------+------------+-----------------------+--------------+-------------+-----------+-------------+----------+--------+------+------------+---------+---------------+
+	| Table   | Non_unique | Key_name              | Seq_in_index | Column_name | Collation | Cardinality | Sub_part | Packed | Null | Index_type | Comment | Index_comment |
+	+---------+------------+-----------------------+--------------+-------------+-----------+-------------+----------+--------+------+------------+---------+---------------+
+	| student |          0 | PRIMARY               |            1 | id          | A         |           0 | NULL     | NULL   |      | BTREE      |         |               |
+	| student |          0 | index_name            |            1 | NAME        | A         |           0 | NULL     | NULL   | YES  | BTREE      |         |               |
+	| student |          1 | index_age             |            1 | AGE         | A         |           0 | NULL     | NULL   |      | BTREE      |         |               |
+	| student |          1 | index_name_age_school |            1 | NAME        | A         |           0 | NULL     | NULL   | YES  | BTREE      |         |               |
+	| student |          1 | index_name_age_school |            2 | AGE         | A         |           0 | NULL     | NULL   |      | BTREE      |         |               |
+	| student |          1 | index_name_age_school |            3 | SCHOOL      | A         |           0 | NULL     | NULL   | YES  | BTREE      |         |               |
+	+---------+------------+-----------------------+--------------+-------------+-----------+-------------+----------+--------+------+------------+---------+---------------+
+	6 rows in set
+@endverbatim
+@see
+*/
+索引标识PRI_UNI_MUL;
+
+
+/** @} */
+
+/** @} */

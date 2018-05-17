@@ -1,0 +1,89 @@
+/**
+* @defgroup Linux
+* @{
+*/
+
+/**
+* @defgroup ntp
+* @{
+*/
+
+
+/**
+@verbatim
+1、Network Time Protocol (NTP)，解决什么问题？
+	考虑下面的需求，一个局域网内要求每台机器的时间完全一致。你可能会说，只要开始的时候大家时间一致，
+	以后时间也肯定会保持一致。这种说法是错误的，因为计算机运行时间久了就产生误差。也就是说，
+	开始的时候大家时间一致，运行一段时间，每个机器的时间可能都不一致。
+	因此需要一个电脑时间，作为基准的时间。
+2、真正能够精确地测算时间的还是原子钟，但由于原子钟十分的昂贵，只有少部分组织拥有。
+	解决办法就是，局域网内布置一台设备A，去和原子钟机器进行时间同步，其他设备再和设备A进行时间同步。
+3、这就需要使用NTP服务，原子钟机器开启NTP服务（ntpd），设备A首先进行时间校准，ntpdate，
+	然后开启NTP客户端（ntpd），与原子钟时间同步。
+4、原子钟的ntpd作为服务端，设备A的ntpd作为客户端，对时间进行调整。会根据时间的误差，确定调整的频率。
+5、ntpdate进行时间校准，设备A上面的ntpdate与ntpd使用的场景不一样。
+	ntpdate进行时间校准，ntpd进行时间微调。
+	时间同步的时候，先进行ntpdate，再进行ntpd
+6、如果没有使用ntpdate，直接使用ntpd，可能时间差距很大，导致微调很慢，甚至不调整。
+7、使用ntpdate还会导致一个问题，事件发生跳变。比如当前时间为12点，记录日志。使用ntpdate之后，时间变成8点，
+	导致问题：日志的记录时间前面是12点，后面是8点。
+8、时间同步使用udp协议，端口是123，ntpdate只有手动执行一次，占用123端口后，再释放，
+	而ntpd要一直与原子钟的ntpd交互，进行微调，因此一直占用123端口。
+	因此，如果先使用ntpd，再使用ntpdate，会报错udp端口被占用。
+@endverbatim
+@see
+*/
+ntp介绍;
+
+/**
+@verbatim
+1、在172.16.2.16正常开启ntp服务，
+	[root@localhost ~]# ntpdate 172.16.2.16
+	29 Dec 14:52:38 ntpdate[9002]: no server suitable for synchronization found
+2、当用ntpdate -d 来查询时会发现导致 no server suitable for synchronization found 的错误的信息有以下2个：  
+3、错误一：Server dropped: Strata too high
+	在ntp客户端运行ntpdate serverIP，出现no server suitable for synchronization found的错误。
+	在ntp客户端用ntpdate –d serverIP查看，发现有“Server dropped: strata too high”的错误，并且显示“stratum 16”。而正常情况下stratum这个值得范围是“0~15”。
+	这是因为NTP server还没有和它的server，或者其自身同步上。
+	通过ntpstat可以看到如下：
+	[root@localhost ~]# ntpstat
+	unsynchronised
+	time server re-starting
+	poll interval unknown
+	解决办法：是让NTP Server和其自身保持同步，如果在/ntp.conf中定义的server都不可用时，将使用local时间作为ntp服务提供给ntp客户端。
+	server 127.127.1.0
+	fudge 127.127.1.0 stratum 8 
+4、错误二：Server dropped: no data
+	从客户端执行netdate –d时有错误信息如下：
+	transmit(192.168.30.22)
+	transmit(192.168.30.22)
+	transmit(192.168.30.22)
+	transmit(192.168.30.22)
+	transmit(192.168.30.22)
+	192.168.30.22: Server dropped: no data
+	server 192.168.30.22, port 123
+	.....
+	28 Jul 17:42:24 ntpdate[14148]: no server suitable for synchronization found
+	
+	出现这个问题的原因可能有2：
+	a、检查ntp的版本，如果你使用的是ntp4.2（包括4.2）之后的版本，在restrict的定义中使用了notrust的话，会导致以上错误。
+		使用以下命令检查ntp的版本：
+		# ntpq -c version		
+		下面是来自ntp官方网站的说明：
+		The behavior of notrust changed between versions 4.1 and 4.2.		
+		In 4.1 (and earlier) notrust meant "Don't trust this host/subnet for time".		
+		In 4.2 (and later) notrust means "Ignore all NTP packets that are not cryptographically authenticated." This forces remote time servers to authenticate themselves to your (client) ntpd
+		解决：
+		把notrust去掉。
+	b、检查ntp server的防火墙。可能是server的防火墙屏蔽了upd 123端口。
+		可以用命令
+		service iptables stop
+		来关掉iptables服务后再尝试从ntp客户端的同步，如果成功，证明是防火墙的问题，需要更改iptables的设置。
+@endverbatim
+*/
+ntpdate报错;
+
+
+/** @} */
+
+/** @} */

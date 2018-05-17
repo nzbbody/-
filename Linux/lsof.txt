@@ -1,0 +1,48 @@
+/**
+* @defgroup Linux
+* @{
+*/
+
+/**
+@verbatim
+1、lsof list open file 列出系统打开的文件
+2、对于父进程监听的端口转移到子进程的例子，使用lsof可以查看相关的信息，如下：
+	[root@localhost niu]# netstat -anp|grep 9000
+	tcp        0      0 0.0.0.0:9000                0.0.0.0:*                   LISTEN      5334/main           
+	[root@localhost niu]# lsof -p5334
+	COMMAND  PID USER   FD   TYPE  DEVICE    SIZE    NODE NAME
+	main    5334 root  cwd    DIR     8,2    4096 4547126 /home/niu/socket
+	main    5334 root  rtd    DIR     8,2    4096       2 /
+	main    5334 root  txt    REG     8,2    9025 4547150 /home/niu/socket/main
+	main    5334 root  mem    REG     8,2  125736 1932033 /lib/ld-2.5.so
+	main    5334 root  mem    REG     8,2 1611564 1932046 /lib/libc-2.5.so
+	main    5334 root  mem    REG     8,2  208352 1932058 /lib/libm-2.5.so
+	main    5334 root  mem    REG     8,2  936908  207797 /usr/lib/libstdc++.so.6.0.8
+	main    5334 root  mem    REG     8,2   46636 1932061 /lib/libgcc_s-4.1.2-20080825.so.1
+	main    5334 root    0u   CHR   136,4               6 /dev/pts/4
+	main    5334 root    1u   CHR   136,4               6 /dev/pts/4
+	main    5334 root    2u   CHR   136,4               6 /dev/pts/4
+	main    5334 root    3u  IPv4 1191891             TCP *:cslistener (LISTEN)
+	[root@localhost niu]# lsof -i:9000
+	COMMAND  PID USER   FD   TYPE  DEVICE SIZE NODE NAME
+	main    5334 root    3u  IPv4 1191891       TCP *:cslistener (LISTEN)
+	test.sh 5335 root    3u  IPv4 1191891       TCP *:cslistener (LISTEN)
+	ping    5336 root    3u  IPv4 1191891       TCP *:cslistener (LISTEN)
+3、lsof -p5334查看进程打开的文件，包括工作目录，可执行文件，文件描述符，0,1,2,3
+	分别是：0[标准输入],1[标准输出],2[错误输出],3[Socket监听文件]
+4、lsof -i:9000查看哪些进程监听端口9000，在没有使用close-on-exec的情况下，可以看到父子进程关系的3个进程都在打开同一个文件
+	也就是监听端口9000，而使用netstat -anp|grep 9000只能看到父进程。
+5、如果使用了close-on-exec，lsof -i:9000 只有父进程打开文件，如下：
+	[root@localhost niu]# netstat -anp|grep 9000
+	tcp        0      0 0.0.0.0:9000                0.0.0.0:*                   LISTEN      5776/main           
+	[root@localhost niu]# lsof -i:9000
+	COMMAND  PID USER   FD   TYPE  DEVICE SIZE NODE NAME
+	main    5776 root    3u  IPv4 1196591       TCP *:cslistener (LISTEN)
+@endverbatim
+@see
+*/
+lsof;
+
+
+
+/** @} */

@@ -1,0 +1,144 @@
+/**
+* @defgroup MySQL
+* @{
+*/
+
+/**
+* @defgroup OTL
+* @{
+*/
+
+/**
+@verbatim
+1、示例代码如下：
+	void Test3(otl_connect& otlConn)
+	{
+		char* sql ="insert into stu(name,age) value(:Name<char[64]>,:Age<int>);";
+		try
+		{		
+			otl_stream stream(1,sql,otlConn);
+			stream<<"aaa"<<29;
+		}
+		catch (otl_exception& ex)
+		{
+			printf("ExecuteSql Error, ErrorMsg[%s], Sql[%s]",
+				ex.msg,
+				ex.stm_text);
+		}
+	}
+2、需要注意的是：
+	a、对于string的输入，绑定变量不能是varchar，必须是char
+	b、不管数据库中字段的类型是char，varchar，或者text，绑定变量的类型都是char。根据字段的类型，设置char的长度
+	c、对于char必须指定长度，可以认为是分配Buf的大小，如下:Name<char[64]>，:Name<char>是错误的
+	d、注意：长度必须是文本数字，不能变量或者表达式，因为解析的时候不进行计算，:Name<char[4*16]>是错误的
+	e、如果输入的string长度，大于指定的char长度，报错 Input string value is too large to fit into the buffer
+@endverbatim
+*/
+otl绑定变量;
+
+
+/**
+@verbatim
+1、多线程设置如下：
+	otl_connect::otl_initialize(1);
+	方法原型是：static int otl_initialize(const int threaded_mode=0)
+2、自动提交设置如下：
+	_dbConnect.rlogon(szConStr,1);
+	方法原型是：void rlogon(const char* connect_str, const int aauto_commit=0) OTL_THROWS_OTL_EXCEPTION
+3、没有设置自动提交，需要手动设置执行commit，如果没有执行commit，会导致什么问题？
+	如果没有执行commit，相当于当前start一个事务，这个事务的隔离级别默认是可重复读，读取一条记录，
+	其他事务修改了这条记录，再次读取还是老的记录，这就是问题所在。
+	也就是说，在当前事务的执行过程中，其他事务的修改，在当前事务不可见，这显然不是用户期望的。
+@endverbatim
+*/
+otl多线程设置和自动提交;
+
+/**
+@verbatim
+1、示例代码如下：
+	void Test_Xutao(otl_connect& otlConn)
+	{
+		char* sql ="select name from nbs_program_org where name='鍒嗙粍1'";
+		string name;
+		try
+		{		
+			otl_stream stream(1,sql,otlConn);
+			stream>>name;
+		}
+		catch (otl_exception& ex)
+		{
+			printf("ExecuteSql Error, ErrorMsg[%s], Sql[%s]",
+				ex.msg,
+				ex.stm_text);
+		}
+	}
+	鍒嗙粍1 是utf8格式的中文【分组1】，因为vs使用gb来解释utf8，因此显示乱码。
+	上面的查询，不能查询回来结果。
+2、通过抓包到3306的端口，发现与数据库的交互，并不是utf8格式。
+	怎么解决这个问题？
+3、使用占位符的方式，如下：
+	void Test_Xutao(otl_connect& otlConn)
+	{
+		char* sql ="select name from nbs_program_org where name=:Name<char[40]>";
+		string name;
+		try
+		{		
+			otl_stream stream(1,sql,otlConn);
+			stream<<"鍒嗙粍1";
+			stream>>name;
+		}
+		catch (otl_exception& ex)
+		{
+			printf("ExecuteSql Error, ErrorMsg[%s], Sql[%s]",
+				ex.msg,
+				ex.stm_text);
+		}
+	}
+4、上面的问题，在windows下才有，linux两种方式都是可以的。如下：
+	void Test_Xutao111(otl_connect& otlConn)
+	{
+			char* sql ="select name from nbs_program_org where name='分组1'";
+			string name;
+			try
+			{
+					otl_stream stream(1,sql,otlConn);
+					stream>>name;
+			}
+			catch (otl_exception& ex)
+			{
+					printf("ExecuteSql Error, ErrorMsg[%s], Sql[%s]",
+							ex.msg,
+							ex.stm_text);
+			}
+			printf("Test_Xutao111[%s]\n\n\n",name.c_str());
+	}
+	
+	
+	void Test_Xutao222(otl_connect& otlConn)
+	{
+			char* sql ="select name from nbs_program_org where name=:Name<char[40]>";
+			string name;
+			try
+			{
+					otl_stream stream(1,sql,otlConn);
+					stream<<"分组1";
+					stream>>name;
+			}
+			catch (otl_exception& ex)
+			{
+					printf("ExecuteSql Error, ErrorMsg[%s], Sql[%s]",
+							ex.msg,
+							ex.stm_text);
+			}
+			printf("Test_Xutao222[%s]\n\n\n",name.c_str());
+	}
+	注意：这里在crt上面，已经是utf格式，所以是中文【分组1】
+@endverbatim
+*/
+otl中文的有关问题;
+
+
+
+/** @} */
+
+/** @} */

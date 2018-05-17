@@ -1,0 +1,178 @@
+/**
+* @defgroup MySQL
+* @{
+*/
+
+/**
+@verbatim
+用户变量
+1、用户变量，用户变量和数据库连接有关，连接后声明变量，连接断开后，自动消失。
+2、用户变量以@开头，select一个没有赋值的用户变量，返回NULL，也就是没有值，注意取值为NULL与取值为0或者""的区别。
+	mysql> select @var;
+	+------+
+	| @var |
+	+------+
+	| NULL |
+	+------+
+3、用户变量赋值有三种方式：
+	a、set @var=(select user from user limit 0,1);  
+	b、select user into @var from user limit 0,1;  
+	c、select @var:=user from user limit 0,1;  
+	注意：a和bc的区别，比如当前@var取值为123，查询出来的记录为空，执行a，@var取值为NULL，而执行bc，取值还是123 
+4、需要注意的是，mysql的变量类似于动态语言，在赋值的时候，确定变量类型。也就是说，int、string都可以赋值给同一个变量。如下：
+	mysql> set @a=123;
+	Query OK, 0 rows affected (0.00 sec)
+	mysql> select @a;
+	+------+
+	| @a   |
+	+------+
+	|  123 |
+	+------+
+	1 row in set (0.00 sec)
+	mysql> set @a='abc';
+	Query OK, 0 rows affected (0.00 sec)
+	mysql> select @a;
+	+------+
+	| @a   |
+	+------+
+	| abc  |
+	+------+
+	1 row in set (0.00 sec)
+##############################################################################################################
+系统变量
+系统变量两个@@，系统变量的作用域分为全局作用域和会话作用域，以autocommit为例，说明如下：
+1、新建一个连接，只有全局autocommit，会话autocommit还不存在，这个时候会从全局autocommit拷贝过来。
+2、修改全局autocommit，只会对新建立的连接起作用，对已经存在的连接不起作用。
+3、修改会话autocommit，只对当前连接起作用。
+4、不管是全局autocommit还是会话autocommit，通过客户端命令设置下去，只对当前运行的服务起作用。
+	mysql服务重启，还是原来的配置。要想对服务起作用，必须写入到配置文件中。
+5、注意：系统变量和连接有关，才有会话作用域。有些系统变量和连接无关，比如event_scheduler ，和连接无关，
+	只有全局作用域，没有会话作用域。
+6、全局autocommit的设置和获取
+	mysql> set @@global.autocommit=1;
+	Query OK, 0 rows affected (0.00 sec)
+	mysql> select @@global.autocommit;
+	+---------------------+
+	| @@global.autocommit |
+	+---------------------+
+	| 1                   |
+	+---------------------+
+	1 row in set (0.00 sec)
+	
+	mysql> set @@global.autocommit=0;
+	Query OK, 0 rows affected (0.00 sec)
+	
+	mysql> select @@global.autocommit;
+	+---------------------+
+	| @@global.autocommit |
+	+---------------------+
+	| 0                   |
+	+---------------------+
+	1 row in set (0.00 sec)
+
+7、会话autocommit的设置和获取
+	mysql> set @@session.autocommit =1;
+	Query OK, 0 rows affected (0.00 sec)
+	
+	mysql> select @@session.autocommit;
+	+----------------------+
+	| @@session.autocommit |
+	+----------------------+
+	| 1                    |
+	+----------------------+
+	1 row in set (0.00 sec)
+	
+	mysql> set @@session.autocommit =0;
+	Query OK, 0 rows affected (0.00 sec)
+	
+	mysql> select @@session.autocommit;
+	+----------------------+
+	| @@session.autocommit |
+	+----------------------+
+	| 0                    |
+	+----------------------+
+	1 row in set (0.00 sec)
+8、注意：不带作用域修饰，默认是指会话作用域。
+	（特别注意：有些系统变量，不带作用域，设置不成功，比如tx_isolation，因此最好都要带上作用域）如下：
+	mysql> select @@global.autocommit;
+	+---------------------+
+	| @@global.autocommit |
+	+---------------------+
+	| 1                   |
+	+---------------------+
+	1 row in set (0.00 sec)
+	
+	mysql> select @@session.autocommit;
+	+----------------------+
+	| @@session.autocommit |
+	+----------------------+
+	| 1                    |
+	+----------------------+
+	1 row in set (0.00 sec)
+	
+	mysql> set @@autocommit=0;
+	Query OK, 0 rows affected (0.00 sec)
+	
+	mysql> select @@autocommit;
+	+--------------+
+	| @@autocommit |
+	+--------------+
+	| 0            |
+	+--------------+
+	1 row in set (0.00 sec)
+	
+	mysql> select @@global.autocommit;
+	+---------------------+
+	| @@global.autocommit |
+	+---------------------+
+	| 1                   |
+	+---------------------+
+	1 row in set (0.00 sec)
+	
+	mysql> select @@session.autocommit;
+	+----------------------+
+	| @@session.autocommit |
+	+----------------------+
+	| 0                    |
+	+----------------------+
+	1 row in set (0.00 sec)
+9、注意：set @@global.autocommit=1; 还有一种写法： set global autocommit=1;
+	对于session是同样道理。
+10、对于系统变量，除了select，还有一种办法：show variables like '%autocom%'; 如下：
+	mysql> show global variables like '%autocommit%';
+	+---------------+-------+
+	| Variable_name | Value |
+	+---------------+-------+
+	| autocommit    | ON    |
+	+---------------+-------+
+	1 row in set (0.00 sec)
+	
+	mysql> show session variables like '%autocommit%';
+	+---------------+-------+
+	| Variable_name | Value |
+	+---------------+-------+
+	| autocommit    | OFF   |
+	+---------------+-------+
+	1 row in set (0.00 sec)
+	
+	mysql> show variables like '%autocommit%';
+	+---------------+-------+
+	| Variable_name | Value |
+	+---------------+-------+
+	| autocommit    | OFF   |
+	+---------------+-------+
+	1 row in set (0.00 sec)
+11、和select类似，可以show global和session，没有指定作用域，就是指session作用域
+##############################################################################################################
+系统参数 
+	系统变量对应于启动时的选项，也就是系统参数。
+##############################################################################################################
+状态变量 
+	sql运行过程中，还有状态变量。
+@endverbatim
+@see
+*/
+mysql变量;
+
+
+/** @} */

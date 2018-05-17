@@ -1,0 +1,18 @@
+/**
+* @defgroup 文件内容查看
+* @{
+*/
+
+/**
+@verbatim
+1、head显示文档的开头n行，如下: 
+	head -n5 111 	// 显示文档的开头5行
+2、head默认查看的行数是10行	
+@endverbatim
+@see tail
+*/
+head;
+
+
+/** @} */
+

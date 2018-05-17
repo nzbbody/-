@@ -1,0 +1,30 @@
+/**
+* @defgroup Linux
+* @{
+*/
+
+/**
+* @defgroup ubuntu
+* @{
+*/
+
+/**
+@verbatim
+sudo apt --fix-broken install
+sudo apt-get update
+sudo apt-get upgrade
+@endverbatim
+*/
+如何解决apt-get中Unmet_dependencies问题;
+
+/**
+@verbatim
+apt-get install openssh-server
+@endverbatim
+*/
+安装ssh;
+
+
+/** @} */
+
+/** @} */

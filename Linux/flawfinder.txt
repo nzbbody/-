@@ -1,0 +1,98 @@
+/**
+* @defgroup Linux
+* @{
+*/
+
+/**
+* @defgroup flawfinder
+* @{
+*/
+
+/**
+@verbatim
+1、介绍
+	Flawfinder是一个C/C 代码的开源安全审查工具，采用内建语法缺陷数据库，能够标记类似缓冲溢出、格式字符串、竞争条件、随机数获取方面的问题。
+	Flawfinder是一个非常简单的工具，采用的算法也不复杂，可以看做是一个基于词典的源代码静态分析器。
+	Flawfinder的开发者David Wheeler表示：很多软件开发者都在不断重复犯相同的错误，开发人员应当在软件部署前就用Flawfinder审查代码。
+2、下载 
+	https://www.dwheeler.com/flawfinder/
+	找到 current released version flawfinder in .tar.gz (tarball) format)
+3、然后解压安装
+	tar -zxvf flawfinder-2.0.6.tar.gz
+	cd flawfinder-2.0.6/
+	sudo make install
+4、测试代码
+	niuzibin@ubuntu:~/work/flawfinder$ vi main.cpp 
+	#include <stdio.h>
+	#include <stdlib.h>
+	int main(int argc, char* argv[])
+	{
+			printf("hello wolrd\n");
+			int aa;
+			int bb = aa + 10;
+			char ch[50];
+			gets(ch);
+			scanf("%c",ch);
+			return 1;
+	}
+5、使用flawfinder，进行检测
+	niuzibin@ubuntu:~/work/flawfinder$ flawfinder --columns --context main.cpp
+	Flawfinder version 2.0.6, (C) 2001-2017 David A. Wheeler.
+	Number of rules (primarily dangerous function names) in C/C++ ruleset: 223
+	Examining main.cpp
+	
+	FINAL RESULTS:
+	
+	main.cpp:9:2:  [5] (buffer) gets:
+	Does not check for buffer overflows (CWE-120, CWE-20). Use fgets() instead.
+			gets(ch);
+	main.cpp:8:2:  [2] (buffer) char:
+	Statically-sized arrays can be improperly restricted, leading to potential
+	overflows or other issues (CWE-119!/CWE-120). Perform bounds checking, use
+	functions that limit length, or ensure that the size is larger than the
+	maximum possible length.
+			char ch[50];
+	
+	ANALYSIS SUMMARY:
+	
+	Hits = 2
+	Lines analyzed = 12 in approximately 0.01 seconds (2108 lines/second)
+	Physical Source Lines of Code (SLOC) = 12
+	Hits@level = [0]   2 [1]   0 [2]   1 [3]   0 [4]   0 [5]   1
+	Hits@level+ = [0+]   4 [1+]   2 [2+]   2 [3+]   1 [4+]   1 [5+]   1
+	Hits/KSLOC@level+ = [0+] 333.333 [1+] 166.667 [2+] 166.667 [3+] 83.3333 [4+] 83.3333 [5+] 83.3333
+	Minimum risk level = 1
+	Not every hit is necessarily a security vulnerability.
+	There may be other security vulnerabilities; review your code!
+	See 'Secure Programming HOWTO'
+	(https://www.dwheeler.com/secure-programs) for more information.
+6、也可以生成html文档，保存一下
+	flawfinder --columns --context --html main.cpp> result.html
+7、我们看一下，分析结果
+	有两处告警，并且指出违反的规则。
+	搜索 CWE-120, CWE-20, CWE-119
+8、实际上，使用g++编译，我们也可以看到告警，甚至更多，比如这里的aa没有初始化，bb没有使用的问题。如下：
+	niuzibin@ubuntu:~/work/flawfinder$ g++ -Wall -o main main.cpp
+	main.cpp: In function ‘int main(int, char**)’:
+	main.cpp:9:2: warning: ‘char* gets(char*)’ is deprecated (declared at /usr/include/stdio.h:638) [-Wdeprecated-declarations]
+	gets(ch);
+	^
+	main.cpp:9:9: warning: ‘char* gets(char*)’ is deprecated (declared at /usr/include/stdio.h:638) [-Wdeprecated-declarations]
+	gets(ch);
+			^
+	main.cpp:7:6: warning: unused variable ‘bb’ [-Wunused-variable]
+	int bb = aa + 10;
+		^
+	main.cpp:7:16: warning: ‘aa’ may be used uninitialized in this function [-Wmaybe-uninitialized]
+	int bb = aa + 10;
+					^
+	/tmp/ccwLC7Jc.o: In function `main':
+	main.cpp:(.text+0x39): warning: the `gets' function is dangerous and should not be used.
+@endverbatim
+*/
+flawfinder示例;
+
+
+/** @} */
+
+/** @} */

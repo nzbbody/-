@@ -1,0 +1,90 @@
+﻿/**
+* @defgroup 编程珠玑
+* @{
+*/
+
+/**
+@verbatim
+1、循环移位，对于abcdefgh，向左循环移动3位，成为defghabc，给出一个字符数组和需要移动的位数n，输出结果。
+2、一场考虑，字符指针为NULL，对于8个字符，左移11位等价于左移3位。
+3、方法一：从头部取出一个字符，后面的依次左移，取出的字符放入尾部，执行n次。
+4、方法一的cpu开销大，方法二是：分配n个字节的缓冲区，从头部取出n个字节，后面的字符左移n位，取出的n字节
+	字符放入尾部。
+5、方法二的内存开销大，需要多分配n字节字符。方法三，利用循环左移的特点，循环左移3位等价于前面3个反转，
+	后面的字符反转，然后整个字符串反转。如下：abcdefgh-->cbadefgh-->cbahgfed-->defghabc
+@endverbatim
+
+@verbatim
+void LoopMove(char* pc,int moveSize)
+{
+	if(pc == NULL)
+	{
+		return;
+	}
+	int len = strlen(pc);
+	if(len <= 1)
+	{
+		return;
+	}
+
+	moveSize = moveSize%len;
+
+	// 每次左移一位，循环n次
+	//for(int i=0;i<moveSize;++i)
+	//{
+	//	char first = pc[0];
+	//	for(int j=0;j<len-1;++j)
+	//	{
+	//		pc[j]=pc[j+1];
+	//	}
+	//	pc[len-1]=first;
+	//}
+
+	// 一次左移n位
+	//char* buf = new char[moveSize];
+	//memset(buf,0,moveSize);
+	//memcpy(buf,pc,moveSize);
+
+	//for(int j=0;j<len-moveSize;++j)
+	//{
+	//	pc[j]=pc[j+moveSize];
+	//}
+	//memcpy(pc+len-moveSize,buf,moveSize);
+
+	// 反转三次
+	Reverse(pc,pc+moveSize);
+	Reverse(pc+moveSize,pc+len);
+	Reverse(pc,pc+len);
+}
+
+void Reverse(char* first,char* last)
+{
+	int len = last-first;
+	for(int i=0;i<len/2;++i)
+	{
+		char tmp = first[i];
+		first[i] = first[len-i-1];
+		first[len-i-1]=tmp;
+	}
+}
+@endverbatim
+
+@verbatim
+{
+	char buf[] = "abcdefgh";
+	Pearls::LoopMove(buf,3);
+
+	Pearls::LoopMove(buf,3);
+
+	Pearls::LoopMove(buf,4);
+
+	Pearls::LoopMove(buf,81);
+
+	getchar();
+	return 0;
+}
+@endverbatim
+*/
+循环移位;
+
+/** @} */

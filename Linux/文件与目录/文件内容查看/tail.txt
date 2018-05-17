@@ -1,0 +1,19 @@
+/**
+* @defgroup 文件内容查看
+* @{
+*/
+
+/**
+@verbatim
+1、与head相反，显示文档的结尾n行，如下: 
+	tail -n5 111 	// 显示文档的结尾5行
+2、tail有一个很常用的选项 -f【--follow】
+	显示文档增加的内容，tail -f 日志文件，就可以实时查看日志的打印。
+@endverbatim
+@see head
+*/
+tail;
+
+
+/** @} */
+

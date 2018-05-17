@@ -1,0 +1,212 @@
+﻿/**
+* @defgroup Mysql常见问题
+* @{
+*/
+
+
+/**
+@verbatim
+mysql> desc student;
++-------+-------------+------+-----+---------+-------+
+| Field | Type        | Null | Key | Default | Extra |
++-------+-------------+------+-----+---------+-------+
+| ID    | int(11)     | NO   | PRI | 0       |       |
+| NAME  | varchar(16) | YES  |     | NULL    |       |
+| AGE   | int(11)     | YES  |     | NULL    |       |
++-------+-------------+------+-----+---------+-------+
+3 rows in set
+
+mysql> desc sc;
++-------+---------+------+-----+---------+----------------+
+| Field | Type    | Null | Key | Default | Extra          |
++-------+---------+------+-----+---------+----------------+
+| ID    | int(11) | NO   | PRI | NULL    | auto_increment |
+| SID   | int(11) | YES  |     | NULL    |                |
+| CID   | int(11) | YES  | MUL | NULL    |                |
+| SCORE | int(11) | YES  |     | NULL    |                |
++-------+---------+------+-----+---------+----------------+
+4 rows in set
+
+mysql> select * from student;
++-------+----------+-----+
+| ID    | NAME     | AGE |
++-------+----------+-----+
+| 10001 | Andy     | 26  |
+| 10002 | Bill     | 27  |
+| 10003 | Caroline | 34  |
+| 10004 | David    | 46  |
++-------+----------+-----+
+4 rows in set
+
+mysql> select * from sc;
++----+-------+-----+-------+
+| ID | SID   | CID | SCORE |
++----+-------+-----+-------+
+| 1  | 10001 | 101 | 78    |
+| 2  | 10001 | 102 | 67    |
+| 3  | 10008 | 103 | 100   |
++----+-------+-----+-------+
+3 rows in set
+-----------------------------------------------------------------------------------------------------------------
+内连接
+mysql> select student.*, sc.* from student inner join sc on student.id = sc.sid; 
++-------+------+-----+----+-------+-----+-------+
+| ID    | NAME | AGE | ID | SID   | CID | SCORE |
++-------+------+-----+----+-------+-----+-------+
+| 10001 | Andy | 26  | 1  | 10001 | 101 | 78    |
+| 10001 | Andy | 26  | 2  | 10001 | 102 | 67    |
++-------+------+-----+----+-------+-----+-------+
+2 rows in set
+
+内连接等价于我们平时的自然连接，也就是：
+mysql> select student.*, sc.* from student,sc where student.id = sc.sid;
++-------+------+-----+----+-------+-----+-------+
+| ID    | NAME | AGE | ID | SID   | CID | SCORE |
++-------+------+-----+----+-------+-----+-------+
+| 10001 | Andy | 26  | 1  | 10001 | 101 | 78    |
+| 10001 | Andy | 26  | 2  | 10001 | 102 | 67    |
++-------+------+-----+----+-------+-----+-------+
+2 rows in set
+
+-----------------------------------------------------------------------------------------------------------------
+左连接
+考虑下面的需求，我想列出所有学生对应的成绩，一个学生可能多个成绩，也可能没有成绩。有多个成绩把多个成绩列出来，没有成绩的话，成绩这些字段的值使用NULL填充。怎么解决这个问题？
+使用左连接，student表 left join sc表，如下：
+mysql> select student.*, sc.* from student left join sc on student.id = sc.sid; 
++-------+----------+-----+------+-------+------+-------+
+| ID    | NAME     | AGE | ID   | SID   | CID  | SCORE |
++-------+----------+-----+------+-------+------+-------+
+| 10001 | Andy     | 26  | 1    | 10001 | 101  | 78    |
+| 10001 | Andy     | 26  | 2    | 10001 | 102  | 67    |
+| 10002 | Bill     | 27  | NULL | NULL  | NULL | NULL  |
+| 10003 | Caroline | 34  | NULL | NULL  | NULL | NULL  |
+| 10004 | David    | 46  | NULL | NULL  | NULL | NULL  |
++-------+----------+-----+------+-------+------+-------+
+5 rows in set
+
+-----------------------------------------------------------------------------------------------------------------
+右连接
+考虑下面的需求，我想列出所有成绩对应的学生，一个成绩有对应的学生，也可能没有对应的学生，比如这个学生开除了。有学生就把学生列出来，没有学生的话，学生这些字段的值使用NULL填充。怎么解决这个问题？
+使用右连接，student表 right join sc表，如下：
+mysql> select student.*, sc.* from student right join sc on student.id = sc.sid; 
++-------+------+------+----+-------+-----+-------+
+| ID    | NAME | AGE  | ID | SID   | CID | SCORE |
++-------+------+------+----+-------+-----+-------+
+| 10001 | Andy | 26   | 1  | 10001 | 101 | 78    |
+| 10001 | Andy | 26   | 2  | 10001 | 102 | 67    |
+| NULL  | NULL | NULL | 3  | 10008 | 103 | 100   |
++-------+------+------+----+-------+-----+-------+
+3 rows in set
+
+根据对称性，A left join B 等价于 B right join A
+-----------------------------------------------------------------------------------------------------------------
+外连接
+左连接也叫左外连接（同理右连接），这里的外连接也叫全外连接。
+考虑下面的需求，我想列出所有学生对应的所有成绩，这里存在学生可能没有成绩，成绩也可能没有对应的学生，没有的话，也要列出来，这些字段的值使用NULL填充。
+目前，mysql不支持外连接，解决办法是使用union组合查询，把左连接和右连接的结果合并。如下：
+mysql> select student.*, sc.* from student left join sc on student.id = sc.sid union select student.*, sc.* from student right join sc on student.id = sc.sid; 
++-------+----------+------+------+-------+------+-------+
+| ID    | NAME     | AGE  | ID   | SID   | CID  | SCORE |
++-------+----------+------+------+-------+------+-------+
+| 10001 | Andy     | 26   | 1    | 10001 | 101  | 78    |
+| 10001 | Andy     | 26   | 2    | 10001 | 102  | 67    |
+| 10002 | Bill     | 27   | NULL | NULL  | NULL | NULL  |
+| 10003 | Caroline | 34   | NULL | NULL  | NULL | NULL  |
+| 10004 | David    | 46   | NULL | NULL  | NULL | NULL  |
+| NULL  | NULL     | NULL | 3    | 10008 | 103  | 100   |
++-------+----------+------+------+-------+------+-------+
+6 rows in set
+
+注意：这里的union自动去除了重复行，如果不想去除重复行，使用union all
+
+-----------------------------------------------------------------------------------------------------------------
+还有一点需要注意：就是on 之后的条件，如下：
+mysql> select student.*, sc.* from student left join sc on student.id = sc.sid;
++-------+----------+-----+------+-------+------+-------+
+| ID    | NAME     | AGE | ID   | SID   | CID  | SCORE |
++-------+----------+-----+------+-------+------+-------+
+| 10001 | Andy     | 26  | 1    | 10001 | 101  | 78    |
+| 10001 | Andy     | 26  | 2    | 10001 | 102  | 67    |
+| 10002 | Bill     | 27  | NULL | NULL  | NULL | NULL  |
+| 10003 | Caroline | 34  | NULL | NULL  | NULL | NULL  |
+| 10004 | David    | 46  | NULL | NULL  | NULL | NULL  |
++-------+----------+-----+------+-------+------+-------+
+5 rows in set
+
+mysql> select student.*, sc.* from student left join sc on student.id = sc.sid and sc.cid=101;
++-------+----------+-----+------+-------+------+-------+
+| ID    | NAME     | AGE | ID   | SID   | CID  | SCORE |
++-------+----------+-----+------+-------+------+-------+
+| 10001 | Andy     | 26  | 1    | 10001 | 101  | 78    |
+| 10002 | Bill     | 27  | NULL | NULL  | NULL | NULL  |
+| 10003 | Caroline | 34  | NULL | NULL  | NULL | NULL  |
+| 10004 | David    | 46  | NULL | NULL  | NULL | NULL  |
++-------+----------+-----+------+-------+------+-------+
+4 rows in set
+
+mysql> select student.*, sc.* from student left join sc on student.id = sc.sid where sc.cid=101;
++-------+------+-----+----+-------+-----+-------+
+| ID    | NAME | AGE | ID | SID   | CID | SCORE |
++-------+------+-----+----+-------+-----+-------+
+| 10001 | Andy | 26  | 1  | 10001 | 101 | 78    |
++-------+------+-----+----+-------+-----+-------+
+1 row in set
+
+这里看出第二个查询和第三个查询的区别，换一种写法就很清楚了。
+mysql> select student.*, sc.* from student left join sc on (student.id = sc.sid and sc.cid=101);
++-------+----------+-----+------+-------+------+-------+
+| ID    | NAME     | AGE | ID   | SID   | CID  | SCORE |
++-------+----------+-----+------+-------+------+-------+
+| 10001 | Andy     | 26  | 1    | 10001 | 101  | 78    |
+| 10002 | Bill     | 27  | NULL | NULL  | NULL | NULL  |
+| 10003 | Caroline | 34  | NULL | NULL  | NULL | NULL  |
+| 10004 | David    | 46  | NULL | NULL  | NULL | NULL  |
++-------+----------+-----+------+-------+------+-------+
+4 rows in set
+
+mysql> select student.*, sc.* from student left join sc on (student.id = sc.sid) where sc.cid=101;
++-------+------+-----+----+-------+-----+-------+
+| ID    | NAME | AGE | ID | SID   | CID | SCORE |
++-------+------+-----+----+-------+-----+-------+
+| 10001 | Andy | 26  | 1  | 10001 | 101 | 78    |
++-------+------+-----+----+-------+-----+-------+
+1 row in set
+
+mysql> select student.*, sc.* from student left join sc on (student.id = sc.sid where sc.cid=101);
+1064 - You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near 'where sc.cid=101)' at line 1
+
+-----------------------------------------------------------------------------------------------------------------
+select student.*, sc.* from student left join sc on (student.id = sc.sid and sc.cid=101); 相当于：
+1、内部连接
+mysql> select student.*, sc.* from student inner join sc on student.id = sc.sid;
++-------+------+-----+----+-------+-----+-------+
+| ID    | NAME | AGE | ID | SID   | CID | SCORE |
++-------+------+-----+----+-------+-----+-------+
+| 10001 | Andy | 26  | 1  | 10001 | 101 | 78    |
+| 10001 | Andy | 26  | 2  | 10001 | 102 | 67    |
++-------+------+-----+----+-------+-----+-------+
+2 rows in set
+2、选择出sc.cid=101，再进行左连接，没有成绩的使用NULL填充
+
+-----------------------------------------------------------------------------------------------------------------
+select student.*, sc.* from student left join sc on (student.id = sc.sid) where sc.cid=101; 相当于：
+1、左连接
+mysql> select student.*, sc.* from student left join sc on student.id = sc.sid;
++-------+----------+-----+------+-------+------+-------+
+| ID    | NAME     | AGE | ID   | SID   | CID  | SCORE |
++-------+----------+-----+------+-------+------+-------+
+| 10001 | Andy     | 26  | 1    | 10001 | 101  | 78    |
+| 10001 | Andy     | 26  | 2    | 10001 | 102  | 67    |
+| 10002 | Bill     | 27  | NULL | NULL  | NULL | NULL  |
+| 10003 | Caroline | 34  | NULL | NULL  | NULL | NULL  |
+| 10004 | David    | 46  | NULL | NULL  | NULL | NULL  |
++-------+----------+-----+------+-------+------+-------+
+5 rows in set
+2、再选出 sc.cid=101
+
+@endverbatim
+@see
+*/
+Mysql内外连接;
+
+/** @} */

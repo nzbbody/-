@@ -1,0 +1,38 @@
+﻿/**
+ * Copyright (c) 2015~2016, Andy Niu All rights reserved.
+ * \file		Example.txt
+ * \brief		Example
+ * \author		牛自宾
+ * \date		2015年7月5日
+ * \note		Example帮助文档
+ */
+
+/**
+* @defgroup Example
+* @{
+*/
+
+/**
+@brief 函数的说明
+@param [in]  inStr		输入的字符串
+@param [out] outStr		输出的字符串
+@return 0[Success] -1[Failure] 
+@remarks 这里是备注
+@verbatim
+这里是方框的内容
+@endverbatim
+@see 参见其它的函数
+*/
+int GetString(string& outStr,const string& inStr);
+
+
+/**
+@verbatim
+变量和命令的用法
+@endverbatim
+@see 参见其它的变量和命令
+*/
+变量和命令;
+
+
+/** @} */

@@ -1,0 +1,233 @@
+﻿/**
+* @defgroup Shell脚本
+* @{
+*/
+
+/**
+* @defgroup 特殊字符
+* @{
+*/
+
+
+/**
+@verbatim
+$num	num为第几个参数，其中$0是当前脚本的文件名
+$#		传入脚本的参数的个数
+$*		所有的位置参数(作为单个字符串) 
+$@		所有的位置参数(每个都作为独立的字符串)。
+$?		当前shell进程中，前一个命令的返回值，执行成功则$?值为0，否则为非零值，常用做if语句条件
+$$		当前shell进程的pid
+$!		后台运行的最后一个进程的pid
+$-		显示shell使用的当前选项
+$_		前一个命令的最后一个参数
+@endverbatim
+@see
+*/
+美元符;
+
+
+/**
+@verbatim
+1、分号是语句分隔符，当一行中有多个语句时，需要使用分号进行分割语句。
+2、换行符也可以作为语句分隔符，如果一行中只有一个语句，结尾不需要分号，加上分号也可以。
+3、最后一个语句不需要分号
+4、示例：
+	#! /bin/sh -x
+	var=5
+	if [ $var == 8 ]; then
+			echo 'equal to 8';
+	elif [ $var -gt 8 ]
+	then
+			echo 'bigger than 8'
+	else
+			echo 'smaller than 8'
+	fi
+	需要注意的几点：
+	a、then是一个语句，如果和if在同一行，需要加上分号。否则shell认为是一个语句，解析出错。
+	b、一行只有一个语句，结尾不需要加上分号，最后一个语句不需要分号，加上也行。
+	c、else 后面没有then
+	d、== 可以表示 -eq，但是 >= 不能表示 -ge，这可能是因为 > 符号有其他用处，比如数据流重定向。
+@endverbatim
+@see
+*/
+分号;
+
+/**
+@verbatim
+1、变量引用
+	name=Andy
+	echo $name 或 echo ${name}
+2、命令替换
+	把命令的执行结果赋值给变量，使用倒引号或者$()
+	APP_HOME=`pwd` 或 APP_HOME=$(pwd)
+	注意：bash 与makefile的语法不一样，在makefile中，变量引用使用 ${} 或者$()
+@endverbatim
+@see
+*/
+变量引用和命令替换;
+
+
+/**
+@verbatim
+1、考虑下面的shell脚本
+	#! /bin/sh
+	#set -x
+	fun1()
+	{
+			cd aa
+	}
+	fun2()
+	{
+			pwd
+			fun1
+			pwd
+	}
+	
+	fun2
+2、在fun2直接调用fun1，执行结果如下：
+	[root@localhost tmp]# ./test.sh 
+	/tmp
+	/tmp/aa
+3、在fun2中对fun1进行命令替换，如下：
+	#! /bin/sh
+	#set -x
+	fun1()
+	{
+			cd aa
+	}
+	fun2()
+	{
+			pwd
+			`fun1`
+			pwd
+	}
+	
+	fun2
+	执行结果如下：
+	[root@localhost tmp]# ./test.sh 
+	/tmp
+	/tmp
+4、也就是说，对于命令替换，不会改变当前的执行目录。
+5、命令替换是获取命令中echo的内容，如下：
+	#! /bin/sh
+	#set -x
+	fun1()
+	{
+			cd aa
+			echo "hello"
+	}
+	fun2()
+	{
+			pwd
+			EchoFromFun1=$(fun1)
+			echo $EchoFromFun1
+			pwd
+	}
+	
+	fun2
+	执行结果，如下：
+	[root@localhost tmp]# ./test.sh 
+	/tmp
+	hello
+	/tmp
+6、考虑下面的需求，fun1对输入的正数，加上100，负数不处理，然后fun2对fun1处理后的数乘以2。
+	对于fun1，存在两个输出值。一个是否成功，另一个是处理后的数字。
+	当然也可以使用一个返回值表示，一个特殊的值表示失败，其他的情况表示处理后的数字。
+	但是，尽量不使用这种做法。因为这样的话，一个返回值表示表示两种含义。
+	正确的做法如下：
+	#! /bin/sh
+	#set -x
+	SUCCESS=0
+	FAILURE=1
+	fun1()
+	{
+			if [ $1 -gt  5 ];then
+					let aa=$1+100
+					echo $aa
+					return $SUCCESS
+			fi
+			return $FAILURE
+	}
+	fun2()
+	{
+			EchoFromFun1=$(fun1 4)
+			if [ $? == $SUCCESS ];then
+					let aa=$EchoFromFun1\*2
+					echo $aa
+			else
+					echo 'error'
+			fi
+	}
+	
+	fun2
+7、特别注意，$?是上一个命令的返回结果，EchoFromFun1=$(fun1 4) 之后，紧接着调用$?，就是$(fun1 4)的返回结果。考虑：
+	EchoFromFun1=$(fun1 4)
+	echo $?
+	if [ $? == $SUCCESS ];then
+	if中的$?，是上一个命令echo $?的回传值，一定是0
+@endverbatim
+@see
+*/
+调用命令__命令替换__命令返回值;
+
+/**
+@verbatim
+1、倒引号表示命令，用于命令替换，获取命令的返回结果。
+	echo now is `date` 或者 echo now is $(date)
+2、单引号
+	name=Andy  没有问题，
+	如果想 name=Andy Niu，报错：bash:niu:command not found，程序认为第一个空格后是命令。
+	如何解决这个问题？
+	使用单引号 name=‘Andy Niu’
+	注：字符串中包含等号，也需要使用单引号引起来。
+3、双引号
+	desc=‘I am $name’
+	echo $desc
+	I am $name’ ，我想显示的是 I am Andy Niu。怎么办？
+	使用双引号，双引号对于其中的 $、\（反斜杠）、·（倒引号）特殊对待。
+@endverbatim
+@see
+*/
+倒引号__单引号__双引号;
+
+
+/**
+@verbatim
+1、考虑下面的需求，在主shell执行命令，进入其他的命令，后面的输入，想作为命令的输入，而不是主shell的输入，怎么办？
+2、使用<<EOF，告诉主shell，后续的输入，是其他命令或者子shell的输入，直到遇到EOF为止，再回到主shell。
+3、这里的EOF只是分界符，使用其他的字符也可以。
+4、比如cat，不使用EOF，如下：
+[root@localhost ~]# cat >111.txt
+abcd
+1234
+
+[root@localhost ~]# more 111.txt
+abcd
+1234
+使用EOF
+[root@localhost ~]# cat >111.txt<<EOF
+> aaaa
+> bbbb
+> EOF
+[root@localhost ~]# more 111.txt
+aaaa
+bbbb
+5、mysql安装后之后，忘记密码，可使用说下面的脚本，如下：
+/etc/init.d/mysqld stop
+
+service mysqld start --skip-grant-tables
+sleep 4
+mysql -hlocalhost << EOF
+update mysql.user set password=password('123456') where user ='root';
+grant all privileges on *.* to 'root'@'%' identified by '123456' with grant option;
+flush privileges;
+EOF
+/etc/init.d/mysqld restart
+@endverbatim
+@see
+*/
+EOF;
+
+/** @} */
+
+/** @} */

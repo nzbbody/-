@@ -1,0 +1,340 @@
+/**
+* @defgroup MySQL
+* @{
+*/
+
+/**
+* @defgroup Mysql方法
+* @{
+*/
+
+/**
+@verbatim
+用法如下：
+	mysql> select substring('football',5,2);
+	+---------------------------+
+	| substring('football',5,2) |
+	+---------------------------+
+	| ba                        |
+	+---------------------------+
+	1 row in set
+	
+	mysql> select substring('football' from 5 for 2);
+	+------------------------------------+
+	| substring('football' from 5 for 2) |
+	+------------------------------------+
+	| ba                                 |
+	+------------------------------------+
+	1 row in set
+	
+	mysql> select substring('football',-6,4);
+	+----------------------------+
+	| substring('football',-6,4) |
+	+----------------------------+
+	| otba                       |
+	+----------------------------+
+	1 row in set
+	
+	mysql> select substring('football' from -6 for 4);
+	+-------------------------------------+
+	| substring('football' from -6 for 4) |
+	+-------------------------------------+
+	| otba                                |
+	+-------------------------------------+
+	1 row in set
+	注：负数从右向左
+@endverbatim
+*/
+substring;
+
+/**
+@verbatim
+用法如下：
+	mysql> select substring_index('Andy;Bill;Caroline;David',';',3);
+	+---------------------------------------------------+
+	| substring_index('Andy;Bill;Caroline;David',';',3) |
+	+---------------------------------------------------+
+	| Andy;Bill;Caroline                                |
+	+---------------------------------------------------+
+	1 row in set
+	
+	mysql> select substring_index('Andy;Bill;Caroline;David',';',-2);
+	+----------------------------------------------------+
+	| substring_index('Andy;Bill;Caroline;David',';',-2) |
+	+----------------------------------------------------+
+	| Caroline;David                                     |
+	+----------------------------------------------------+
+	1 row in set
+	注：负数从右向左
+@endverbatim
+*/
+substring_index;
+
+/**
+@verbatim
+1、last_insert_id()返回最后插入的Id，用法如下：
+	select last_insert_id();
+2、last_insert_id只与连接有关，不同的连接之间互不相关.
+3、last_insert_id有一些约束条件：
+	a、id是自增的
+	b、使用insert，id是系统自己产生的，而不是用户填写的，如下：	
+	mysql> insert into t1(c2,c3) values(100,100);
+	Query OK, 1 row affected
+	
+	mysql> select * from t1;
+	+----+-----+-----+
+	| c1 | c2  | c3  |
+	+----+-----+-----+
+	|  1 | 100 | 100 |
+	|  2 | 100 | 100 |
+	+----+-----+-----+
+	2 rows in set
+	
+	mysql> select last_insert_id();
+	+------------------+
+	| last_insert_id() |
+	+------------------+
+	|                2 |
+	+------------------+
+	1 row in set
+	
+	// 用户填写id，返回还是上一次的insert
+	mysql> insert into t1(c1,c2,c3) values(45,100,100);
+	Query OK, 1 row affected
+	
+	mysql> select last_insert_id();
+	+------------------+
+	| last_insert_id() |
+	+------------------+
+	|                2 |
+	+------------------+
+	1 row in set
+	c、单个insert插入多个记录，last_insert_id返回第一个记录的id，如下：
+	mysql> insert into t1(c2,c3) values(100,100);
+	Query OK, 1 row affected
+	
+	mysql> select * from t1;
+	+----+-----+-----+
+	| c1 | c2  | c3  |
+	+----+-----+-----+
+	|  1 | 100 | 100 |
+	+----+-----+-----+
+	1 row in set
+	
+	mysql> insert into t1(c2,c3) values(100,100),(100,100);
+	Query OK, 2 rows affected
+	Records: 2  Duplicates: 0  Warnings: 0
+	
+	mysql> select * from t1;
+	+----+-----+-----+
+	| c1 | c2  | c3  |
+	+----+-----+-----+
+	|  1 | 100 | 100 |
+	|  2 | 100 | 100 |
+	|  3 | 100 | 100 |
+	+----+-----+-----+
+	3 rows in set
+	
+	mysql> select last_insert_id();
+	+------------------+
+	| last_insert_id() |
+	+------------------+
+	|                2 |
+	+------------------+
+	1 row in set
+@endverbatim
+*/
+last_insert_id;
+
+/**
+@verbatim
+1、用法如下：
+	mysql> select sql_calc_found_rows c1 from t1 limit 1,1;
+	+----+
+	| c1 |
+	+----+
+	|  2 |
+	+----+
+	1 row in set
+	
+	mysql> select found_rows();
+	+--------------+
+	| found_rows() |
+	+--------------+
+	|            3 |
+	+--------------+
+	1 row in set
+2、注意：found_rows()必须紧接着 sql_calc_found_rows执行，不满足条件的，可以使用用户变量，
+	用户变量设置为found_rows()，再select用户变量
+@endverbatim
+*/
+found_rows;
+
+/**
+@verbatim
+1、日期转int
+	mysql> select to_days('2016-4-12');
+	+----------------------+
+	| to_days('2016-4-12') |
+	+----------------------+
+	|               736431 |
+	+----------------------+
+	1 row in set
+2、int转日期
+	mysql> select from_days(736431);
+	+-------------------+
+	| from_days(736431) |
+	+-------------------+
+	| 2016-04-12        |
+	+-------------------+
+	1 row in set
+3、unix时间戳（unix timestamp）表示从unix的开始时间【1970年1月1日0时0分0秒】到现在所经过的秒数。
+	为有符号int类型，最大能表示到2038年。
+4、当前日期转化为unix时间戳，如下：
+	mysql> select now();
+	+---------------------+
+	| now()               |
+	+---------------------+
+	| 2016-09-06 14:18:16 |
+	+---------------------+
+	1 row in set
+	
+	mysql> select unix_timestamp('2016-09-06 14:18:16');
+	+---------------------------------------+
+	| unix_timestamp('2016-09-06 14:18:16') |
+	+---------------------------------------+
+	|                            1473142696 |
+	+---------------------------------------+
+	1 row in set
+5、unix时间戳转化为日期
+	mysql> select unix_timestamp();
+	+------------------+
+	| unix_timestamp() |
+	+------------------+
+	|       1473142759 |
+	+------------------+
+	1 row in set
+	
+	mysql> select from_unixtime(1473142759,'%Y-%m-%d %H:%i:%S');
+	+-----------------------------------------------+
+	| from_unixtime(1473142759,'%Y-%m-%d %H:%i:%S') |
+	+-----------------------------------------------+
+	| 2016-09-06 14:19:19                           |
+	+-----------------------------------------------+
+	1 row in set
+@endverbatim
+*/
+日期时间操作有关;
+
+
+
+/**
+@verbatim
+mysql> select version();
++-----------+
+| version() |
++-----------+
+| 5.5.18    |
++-----------+
+1 row in set
+
+mysql> select user();
++-------------------+
+| user()            |
++-------------------+
+| root@pvs256971713 |
++-------------------+
+1 row in set
+
+mysql> select database();
++------------+
+| database() |
++------------+
+| ibp        |
++------------+
+1 row in set
+
+mysql> select found_rows();
++--------------+
+| found_rows() |
++--------------+
+|            1 |
++--------------+
+1 row in set
+注意：found_rows(); 要与 select sql_calc_found_rows xxx 结合使用
+mysql> select last_insert_id();
+
++------------------+
+| last_insert_id() |
++------------------+
+|                0 |
++------------------+
+1 row in set
+@endverbatim
+*/
+常用的系统信息函数;
+
+
+/**
+@verbatim
+-- ----------------------------
+-- Procedure structure for `clear`
+-- ----------------------------
+DROP PROCEDURE IF EXISTS `clear`;
+DELIMITER ;;
+CREATE DEFINER=`mysql`@`%` PROCEDURE `clear`()
+BEGIN
+		declare vTableName varchar(32) default '';
+		declare vDynamicSql text default '';
+		declare vIsOver int default 0;
+		declare vCursorTableName cursor for select table_name from information_schema.tables where table_schema='client_video_synopsis' and table_name like 'video_synopsis_object%';
+		declare continue handler for sqlstate '02000' set vIsOver = 1;
+
+		open vCursorTableName;
+    fetch vCursorTableName into vTableName;
+
+    while(vIsOver = 0) do 
+				select vTableName;
+				-- drop table vTableName;
+				set vDynamicSql = concat('drop table ',vTableName,';');
+				-- select vDynamicSql;
+				call exe_dynamic_sql(vDynamicSql);
+        fetch vCursorTableName into vTableName;
+    end while;
+        
+    close vCursorTableName;
+
+		truncate table source_video_info;
+		truncate table video_synopsis_summary;
+
+		show tables;
+		select * from source_video_info;
+		select * from video_synopsis_summary;
+
+END
+;;
+DELIMITER ;
+
+-- ----------------------------
+-- Procedure structure for `exe_dynamic_sql`
+-- ----------------------------
+DROP PROCEDURE IF EXISTS `exe_dynamic_sql`;
+DELIMITER ;;
+CREATE DEFINER=`mysql`@`%` PROCEDURE `exe_dynamic_sql`(iDynamicSql TEXT)
+BEGIN
+	set @exeSql = iDynamicSql;
+	prepare stmt from @exeSql;
+	execute stmt;
+	deallocate prepare stmt;
+END
+;;
+DELIMITER ;
+@endverbatim
+*/
+批量删除表;
+
+
+
+/** @} */
+
+/** @} */

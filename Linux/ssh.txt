@@ -1,0 +1,57 @@
+/**
+* @defgroup Linux
+* @{
+*/
+
+/**
+* @defgroup ssh
+* @{
+*/
+
+/**
+@verbatim
+1、shell是对Linux内核的封装，对外暴露接口。用户调用shell脚本，shell再调用Linux内核的实现。
+2、考虑下面的场景，我想要远程调用shell脚本，怎么办？
+3、这就是ssh，Secure Shell，ssh是客户端/服务端模式，使用tcp连接。
+	服务端是sshd进程，客户端软件很多，客户端向sshd服务器发送请求，sshd调用shell脚本，回复客户端。
+	sshd是守护进程（daemon），默认在22端口监听，请求到来的时候，sshd守护进程产生一个子进程，用于这次连接的交互。
+	ssh和mysql服务的情况类似。
+4、为什么叫Secure Shell？
+	因为ssh的交互过程是加密的。
+5、在本地机器上，使用ssh进入到A机器，在A机器上，通过ssh可以再进入B机器，如果退出来，怎么办？
+	使用exit，退出当前shell
+6、使用SecureCRT可以建立多个ssh连接，如果显示器连接Linux主机，怎么打开多个终端？
+	使用Alt+F1 Alt+F2 Alt+F3 Alt+F4 Alt+F5
+@endverbatim
+*/
+ssh介绍;
+
+
+/**
+@verbatim
+1、ssh解决什么问题？
+	考虑下面的情况，主备两台机器A,B，通过内网直连，对外只暴露一个外网ip地址，比如：
+	设备A外网激活，设备B外网处于失效状态，我在外网，怎么访问设备B呢?
+2、解决办法是从外网进入设备A，再以设备A为跳板，使用ssh，通过内网访问设备B，如下：
+	ssh root@192.168.1.101 -p1733
+@endverbatim
+*/
+ssh登录;
+
+
+/**
+@verbatim
+1、登录的时候，用户名和密码都是正确的，但是登录报错，具体的错误信息如下：
+	The server has disconnected with an error.  Server message reads:
+	A protocol error occurred. Change of username or service not allowed: (admin,ssh-connection) -> (root,ssh-connection)
+2、错误原因：
+	是因为新建会话的时候，用户名输入错误，然后在登录的时候，即使使用了正确的用户名和密码，也不能登录。
+3、解决办法：
+	修改会话选项中的用户名，使用正确的用户名。
+@endverbatim
+*/
+ssh登录错误;
+
+/** @} */
+
+/** @} */

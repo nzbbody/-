@@ -1,0 +1,45 @@
+/**
+* @defgroup Linux
+* @{
+*/
+
+/**
+* @defgroup Linux版本
+* @{
+*/
+
+
+/**
+@verbatim
+Linux版本分为内核版本和发行版本（distribution），我们通常说的Linux版本是指内核版本。
+查看内核版本的方法有：
+1、uname -a
+2、cat /proc/version
+@endverbatim
+@see
+*/
+Linux内核版本;
+
+
+/**
+@verbatim
+Linux发行版本很多，常用的有：RedHat，CentOS，SuSE，Debian，Ubuntu
+RedHat企业版是收费的，CentOS可以认为是RedHat免费的源代码编译而成，相对收费，更新比较慢。
+查看发行版本的方法有：
+1、lsb_release -a	// lsb是 linux standard base
+2、cat /etc/issue
+3、对于redhat发行版，可以使用
+	more /etc/redhat-release
+	rpm -qa|grep -i redhat-release
+4、注：对于任何一个程序，使用file 也可以查看相关信息
+	file /bin/bash
+	file /bin/tar
+@endverbatim
+@see
+*/
+Linux发行版本;
+
+
+/** @} */
+
+/** @} */

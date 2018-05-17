@@ -1,0 +1,107 @@
+/**
+* @defgroup Linux
+* @{
+*/
+
+
+/**
+@verbatim
+1、date 查看日期时间，如下：
+	[root@localhost ~]# date 
+	Sat Sep 26 20:41:54 CST 2015
+2、查看时区，使用-R，如下：
+	[root@localhost ~]# date -R
+	Sat, 26 Sep 2015 20:42:42 +0800
+3、格式化输出时间
+	[root@localhost ~]# date '+%Y-%m-%d %H:%M:%S'
+	2015-09-26 20:43:36
+	[root@localhost ~]# date '+%Y-%m-%d %I:%M:%S'
+	2015-09-26 08:43:43
+	小写m是月
+	大写M是分钟
+	大写H是24小时
+	大写I是12小时
+4、设置时间
+	[root@localhost ~]# date -s '2015-09-26 20:47:00'
+	Sat Sep 26 20:47:00 CST 2015
+5、date打印出来的时间，看起来不直观，使用date '+%Y-%m-%d %H:%M:%S'，但是每次输入比较麻烦，增加一个别名，如下：
+	[root@localhost ~]# date
+	Thu Dec 29 13:20:23 CST 2016
+	[root@localhost ~]# alias date="date '+%Y-%m-%d %H:%M:%S'"
+	[root@localhost ~]# date
+	2016-12-29 13:20:32
+	但是，假如我还想使用原始的date命令，怎么办？
+	使用\date
+@endverbatim
+
+@verbatim
+考虑下面的需求，清除15天之前的日志文件
+添加日志文件
+#! /bin/sh
+set -x
+
+i=0
+nowSeconds=$(date +%s)
+
+while [ $i -lt $1 ]
+do
+	nowStr=$(date +%Y-%m-%d\ %H:%M:%S -d "1970-01-01 UTC $nowSeconds seconds")
+	postfix=`date +%Y-%m-%d_%H:%M:%S -d "$nowStr"`
+	touch log_$postfix
+	sleep 1
+
+	((i=i+1))
+	((nowSeconds=nowSeconds-86400*5))
+done
+
+删除日志文件
+#! /bin/sh
+set -x
+
+LogFile_SaveDays=15
+
+# clear old log file
+logList=`ls -t|grep log_`
+for log in $logList
+do 
+        logDate=`echo $log|cut -d '_' -f 2`
+        echo $logDate
+        timeDiff=$(($(date +%s) - $(date +%s -d $logDate)));
+        if [ $[$timeDiff/86400] -gt $LogFile_SaveDays ];then
+                rm -f $log
+        fi
+        echo "$log"
+done
+@endverbatim
+
+@verbatim
+考虑下面的需求，保留最新的三个dump core文件，其他的删除
+添加core文件
+#! /bin/sh
+set -x
+
+i=0
+while [ $i -lt $1 ]
+do
+	((i=i+1))
+	postfix=`date +%Y-%m-%d_%H:%M:%S`
+	touch core_$postfix
+	sleep 1
+done
+
+删除core文件
+#! /bin/sh
+set -x
+
+CoreFile_SaveNum=3
+
+# clear old core file
+CoreFile_SaveNum=$[$CoreFile_SaveNum+1]
+ls -t|grep core_|sed -n "$CoreFile_SaveNum,$ p"|xargs rm -f
+@endverbatim
+*/
+日期时间;
+
+
+
+/** @} */

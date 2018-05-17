@@ -1,0 +1,26 @@
+/**
+* @defgroup MySQL
+* @{
+*/
+
+/**
+* @defgroup ODBC
+* @{
+*/
+
+/**
+@verbatim
+1、首先不能安装Mysql Odbc 64位，因为我们的Mysql是32位，使用Mysql Odbc 64位连接Mysql 32位，
+	报错：驱动程序与应用程序之间的体系结构不匹配。
+2、要安装Mysql Odbc 32位，安装好之后，在数据源中会找不到Mysql Odbc 32位的驱动，让人误以为Odbc_32位驱动没有安装好。
+	实际上是安装好了的，运行 C:\Windows\SysWOW64\odbcad32.exe 即可在数据源中找到驱动。
+3、SysWOW64 是System Windows32 On Windows64，一个Windows系统的子系统，即Windows64上面的一个子系统Windows32
+@endverbatim
+@see
+*/
+Win7_64位使用MysqlOdbc;
+
+
+/** @} */
+
+/** @} */

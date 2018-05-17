@@ -1,0 +1,235 @@
+﻿/**
+* @defgroup Python
+* @{
+*/
+
+/**
+* @defgroup Python知识点
+* @{
+*/
+
+
+/**
+@verbatim
+1、import xxx，导入某个模块。如下：
+	>>> import time
+	>>> print time.strftime('%Y-%m-%d %H:%M:%S')
+	2015-08-21 21:59:43
+注：time.strftime 中的time是模块名，也就是文件名
+2、上面还要写上 print time.strftime('%Y-%m-%d %H:%M:%S')，如果想省略time，可以使用：
+	>>> from time import *
+	>>> print strftime('%Y-%m-%d %H:%M:%S')
+	2015-08-21 22:02:32
+3、使用from time import *，导致一个问题，就是从模块time导入太多的东西，会污染当前的名称空间。怎么解决？
+	只导入自己需要的东西，要使用方法strftime，就只导入方法strftime，如下：
+	>>> from time import strftime
+	>>> print strftime('%Y-%m-%d %H:%M:%S')
+	2015-09-01 08:48:24	
+@endverbatim
+*/
+Python导入导出;
+
+/**
+@verbatim
+1、import一个模块，如下：
+	>>> import c
+	>>> c1=C();
+	
+	Traceback (most recent call last):
+	File "<pyshell#1>", line 1, in <module>
+		c1=C();
+	NameError: name 'C' is not defined
+	>>> c1=c.C();
+	>>> c1.say();
+	I am c
+	需要注意的是，import一个模块，使用模块中的对象时，需要在对象前面加上模块名称，也就是文件名。
+2、怎么解决上面的问题？
+	使用import，从模块中import对象，如下：
+	>>> from c import C
+	>>> c1=C();
+	>>> c1.say();
+	I am c
+	这种情况下，可以直接使用对象。
+3、如何import子目录中的模块？
+	考虑当前有  ./a/a.py, 如何import a.py
+	在./a目录创建一个空的文件 __init__.py 即可
+		>>> import a.a
+	
+	Traceback (most recent call last):
+	File "<pyshell#0>", line 1, in <module>
+		import a.a
+	ImportError: No module named a.a
+	>>> import a.a
+4、如何引用父目录中模块？
+	考虑当前目录为./a/ 父目录下有./b/b.py, 如何import a.py
+	使用 sys增加搜索路径
+	>>> import sys;
+	>>> sys.path.append('../b');
+	>>> import b;
+	对于import子目录中的模块，也可以使用这种方式。
+@endverbatim
+*/
+理解import;
+
+/**
+@verbatim
+1、在C++中有值语义和引用语义，而Python中只有引用的语义。
+2、示例如下：
+>>> a=1
+>>> a
+1
+>>> id(a)
+19310280
+>>> b=a
+>>> b
+1
+>>> b=2
+>>> b
+2
+>>> id(2)
+19310268
+解释如下：
+b=a，b和a指向同一个对象，对象的引用计数为2，
+b=2，修改b的指向，指向2，a的引用计数减1，为1
+3、因此，对于swap的实现，
+def swap(a,b):
+    t=a
+    a=b
+    b=t
+    return
+是错误的，这里这是修改了形参的指向，实参的指向，并没有改变。解决办法如下：
+def swap(a,b):
+    return b,a
+调用如下:
+a,b=swap(a,b)
+@endverbatim
+*/
+Python_Swap;
+
+
+
+/**
+@verbatim
+Python的设计哲学是优雅、明确、简单。
+Perl语言，同一件事，提供多种方法来做。
+而Python，同一件事最好只有一种方法来做。
+Python这样做有什么好处？
+
+这会减轻程序员的心智负担，举例来说，C++中的string，计算字符串长度，有两种方法length()和size()
+程序员就会想这两种方法有什么区别。孟岩在博客中写道，相对于C，C++增加了程序员的心智负担。这个
+影响很严重，语言提供的相似接口越多，参数越多，特性越多，程序员写程序的时候越没有自信，总是在想
+：这样固然可以work，但恐怕还有更好的方案吧？会是什么呢？ 使用模板参数，抽象出一个基类，使用策略模式
+，使用编译时多态，还是运行时多态，内存谁来回收呢？使用智能指针，各种智能指针有什么区别呢？哎呀不行行不行了，
+太复杂了，还是能够work就算了。而C程序员没有这些负担，C语言提供的够用，想要啥就写啥没有什么事先不了。
+
+语言新特性也有同样的问题：
+1、新特性加重了编译器的编译负担。 
+2、新特性加重了运行时的运行负担。 
+3、新特性加重了程序员的心智负担。
+@endverbatim
+*/
+Python的设计哲学;
+
+/**
+@verbatim
+1、使用dir，列出所有的属性
+   	>>> dir(str)
+	>>> dir(str.split)
+	在python中任何东西都是对象，str.split是个方法，也是个对象
+2、使用__doc__ 查看对象的描述
+	>>> print(str.__doc__)
+	>>> print(str.split.__doc__)
+3、使用help，返回使用说明
+	>>> help(str)
+	>>> help(str.split)
+@endverbatim
+*/
+Python命令行查看帮助文档;
+
+/**
+@verbatim
+1、help
+>>> help(Animal)
+Help on class Animal in module animal:
+
+class Animal(__builtin__.object)
+ |  Methods defined here:
+ |  
+ |  say(self)
+ |  
+ |  ----------------------------------------------------------------------
+ |  Data descriptors defined here:
+ |  
+ |  __dict__
+ |      dictionary for instance variables (if defined)
+ |  
+ |  __weakref__
+ |      list of weak references to the object (if defined)
+ |  
+ |  ----------------------------------------------------------------------
+ |  Data and other attributes defined here:
+ |  
+ |  age = 0
+ |  
+ |  name = ''
+2、dir
+>>> dir(Animal)
+['__class__', '__delattr__', '__dict__', '__doc__', '__format__', '__getattribute__', '__hash__', '__init__', '__module__', '__new__', '__reduce__', '__reduce_ex__', '__repr__', '__setattr__', '__sizeof__', '__str__', '__subclasshook__', '__weakref__', 'age', 'name', 'say']
+3、查询父类
+>>> Animal.__base__
+<type 'object'>
+4、是否有某个属性
+>>> hasattr(Animal,'name')
+True
+5、方法的参数
+>>> inspect.getargspec(Animal.say)
+ArgSpec(args=['self'], varargs=None, keywords=None, defaults=None)
+@endverbatim
+*/
+查看帮助信息;
+
+
+/**
+@verbatim
+1、pyc文件，是python编译后的字节码（bytecode）文件。只要你运行了py文件，python编译器就会自动生成
+	一个对应的pyc字节码文件。这个pyc字节码文件，经过python解释器，会生成机器码运行。
+	（这也是为什么pyc文件可以跨平台部署，类似于java的跨平台，java中JVM运行的字节码文件）。
+	下次调用直接调用pyc，而不调用py文件。直到你这个py文件有改变。
+	python解释器会检查pyc文件中的生成时间，对比py文件的修改时间，如果py更新，那么就生成新的pyc。
+2、pyo文件，是python编译优化后的字节码文件。pyo文件在大小上，一般小于等于pyc文件。
+	如果想得到某个py文件的pyo文件，可以这样：
+    python -O -m py_compile xxxx.py
+    python文档是这样描述的：这个优化没有多大作用，只是移除了断言。
+3、至于速度，运行几乎一样，加载pyc和pyo稍占优势。
+@endverbatim
+*/
+pyc文件和pyo文件;
+
+
+/**
+@verbatim
+1、考虑下面的需求，写了一个模块，里面有测试代码，运行的时候，执行测试代码。
+	但是，当这个模块被import的时候，我们不期望执行测试代码，怎么办？
+2、这就需要使用，__name__，如下：
+	if __name__ == '__main__':
+		print "this is animal"
+		raw_input()
+	__name__可以认为是条件编译，当运行的时候，取值为'__main__' 
+	被import的时候，取值为 模块名称
+3、测试如下：
+	class Animal(object):
+	name=''
+	age=0
+	
+	print __name__
+	
+	if __name__ == '__main__':
+		print "this is animal"
+		raw_input()
+@endverbatim
+*/
+__name__;
+
+/** @} */
+
+/** @} */

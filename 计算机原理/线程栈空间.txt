@@ -1,0 +1,24 @@
+/**
+* @defgroup 计算机原理
+* @{
+*/
+
+
+/**
+@verbatim
+1、Linux下面线程栈默认是10M，单位是K，设置和查询如下：
+	[root@localhost IBP]# ulimit -s
+	10240
+	[root@localhost IBP]# ulimit -s 5120
+	[root@localhost IBP]# ulimit -s
+	5120
+	因此特别注意：Linux线程开得太多，会导致内存使用特别多，解决办法是：
+	减少线程的个数，同时线程栈的大小设置小一点。
+	因为线程栈只是用于记录程序的调用过程和栈上自动变量的内存分配，一般2M就够用了。
+2、Windows下线程栈默认只有1M，一般情况下也是够用的。
+@endverbatim
+*/
+线程栈空间的大小;
+
+
+/** @} */

@@ -1,0 +1,19 @@
+/**
+* @defgroup 文件内容查看
+* @{
+*/
+
+/**
+@verbatim
+1、和cat相比，more支持分页显示
+	上一页：【b】
+	下一页：【space】
+2、enter转到下一行，不能转到上一行
+@endverbatim
+@see less
+*/
+more;
+
+
+/** @} */
+

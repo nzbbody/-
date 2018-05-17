@@ -1,0 +1,825 @@
+/**
+* @defgroup Linux
+* @{
+*/
+
+/**
+* @defgroup 编译
+* @{
+*/
+
+/**
+@verbatim	
+1、测试代码
+	niuzibin@ubuntu:~/work/flawfinder$ vi main.cpp 
+	#include <stdio.h>
+	#include <stdlib.h>
+	int main(int argc, char* argv[])
+	{
+			printf("hello wolrd\n");
+			int aa;
+			int bb = aa + 10;
+			char ch[50];
+			gets(ch);
+			scanf("%c",ch);
+			return 1;
+	}
+2、输出所有的告警 -Wall，这里是-大写W 加上单词all
+	niuzibin@ubuntu:~/work/flawfinder$ g++ -Wall -o main main.cpp
+	main.cpp: In function ‘int main(int, char**)’:
+	main.cpp:9:2: warning: ‘char* gets(char*)’ is deprecated (declared at /usr/include/stdio.h:638) [-Wdeprecated-declarations]
+	gets(ch);
+	^
+	main.cpp:9:9: warning: ‘char* gets(char*)’ is deprecated (declared at /usr/include/stdio.h:638) [-Wdeprecated-declarations]
+	gets(ch);
+			^
+	main.cpp:7:6: warning: unused variable ‘bb’ [-Wunused-variable]
+	int bb = aa + 10;
+		^
+	main.cpp:7:16: warning: ‘aa’ may be used uninitialized in this function [-Wmaybe-uninitialized]
+	int bb = aa + 10;
+					^
+	/tmp/ccUdCIgt.o: In function `main':
+	main.cpp:(.text+0x39): warning: the `gets' function is dangerous and should not be used.
+3、禁止所有的告警 -w，在linux中，大小写往往表示相反的意思，-W是开启告警，-w是关闭告警，如下：
+	niuzibin@ubuntu:~/work/flawfinder$ g++ -w -o main main.cpp               
+	/tmp/ccVjBsPa.o: In function `main':
+	main.cpp:(.text+0x39): warning: the `gets' function is dangerous and should not be used.
+	注意：有些告警比较严重，即使带上-w选项，也不能禁止，如上。
+4、每一种告警，默认值（是否输出是不一样的），如下：
+	niuzibin@ubuntu:~/work/flawfinder$ g++ -Wall -o main main.cpp                
+	main.cpp: In function ‘int main(int, char**)’:
+	main.cpp:9:2: warning: ‘char* gets(char*)’ is deprecated (declared at /usr/include/stdio.h:638) [-Wdeprecated-declarations]
+	gets(ch);
+	^
+	main.cpp:9:9: warning: ‘char* gets(char*)’ is deprecated (declared at /usr/include/stdio.h:638) [-Wdeprecated-declarations]
+	gets(ch);
+			^
+	main.cpp:7:6: warning: unused variable ‘bb’ [-Wunused-variable]
+	int bb = aa + 10;
+		^
+	main.cpp:7:16: warning: ‘aa’ may be used uninitialized in this function [-Wmaybe-uninitialized]
+	int bb = aa + 10;
+					^
+	/tmp/ccic7wY5.o: In function `main':
+	main.cpp:(.text+0x39): warning: the `gets' function is dangerous and should not be used.
+	niuzibin@ubuntu:~/work/flawfinder$ g++ -o main main.cpp      
+	main.cpp: In function ‘int main(int, char**)’:
+	main.cpp:9:2: warning: ‘char* gets(char*)’ is deprecated (declared at /usr/include/stdio.h:638) [-Wdeprecated-declarations]
+	gets(ch);
+	^
+	main.cpp:9:9: warning: ‘char* gets(char*)’ is deprecated (declared at /usr/include/stdio.h:638) [-Wdeprecated-declarations]
+	gets(ch);
+			^
+	/tmp/ccLU9M12.o: In function `main':
+	main.cpp:(.text+0x39): warning: the `gets' function is dangerous and should not be used.
+	可以看到，在默认情况下，-Wdeprecated-declarations是输出的，而-Wunused-variable和-Wmaybe-uninitialized是不输出的。
+5、如何输出默认不输出的？
+	指定-Wxxx强制输出，如下：
+	g++ -o main main.cpp -Wunused-variable
+	特别注意：一般情况，要输出全部的告警 -Wall，因为告警往往意味着潜在的风险。
+@endverbatim
+*/
+编译告警;
+
+
+/**
+@verbatim
+1、cmake编译报错，如下：
+	/home/niuzibin/work/heming/cryptdb/src/util/onions.hh:40:35: warning: extended initializer lists only available with -std=c++11 or -std=gnu++11 [enabled by default]
+	/home/niuzibin/work/heming/cryptdb/src/util/onions.hh:40:37: error: ‘SECLEVEL’ is not a class or namespace
+2、我直接执行一把
+	g++ -o KeyManager.o -c KeyManager.cpp -I../include -I/home/niuzibin/work/heming/cryptdb/external_libs/mysql-src/include/ -I/home/niuzibin/work/heming/cryptdb/external_libs/mysql-src/build/include/ -I/home/niuzibin/work/heming/cryptdb/external_libs/mysql-src/sql/ -I/home/niuzibin/work/heming/cryptdb/src/ -I/usr/include/openssl
+	同样的错误，如下：
+	/home/niuzibin/work/heming/cryptdb/src/util/onions.hh:40:35: warning: extended initializer lists only available with -std=c++11 or -std=gnu++11 [enabled by default]
+	/home/niuzibin/work/heming/cryptdb/src/util/onions.hh:40:37: error: ‘SECLEVEL’ is not a class or namespace	
+3、加上-std=c++11，再来测试一把，如下：
+	g++ -std=c++11 -o KeyManager.o -c KeyManager.cpp -I../include -I/home/niuzibin/work/heming/cryptdb/external_libs/mysql-src/include/ -I/home/niuzibin/work/heming/cryptdb/external_libs/mysql-src/build/include/ -I/home/niuzibin/work/heming/cryptdb/external_libs/mysql-src/sql/ -I/home/niuzibin/work/heming/cryptdb/src/ -I/usr/include/openssl
+	报错如下：
+	/home/niuzibin/work/heming/cryptdb/external_libs/mysql-src/sql/field.h:236:49: error: invalid use of incomplete type ‘struct TABLE’
+     my_ptrdiff_t l_offset= (my_ptrdiff_t) (table->s->default_values -
+	/home/niuzibin/work/heming/cryptdb/external_libs/mysql-src/sql/structs.h:29:8: error: forward declaration of ‘struct TABLE’
+	struct TABLE;
+	原因是：在前置声明的情况下，调用了方法。
+4、那就要思考一个问题了，为什么直接在 heming/cryptdb中可以构建通过，把执行的构建命令拿出来，如下：
+	make VERBOSE=1
+	cd /home/niuzibin/work/heming/cryptdb/build/src/keymanager && /usr/bin/c++   -DDBUG_OFF -DEMBEDDED_LIBRARY -DHAVE_CONFIG_H -DKeyManager_EXPORTS -DMYSQL_BUILD_DIR=\"/home/niuzibin/work/heming/cryptdb/external_libs/mysql-src/build\" -DMYSQL_SERVER -std=c++0x -fPIC -I/home/niuzibin/work/heming/cryptdb/external_libs/mysql-src/include -I/home/niuzibin/work/heming/cryptdb/external_libs/mysql-src/build/include -I/home/niuzibin/work/heming/cryptdb/external_libs/mysql-src/sql -I/home/niuzibin/work/heming/cryptdb/external_libs/mysql-src/regex -I/home/niuzibin/work/heming/cryptdb/external_libs/mysql-src/build/sql -I/home/niuzibin/work/heming/cryptdb/src -I/usr/include/openssl    -g -O0 -fno-strict-aliasing -fno-rtti -fwrapv -fPIC -Wall -Werror -Wpointer-arith -Wendif-labels -Wformat=2 -Wextra -Wmissing-noreturn -Wwrite-strings -Wno-unused-parameter -Wno-deprecated -Wmissing-declarations -Woverloaded-virtual -Wunreachable-code -D_GNU_SOURCE -o CMakeFiles/KeyManager.dir/KeyManager.cpp.o -c /home/niuzibin/work/heming/cryptdb/src/keymanager/KeyManager.cpp
+5、修改一下，拿到本地执行一把，
+	/usr/bin/c++   -DDBUG_OFF -DEMBEDDED_LIBRARY -DHAVE_CONFIG_H -DKeyManager_EXPORTS -DMYSQL_BUILD_DIR=\"/home/niuzibin/work/heming/cryptdb/external_libs/mysql-src/build\" -DMYSQL_SERVER -std=c++0x -fPIC -I../include -I/home/niuzibin/work/heming/cryptdb/external_libs/mysql-src/include -I/home/niuzibin/work/heming/cryptdb/external_libs/mysql-src/build/include -I/home/niuzibin/work/heming/cryptdb/external_libs/mysql-src/sql -I/home/niuzibin/work/heming/cryptdb/external_libs/mysql-src/regex -I/home/niuzibin/work/heming/cryptdb/external_libs/mysql-src/build/sql -I/home/niuzibin/work/heming/cryptdb/src -I/usr/include/openssl    -g -O0 -fno-strict-aliasing -fno-rtti -fwrapv -fPIC -Wall -Werror -Wpointer-arith -Wendif-labels -Wformat=2 -Wextra -Wmissing-noreturn -Wwrite-strings -Wno-unused-parameter -Wno-deprecated -Wmissing-declarations -Woverloaded-virtual -Wunreachable-code -D_GNU_SOURCE -o KeyManager.cpp.o -c KeyManager.cpp
+	可以执行成功
+6、那么对照一下，和上面的构建命令有啥区别？
+	一点一点向正确的靠近。
+	错误的
+	g++ -std=c++11 -o KeyManager.o -c KeyManager.cpp -I../include -I/home/niuzibin/work/heming/cryptdb/external_libs/mysql-src/include/ -I/home/niuzibin/work/heming/cryptdb/external_libs/mysql-src/build/include/ -I/home/niuzibin/work/heming/cryptdb/external_libs/mysql-src/sql/ -I/home/niuzibin/work/heming/cryptdb/src/ -I/usr/include/openssl
+	正确的
+	/usr/bin/c++   -DDBUG_OFF -DEMBEDDED_LIBRARY -DHAVE_CONFIG_H -DKeyManager_EXPORTS -DMYSQL_BUILD_DIR=\"/home/niuzibin/work/heming/cryptdb/external_libs/mysql-src/build\" -DMYSQL_SERVER -std=c++0x -fPIC -I../include -I/home/niuzibin/work/heming/cryptdb/external_libs/mysql-src/include -I/home/niuzibin/work/heming/cryptdb/external_libs/mysql-src/build/include -I/home/niuzibin/work/heming/cryptdb/external_libs/mysql-src/sql -I/home/niuzibin/work/heming/cryptdb/external_libs/mysql-src/regex -I/home/niuzibin/work/heming/cryptdb/external_libs/mysql-src/build/sql -I/home/niuzibin/work/heming/cryptdb/src -I/usr/include/openssl    -g -O0 -fno-strict-aliasing -fno-rtti -fwrapv -fPIC -Wall -Werror -Wpointer-arith -Wendif-labels -Wformat=2 -Wextra -Wmissing-noreturn -Wwrite-strings -Wno-unused-parameter -Wno-deprecated -Wmissing-declarations -Woverloaded-virtual -Wunreachable-code -D_GNU_SOURCE -o KeyManager.cpp.o -c KeyManager.cpp	
+7、最终找到错误的地方，需要 添加头文件的搜索路径，添加宏-DMYSQL_SERVER 以及 变异选项 -Wno-deprecated
+	g++ -std=c++11 -o KeyManager.o -c KeyManager.cpp -DMYSQL_SERVER -Wno-deprecated -I../include -I/home/niuzibin/work/heming/cryptdb/external_libs/mysql-src/include -I/home/niuzibin/work/heming/cryptdb/external_libs/mysql-src/build/include -I/home/niuzibin/work/heming/cryptdb/external_libs/mysql-src/sql -I/home/niuzibin/work/heming/cryptdb/external_libs/mysql-src/regex -I/home/niuzibin/work/heming/cryptdb/external_libs/mysql-src/build/sql -I/home/niuzibin/work/heming/cryptdb/src -I/usr/include/openssl
+8、事后总结：
+	这里编译报错 
+		error: invalid use of incomplete type ‘struct TABLE’
+		error: forward declaration of ‘struct TABLE’
+	直接原因是 在前置声明的情况下，调用了方法。
+	间接原因是 缺少预定义宏导致的问题，需要添加预定义宏 -DMYSQL_SERVER
+@endverbatim
+*/
+编译报错的解决思路;
+
+/**
+@verbatim
+1、避免语义冲突，告诉make不是创建目标文件，而是执行一些命令，也就是说，伪目标。
+	考虑，下面的情况，makefile内容如下：
+	clean:
+        rm -fr *.o
+	执行：
+	niuzibin@ubuntu:~/work/test1/phony$ ll
+	total 12
+	drwxrwxr-x 2 niuzibin niuzibin 4096 Apr  8 23:09 ./
+	drwxrwxr-x 3 niuzibin niuzibin 4096 Apr  8 23:07 ../
+	-rw-rw-r-- 1 niuzibin niuzibin    0 Apr  8 23:08 1.o
+	-rw-rw-r-- 1 niuzibin niuzibin    0 Apr  8 23:08 2.o
+	-rw-rw-r-- 1 niuzibin niuzibin   19 Apr  8 23:07 makefile
+	niuzibin@ubuntu:~/work/test1/phony$ more makefile 
+	clean:
+			rm -fr *.o
+	niuzibin@ubuntu:~/work/test1/phony$ make clean
+	rm -fr *.o
+	niuzibin@ubuntu:~/work/test1/phony$ ll
+	total 12
+	drwxrwxr-x 2 niuzibin niuzibin 4096 Apr  8 23:10 ./
+	drwxrwxr-x 3 niuzibin niuzibin 4096 Apr  8 23:07 ../
+	-rw-rw-r-- 1 niuzibin niuzibin   19 Apr  8 23:07 makefile
+	
+	假设当前目录有个clean文件，如下：
+	niuzibin@ubuntu:~/work/test1/phony$ touch clean  
+	niuzibin@ubuntu:~/work/test1/phony$ ll
+	total 12
+	drwxrwxr-x 2 niuzibin niuzibin 4096 Apr  8 23:12 ./
+	drwxrwxr-x 3 niuzibin niuzibin 4096 Apr  8 23:07 ../
+	-rw-rw-r-- 1 niuzibin niuzibin    0 Apr  8 23:12 1.o
+	-rw-rw-r-- 1 niuzibin niuzibin    0 Apr  8 23:12 2.o
+	-rw-rw-r-- 1 niuzibin niuzibin    0 Apr  8 23:12 clean
+	-rw-rw-r-- 1 niuzibin niuzibin   19 Apr  8 23:07 makefile
+	niuzibin@ubuntu:~/work/test1/phony$ make clean
+	make: `clean' is up to date.
+	这个时候的make clean，make读取到makefile中的clean，检查当前目录是否有目标clean，已经有目标clean了，就不再执行。
+	这不是我们所期望的，怎么解决这个问题？
+	告诉make，这个clean是个伪目标，强制执行下面的命令。如下：
+	niuzibin@ubuntu:~/work/test1/phony$ ll
+	total 12
+	drwxrwxr-x 2 niuzibin niuzibin 4096 Apr  8 23:23 ./
+	drwxrwxr-x 3 niuzibin niuzibin 4096 Apr  8 23:07 ../
+	-rw-rw-r-- 1 niuzibin niuzibin    0 Apr  8 23:23 1.o
+	-rw-rw-r-- 1 niuzibin niuzibin    0 Apr  8 23:23 2.o
+	-rw-rw-r-- 1 niuzibin niuzibin    0 Apr  8 23:12 clean
+	-rw-rw-r-- 1 niuzibin niuzibin   32 Apr  8 23:23 makefile
+	niuzibin@ubuntu:~/work/test1/phony$ more makefile 
+	.PHONY:clean
+	clean:
+			rm -fr *.o
+	niuzibin@ubuntu:~/work/test1/phony$ make clean
+	rm -fr *.o
+2、解决间接依赖的问题。
+	考虑下面的情况，当前包含了四个目录test、add、sub、include 和一个顶层目录makefile文件。
+	test、add、sub三个目录分别包含了三个源程序test.c、add.c、sub.c和三个子目录makefile。
+	niuzibin@ubuntu:~/work/test1/phony$ ll
+	total 28
+	drwxrwxr-x 6 niuzibin niuzibin 4096 Apr  8 23:42 ./
+	drwxrwxr-x 3 niuzibin niuzibin 4096 Apr  8 23:07 ../
+	drwxrwxr-x 2 niuzibin niuzibin 4096 Apr  8 23:42 add/
+	drwxrwxr-x 2 niuzibin niuzibin 4096 Apr  8 23:34 include/
+	-rw-rw-r-- 1 niuzibin niuzibin  249 Apr  8 23:37 makefile
+	drwxrwxr-x 2 niuzibin niuzibin 4096 Apr  8 23:42 sub/
+	drwxrwxr-x 2 niuzibin niuzibin 4096 Apr  8 23:42 test/
+	
+	niuzibin@ubuntu:~/work/test1/phony$ more ./include/heads.h 
+	#ifndef _HEAD_H_
+	#define _HEAD_H_
+	
+	extern int add(int,int);
+	extern int sub(int,int);
+	
+	#endif
+	
+	niuzibin@ubuntu:~/work/test1/phony$ more ./add/add.c       
+	#include "../include/heads.h"
+	int add(int a,int b)
+	{
+			return (a+b);
+	}
+	niuzibin@ubuntu:~/work/test1/phony$ more ./add/makefile 
+	add.o :add.c ../include/heads.h
+			gcc -c -o $@ $< 
+	
+	.PHONY: clean 
+	clean: 
+			rm -f *.o
+	
+	niuzibin@ubuntu:~/work/test1/phony$ more ./sub/sub.c 
+	#include "../include/heads.h"
+	int sub(int a,int b)
+	{
+			return a-b;
+	}
+	niuzibin@ubuntu:~/work/test1/phony$ more ./sub/makefile 
+	sub.o:sub.c ../include/heads.h
+			gcc -c -o $@ $< 
+	
+	.PHONY: clean 
+	clean: 
+			rm -f *.o
+	
+	niuzibin@ubuntu:~/work/test1/phony$ more ./makefile 
+	OBJS = ./add/add.o ./sub/sub.o ./test/test.o
+	program:  $(OBJS)
+			gcc ./test/test.o ./add/add.o ./sub/sub.o -o program
+	
+	$(OBJS):
+			make -C $(dir $@)
+	
+	.PHONY: clean
+	clean:
+			make -C ./add  clean
+			make -C ./sub  clean
+			make -C ./test clean
+			rm -f program
+	运行，如下：
+	niuzibin@ubuntu:~/work/test1/phony$ make
+	make -C add/
+	make[1]: Entering directory `/home/niuzibin/work/test1/phony/add'
+	gcc -c -o add.o add.c 
+	make[1]: Leaving directory `/home/niuzibin/work/test1/phony/add'
+	make -C sub/
+	make[1]: Entering directory `/home/niuzibin/work/test1/phony/sub'
+	gcc -c -o sub.o sub.c 
+	make[1]: Leaving directory `/home/niuzibin/work/test1/phony/sub'
+	make -C test/
+	make[1]: Entering directory `/home/niuzibin/work/test1/phony/test'
+	gcc -c -o test.o test.c
+	make[1]: Leaving directory `/home/niuzibin/work/test1/phony/test'
+	gcc ./test/test.o ./add/add.o ./sub/sub.o -o program
+	
+	注意：makefile的规则，是目标，依赖什么，怎么做，怎么做前面是tab键
+	现在修改 ./add/add.c实现，如下：
+	niuzibin@ubuntu:~/work/test1/phony$ vi ./add/add.c 
+	#include "../include/heads.h"
+	int add(int a,int b)
+	{
+			return (a+b+100);
+	}
+	再次执行make，如下：
+	niuzibin@ubuntu:~/work/test1/phony$ make
+	make: `program' is up to date.
+	
+	当代码实现修改了，我们期望重新构建，但是并没有重新构建。分析为什么？
+	构建program的时候，检查被依赖的项 add sub test是否更新了，这里只有源代码更新了，依赖的目标文件没有更新，导致program没有重新构建。
+	解决办法就是，告诉make，./add/add.o ./sub/sub.o ./test/test.o是伪目标，强制进入子目录执行make。如下：
+	OBJS = ./add/add.o ./sub/sub.o ./test/test.o
+	program:  $(OBJS)
+			gcc ./test/test.o ./add/add.o ./sub/sub.o -o program
+	
+	.PHONY: $(OBJS)
+	$(OBJS):
+			make -C $(dir $@)
+	
+	.PHONY: clean
+	clean:
+			make -C ./add  clean
+			make -C ./sub  clean
+			make -C ./test clean
+			rm -f program
+@endverbatim
+*/
+PHONY的作用;
+
+/**
+@verbatim
+1、一般情况下，我们是手动编写makefile文件，然后执行make构建目标文件。
+2、有没有办法生成makefile文件呢？
+	这就是cmake，cmake根据文件CMakeLists.txt，生成文件makefile
+3、示例如下：
+	niuzibin@ubuntu:~/work/test1/cmake$ ll
+	total 16
+	drwxrwxr-x 2 niuzibin niuzibin 4096 Apr  9 00:17 ./
+	drwxrwxr-x 4 niuzibin niuzibin 4096 Apr  9 00:11 ../
+	-rw-rw-r-- 1 niuzibin niuzibin   45 Apr  9 00:12 CMakeLists.txt
+	-rw-rw-r-- 1 niuzibin niuzibin   89 Apr  9 00:12 hello.c
+	niuzibin@ubuntu:~/work/test1/cmake$ more hello.c 
+	#include <stdio.h>
+	int main(void)
+	{
+			printf("Hello world\n");
+			return 0;
+	}
+	niuzibin@ubuntu:~/work/test1/cmake$ more CMakeLists.txt 
+	PROJECT(HELLO)
+	ADD_EXECUTABLE(hello hello.c)
+4、执行cmake，如下：
+	niuzibin@ubuntu:~/work/test1/cmake$ cmake CMakeLists.txt 
+	-- The C compiler identification is GNU 4.8.4
+	-- The CXX compiler identification is GNU 4.8.4
+	-- Check for working C compiler: /usr/bin/cc
+	-- Check for working C compiler: /usr/bin/cc -- works
+	-- Detecting C compiler ABI info
+	-- Detecting C compiler ABI info - done
+	-- Check for working CXX compiler: /usr/bin/c++
+	-- Check for working CXX compiler: /usr/bin/c++ -- works
+	-- Detecting CXX compiler ABI info
+	-- Detecting CXX compiler ABI info - done
+	-- Configuring done
+	-- Generating done
+	-- Build files have been written to: /home/niuzibin/work/test1/cmake
+	niuzibin@ubuntu:~/work/test1/cmake$ ll
+	total 44
+	drwxrwxr-x 3 niuzibin niuzibin  4096 Apr  9 00:18 ./
+	drwxrwxr-x 4 niuzibin niuzibin  4096 Apr  9 00:11 ../
+	-rw-rw-r-- 1 niuzibin niuzibin 11953 Apr  9 00:18 CMakeCache.txt
+	drwxrwxr-x 5 niuzibin niuzibin  4096 Apr  9 00:18 CMakeFiles/
+	-rw-rw-r-- 1 niuzibin niuzibin  1603 Apr  9 00:18 cmake_install.cmake
+	-rw-rw-r-- 1 niuzibin niuzibin    45 Apr  9 00:12 CMakeLists.txt
+	-rw-rw-r-- 1 niuzibin niuzibin    89 Apr  9 00:12 hello.c
+	-rw-rw-r-- 1 niuzibin niuzibin  4592 Apr  9 00:18 Makefile
+5、生成了一堆的文件，这里我们只需要关心 Makefile文件，生成的Makefile文件内容很多很全面，执行一把make，如下：
+	niuzibin@ubuntu:~/work/test1/cmake$ make
+	Scanning dependencies of target hello
+	[100%] Building C object CMakeFiles/hello.dir/hello.c.o
+	Linking C executable hello
+	[100%] Built target hello
+	niuzibin@ubuntu:~/work/test1/cmake$ ./hello 
+	Hello world
+@endverbatim
+*/
+cmake;
+
+/**
+@verbatim
+1、C++代码：
+#include <iostream>
+int main(int argc,char* argv[])
+{
+        printf("Hello,world\n");
+}
+2、编译 g++ -c hello.cpp 
+	生成hello.o
+3、链接 g++ -o hello hello.o
+	生成hello，可执行程序
+4、运行hello, 打印Hello world
+5、编译链接，一起执行g++ -o hello hello.cpp
+6、g++ hello.cpp 默认生成 a.out
+7、编译链接的时候，需要知道头文件的路径，库的名称和路径，分别使用-I -l -L指定，如下：
+	g++ -o main main.cpp -I/usr/include -lpthread -L/usr/lib
+8、宏定义使用-D选项，如下：
+	g++ -o main main.cpp -DDEBUG
+9、特别注意：Windows下面包含头文件，可以使用斜杠或者反斜杠，不区分大小写。
+	但是Linux下面，不能使用反斜杠，而且区分大小写。如下，#include "../include/aaa.h"
+	因此，会出现Windows下面编译成功，而在Linux下面编译失败，需要注意。
+@endverbatim
+*/
+编译示例;
+
+/**
+@verbatim
+1、测试代码：
+	test.h
+	#include <string>
+	std::string GetName();
+	
+	test.cpp
+	#include "test.h"
+	std::string GetName()
+	{
+			return std::string("Andy");
+	}
+	
+	main.cpp
+	#include "test.h"
+	using namespace std;
+	int main(int argc, char* argv[])
+	{
+			string name = GetName();
+			printf("name[%s]\n",name.c_str());
+			return 0;
+	}
+2、生成静态库
+	[root@localhost lib]# ll
+	total 12
+	-rw-r--r-- 1 root root 149 Jan 31 21:27 main.cpp
+	-rw-r--r-- 1 root root  73 Jan 31 21:27 test.cpp
+	-rw-r--r-- 1 root root  41 Jan 31 21:27 test.h
+	[root@localhost lib]# g++ -c test.cpp 
+	[root@localhost lib]# ll
+	total 16
+	-rw-r--r-- 1 root root  149 Jan 31 21:27 main.cpp
+	-rw-r--r-- 1 root root   73 Jan 31 21:27 test.cpp
+	-rw-r--r-- 1 root root   41 Jan 31 21:27 test.h
+	-rw-r--r-- 1 root root 1384 Jan 31 21:30 test.o
+	[root@localhost lib]# ar -rc libtest.a test.o
+	[root@localhost lib]# ll
+	total 20
+	-rw-r--r-- 1 root root 1532 Jan 31 21:30 libtest.a
+	-rw-r--r-- 1 root root  149 Jan 31 21:27 main.cpp
+	-rw-r--r-- 1 root root   73 Jan 31 21:27 test.cpp
+	-rw-r--r-- 1 root root   41 Jan 31 21:27 test.h
+	-rw-r--r-- 1 root root 1384 Jan 31 21:30 test.o
+3、生成可执行文件
+	[root@localhost lib]# g++ -o main main.cpp libtest.a 
+	[root@localhost lib]# ll
+	total 28
+	-rw-r--r-- 1 root root 1532 Jan 31 21:30 libtest.a
+	-rwxr-xr-x 1 root root 6317 Jan 31 21:31 main
+	-rw-r--r-- 1 root root  149 Jan 31 21:27 main.cpp
+	-rw-r--r-- 1 root root   73 Jan 31 21:27 test.cpp
+	-rw-r--r-- 1 root root   41 Jan 31 21:27 test.h
+	-rw-r--r-- 1 root root 1384 Jan 31 21:30 test.o
+4、运行
+	[root@localhost lib]# ldd main
+			linux-gate.so.1 =>  (0x00320000)
+			libstdc++.so.6 => /usr/lib/libstdc++.so.6 (0x021da000)
+			libm.so.6 => /lib/libm.so.6 (0x00817000)
+			libgcc_s.so.1 => /lib/libgcc_s.so.1 (0x07cee000)
+			libc.so.6 => /lib/libc.so.6 (0x006c9000)
+			/lib/ld-linux.so.2 (0x006ab000)
+	[root@localhost lib]# ./main
+	name[Andy]
+@endverbatim
+*/
+Linux静态链接库;
+
+/**
+@verbatim
+1、测试代码：
+	test.h
+	#include <string>
+	std::string GetName();
+	
+	test.cpp
+	#include "test.h"
+	std::string GetName()
+	{
+			return std::string("Andy");
+	}
+	
+	main.cpp
+	#include "test.h"
+	using namespace std;
+	int main(int argc, char* argv[])
+	{
+			string name = GetName();
+			printf("name[%s]\n",name.c_str());
+			return 0;
+	}
+2、生成动态库so文件
+	[root@localhost dll]# g++ -fPIC -shared -o libtest.so test.cpp
+	[root@localhost dll]# ll
+	total 20
+	-rwxr-xr-x 1 root root 5158 Jan 31 20:58 libtest.so
+	-rw-r--r-- 1 root root  149 Jan 31 20:46 main.cpp
+	-rw-r--r-- 1 root root   74 Jan 31 20:43 test.cpp
+	-rw-r--r-- 1 root root   41 Jan 31 20:55 test.h
+3、生成可执行文件
+	[root@localhost dll]# g++ -o main -ltest -L./ main.cpp
+	[root@localhost dll]# ll
+	total 28
+	-rwxr-xr-x 1 root root 5158 Jan 31 20:58 libtest.so
+	-rwxr-xr-x 1 root root 5992 Jan 31 20:59 main
+	-rw-r--r-- 1 root root  149 Jan 31 20:46 main.cpp
+	-rw-r--r-- 1 root root   74 Jan 31 20:43 test.cpp
+	-rw-r--r-- 1 root root   41 Jan 31 20:55 test.h
+4、运行
+	[root@localhost dll]# export LD_LIBRARY_PATH=$(pwd)
+	[root@localhost dll]# ldd main
+			linux-gate.so.1 =>  (0x00402000)
+			libtest.so => /home/niu/dll/libtest.so (0x00e91000)
+			libstdc++.so.6 => /usr/lib/libstdc++.so.6 (0x021da000)
+			libm.so.6 => /lib/libm.so.6 (0x00817000)
+			libgcc_s.so.1 => /lib/libgcc_s.so.1 (0x07cee000)
+			libc.so.6 => /lib/libc.so.6 (0x006c9000)
+			/lib/ld-linux.so.2 (0x006ab000)
+	[root@localhost dll]# ./main
+	name[Andy]
+@endverbatim
+*/
+Linux动态链接库;
+
+/**
+@verbatim
+1、动态加载库，解决什么问题？
+	静态链接库和动态链接库是在编程时，直接调用对应的方法。链接时已经完成了，静态链接直接放在后面，动态链接使用-l链接。
+	而动态加载库在编程时，需要使用dlopen等函数来获取库里面方法的定义，然后进行调用。
+	对于没有提供头文件的动态库,只能dlopen等函数来调用。
+2、测试代码：
+	test.cpp
+	#include <string>
+	std::string GetName()
+	{
+			return std::string("Andy");
+	}
+	
+	main.cpp
+	#include <string>
+	#include <dlfcn.h>
+	using namespace std;
+	typedef string (*Func) ();
+	
+	int main(int argc, char* argv[])
+	{
+			void* pHandle = dlopen("./libtest.so", RTLD_NOW);
+			void* error = dlerror();
+			printf("Error[%s]\n", error);
+	
+			Func pFunc = (Func)dlsym(pHandle,"GetName");
+			error = dlerror();
+			printf("Error[%s]\n", error);
+	
+			string name = pFunc();
+			printf("name[%s]\n",name.c_str());
+			return 0;
+	}
+3、生成动态库so文件
+	[root@localhost dll2]# g++ -fPIC -shared -o libtest.so test.cpp
+	[root@localhost dll2]# ll
+	total 16
+	-rwxr-xr-x 1 root root 5158 Jan 31 22:38 libtest.so
+	-rw-r--r-- 1 root root  401 Jan 31 22:37 main.cpp
+	-rw-r--r-- 1 root root   73 Jan 31 22:33 test.cpp
+4、生成可执行文件
+	[root@localhost dll2]# g++ -o main main.cpp -ldl
+	[root@localhost dll2]# ll
+	total 24
+	-rwxr-xr-x 1 root root 5158 Jan 31 22:38 libtest.so
+	-rwxr-xr-x 1 root root 6222 Jan 31 22:38 main
+	-rw-r--r-- 1 root root  401 Jan 31 22:37 main.cpp
+	-rw-r--r-- 1 root root   73 Jan 31 22:33 test.cpp
+	-ldl就是 -l dl，表示动态加载dll
+5、运行
+	[root@localhost dll2]# ./main
+	Error[(null)]
+	Error[./libtest.so: undefined symbol: GetName]
+	Segmentation fault (core dumped)
+	报错没有找到定义的符号，明明有这个方法，为什么没有找到？
+	这是因为G++编译的时候，进行了名称重整，生成libtest.so的时候，GetName进行了名称重整。
+	可能变成了__string_GetName，所以dlsym(pHandle,"GetName"); 找不到符号。
+6、怎么解决？
+	需要抑制名称重整，修改如下：
+	#include <string>
+	extern "C"
+	{
+	std::string GetName()
+	{
+			return std::string("Andy");
+	}
+	};
+	重新执行一遍，运行如下：
+	[root@localhost dll2]# g++ -fPIC -shared -o libtest.so test.cpp
+	[root@localhost dll2]# g++ -o main main.cpp -ldl
+	[root@localhost dll2]# ./main
+	Error[(null)]
+	Error[(null)]
+	name[Andy]
+7、上面的做法存在问题，因为C编译器并不认识extern "C"，因此需要预编译，如下：
+	#include <string>
+	#ifdef __cplusplus
+	extern "C"
+	{
+	#endif
+	std::string GetName()
+	{
+			return std::string("Andy");
+	}
+	#ifdef __cplusplus
+	};
+	#endif
+8、静态链接、动态链接和动态加载的比较：
+	a、对于静态库，实现发生改变，依赖它的exe（或者dll）文件必须重新静态链接，把新的代码实现链接到exe文件中，才会有效。
+	b、对于动态库的链接，实现发生改变，依赖它的exe（或者dll）文件不需要重新链接。
+		如果接口发生变化，必须重新构建，否则报错，如下：
+		./main: symbol lookup error: ./main: undefined symbol: _Z7GetNamev
+	c、对于动态库的加载，和动态库的链接是同样道理。二者的区别是：动态链接是在程序运行之前，链接确定下来。
+		但是有些场景下，需要在程序运行过程中，按照需要加载进来。
+		相比较动态链接，动态加载的优点是：延迟和按照需要进行。
+@endverbatim
+*/
+Linux动态加载库;
+
+/**
+@verbatim
+1、有以下三个文件：main.cpp, student.h, student.cpp
+2、makefile文件如下：
+app:main.o student.o
+	g++ -o app main.o student.o
+
+main.o:main.cpp student.h
+	g++ -c main.cpp
+
+student.o:student.cpp student.h
+	g++ -c student.cpp
+
+clean:
+	rm -fr app *.o
+3、app是目标，依赖main.o student.o，要生成目标，执行的命令是 g++ -o app main.o student.o
+	main.o是同样道理。
+4、make xxx 执行对应的命令，
+	make app 执行 g++ -o app main.o student.o
+	make main.o 执行 g++ -c main.cpp
+	make 默认执行 make app
+5、目标main.o 和 student.o可以去掉，makefile在生成app的时候，发现依赖的对象不存在，会自动生成依赖的对象。
+6、make会自动在当前目录下面，查找makefile文件，如果存在多个makefile，可以指定使用哪一个，如下：
+	make -f makefile2
+7、打印makefile中的变量
+	makefile与shell脚本不一样，具体方法如下：
+all: desc $(DLIBTARGET)
+	$(CP) $(DLIBTARGET) $(TARGET_BASEPATH)/lib_linux/ibp_sdk/imds_sdk
+
+desc:
+	echo aaaaaaaaaaa
+	@echo $(TARGET_BASEPATH)
+	echo bbbbbbbbbbb
+8、在makefile中调用shell脚本，如下：
+all: desc
+	echo '1111111'
+	echo 22222222
+	
+desc:
+	hh=kkkkkk;\
+	echo $$hh
+	ddddd;\
+	ret=$$?;if [ $$ret -ne 0 ]; then echo "OK"; fi
+	echo aaaaaaaaaaa
+	@echo $(TARGET_BASEPATH)
+	echo bbbbbbbbbbb
+	在makefile中使用shell脚本，有两点特别注意：
+	a、一行必须是一个完整的shell语句，可以使用反斜杠折行
+	b、为了区分makefile中的变量，引用变量使用 $$var
+9、如果你想要看到make构建的详细过程，可以使用make VERBOSE=1或者VERBOSE=1 make命令来进行构建。
+@endverbatim
+*/
+makefile;
+
+
+/**
+@verbatim
+1、main依赖test.so，test.so依赖link.so，示例代码如下：
+	[root@localhost link]# more link.h
+	#include <string>
+	std::string GetAAA();
+	
+	[root@localhost link]# more link.cpp
+	#include "link.h"
+	std::string GetAAA()
+	{
+		return std::string("Andy");
+	}
+	
+	[root@localhost link]# more test.h
+	#include <string>
+	std::string GetName();
+	
+	[root@localhost link]# more test.cpp
+	#include "test.h"
+	#include "link.h"
+	std::string GetName()
+	{
+		return GetAAA();
+	}
+	
+	[root@localhost link]# more main.cpp 
+	#include "test.h"
+	using namespace std;
+	int main(int argc, char* argv[])
+	{
+		string name = GetName();
+		printf("name[%s]\n",name.c_str());
+		return 0;
+	}
+2、对于这种情况，构建有两种方式。
+3、第一种方式：先生成link.so，然后生成test.so的时候，链接link.so，把符号表使用占位符关联起来。
+	然后生成main的时候，只需要链接test.so，如下：
+	[root@localhost link]# g++ -fPIC -shared -o liblink.so link.cpp
+	[root@localhost link]# g++ -fPIC -shared -o libtest.so test.cpp -L./ -llink
+	[root@localhost link]# g++ -o main main.cpp -L./ -ltest
+	[root@localhost link]# ll
+	total 44
+	-rwxr-xr-x 1 root root 5157 Aug 18 18:07 liblink.so
+	-rwxr-xr-x 1 root root 4557 Aug 18 18:08 libtest.so
+	-rw-r--r-- 1 root root   74 Aug 18 17:42 link.cpp
+	-rw-r--r-- 1 root root   40 Aug 18 17:42 link.h
+	-rwxr-xr-x 1 root root 5992 Aug 18 18:08 main
+	-rw-r--r-- 1 root root  153 Aug 18 17:33 main.cpp
+	-rw-r--r-- 1 root root   81 Aug 18 17:42 test.cpp
+	-rw-r--r-- 1 root root   41 Aug 18 17:33 test.h
+	[root@localhost link]# ./main
+	name[Andy]
+4、第二种方式：先生成link.so，然后生成test.so的时候，不链接link.so。
+	然后生成main的时候，同时链接test.so和link.so，如下：
+	[root@localhost link]# g++ -fPIC -shared -o liblink.so link.cpp
+	[root@localhost link]# g++ -fPIC -shared -o libtest.so test.cpp
+	[root@localhost link]# g++ -o main main.cpp -L./ -ltest
+	.//libtest.so: undefined reference to `GetAAA()'
+	collect2: ld returned 1 exit status
+	[root@localhost link]# g++ -o main main.cpp -L./ -ltest -llink
+	[root@localhost link]# ll
+	total 44
+	-rwxr-xr-x 1 root root 5157 Aug 18 18:10 liblink.so
+	-rwxr-xr-x 1 root root 4533 Aug 18 18:10 libtest.so
+	-rw-r--r-- 1 root root   74 Aug 18 17:42 link.cpp
+	-rw-r--r-- 1 root root   40 Aug 18 17:42 link.h
+	-rwxr-xr-x 1 root root 6016 Aug 18 18:11 main
+	-rw-r--r-- 1 root root  153 Aug 18 17:33 main.cpp
+	-rw-r--r-- 1 root root   81 Aug 18 17:42 test.cpp
+	-rw-r--r-- 1 root root   41 Aug 18 17:33 test.h
+	[root@localhost link]# ./main
+	name[Andy]
+5、也就是，main-->test.so-->link.so，可以在每一步都链接，也可以在最后链接。
+	每一步都链接，会导致test.so会稍微大一点，因为里面保存了链接信息。使用ldd可以看到二者的区别，如下：
+	[root@localhost link]# g++ -fPIC -shared -o libtest.so test.cpp -L./ -llink
+	[root@localhost link]# ldd libtest.so 
+			linux-gate.so.1 =>  (0x00ab3000)
+			liblink.so => ./liblink.so (0x00973000)
+			libstdc++.so.6 => /usr/lib/libstdc++.so.6 (0x00110000)
+			libm.so.6 => /lib/libm.so.6 (0x005a2000)
+			libgcc_s.so.1 => /lib/libgcc_s.so.1 (0x00812000)
+			libc.so.6 => /lib/libc.so.6 (0x00ca3000)
+			/lib/ld-linux.so.2 (0x006ab000)
+	[root@localhost link]# g++ -fPIC -shared -o libtest.so test.cpp
+	[root@localhost link]# ldd libtest.so 
+			linux-gate.so.1 =>  (0x00d7a000)
+			libstdc++.so.6 => /usr/lib/libstdc++.so.6 (0x009b9000)
+			libm.so.6 => /lib/libm.so.6 (0x00c08000)
+			libgcc_s.so.1 => /lib/libgcc_s.so.1 (0x00256000)
+			libc.so.6 => /lib/libc.so.6 (0x00110000)
+			/lib/ld-linux.so.2 (0x006ab000)
+	每一步都链接，test中多了一项链接 liblink.so => ./liblink.so (0x00973000)
+6、每一步都链接，只是相当于最后编译的时候少一个链接-llink，但是，编译的时候文件liblink.so还是必须需要的。
+7、不管是每步都链接，还是最后一起链接，能否定位到方法的实现，都是在最后一步才确定下来的。
+	也就是说，对于每步都链接，链接link，生成test.so的时候，即使找不到link的方法实现，生成test.so也不会报错，
+	最后一步生成main的时候，才报错找不到方法实现。
+8、特别注意一点：对于动态库，其中的代码实现不会合并到任何其他动态库或者可执行文件中。
+	动态库中的代码段只会在内存中加载一次，所有依赖该动态库的主体，必须解决一个问题，就是定位到代码段的实现。
+	比如，定位到方法的入口。解决这个问题，有两种办法：
+	a、动态链接，编译的时候使用占位符，然后链接的时候修改占位符的取值，定位到方法实现的地址。
+	b、动态加载，运行的时候，使用系统库根据方法名称直接找到方法的实现。
+		被依赖的动态库，暴露出来的接口不能进行名称重整，否者找不到。
+9、再次强调，对于动态库，其中的代码实现不会合并到任何其他动态库或者可执行文件中。
+@endverbatim
+*/
+编译间接依赖的库;
+
+/**
+@verbatim
+测试场景，Test，lib1，lib2，dll1，dll2
+分为下面四种情况：
+1、Test->lib1->lib2
+	lib1编译自己的代码，对lib2的部分，只需要lib2的头文件，对lib2的代码实现，使用占位符关联。
+	生成Test链接的时候，把lib1的代码实现包含进来，再递归，把lib1中关联lib2的代码实现也包含进来。
+	运行Test的时候，不再需要lib1和lib2。
+	也就是说，lib2不合并到lib1中，等到exe的时候，一起合并到exe中。
+2、Test->lib1->dll2
+	lib1编译自己的代码，对dll2的部分，只需要dll2的头文件，对dll2的代码实现，使用占位符关联。
+	生成Test链接的时候，把lib1的代码实现包含进来，但是，dll2中的代码不包含进来。
+	运行Test的时候，不需要lib1，但是需要dll2【不需要dll的lib文件】
+	也就是说，dll2不合并到lib1中，等到exe的时候，把lib1合并到exe中。
+3、Test->dll1->lib2
+	dll1编译自己的代码，对lib2的部分，需要lib2的头文件和实现，即lib2，把lib2的代码实现包含到dll1中
+	生成Test链接的时候，dll1中的代码不包含进来,也不再需要lib2。
+	【可以这样测试，生成lib2，生成dll1，生成test，删除lib2，删除test.exe,再生成test，
+		可以成功，说明生成test.exe,链接的时候，根本不需要lib2，
+		也就是说，静态库会被链接到动态库或者exe中，但是不会链接到其他的lib中】
+	运行Test的时候，需要dll1，但是不需要lib2
+	也就是说，lib2合并到dll1中，等到exe的时候，不需要合并dll1，运行时需要dll1。
+4、Test->dll1->dll2
+	dll1编译自己的代码，对dll2的部分，需要dll2的头文件和lib文件，对dll2的代码实现，使用占位符关联。
+	生成Test链接的时候，Test需要dll1的lib，dll1需要dll2的lib，但是代码实现都不会包含在Test中。
+	运行Test的时候，需要dll1和dll2【不需要他们的lib】
+	也就是说，dll2不合并到dll1中，等到exe的时候，二者都不需要合并,运行时需要二者。
+@endverbatim
+*/
+静态库与动态库的链接;
+
+/**
+@verbatim
+1、普通方法，只声明，不定义，没有问题，只要不调用方法，就不会链接出错。
+2、虚方法，只声明，不定义，即使不调用方法，链接也报错。为什么？
+	为了实现多态性，必须在类的虚方法表里设置这个虚方法的地址（也就是虚方法的实现），没有定义当然报错。
+	注意：子类重写会在他的虚方法表里重新设置这个地址。
+3、纯虚方法，只声明，不定义，没有问题。为什么？
+	对于纯虚方法，可以认为在类的虚方法表里，对于的纯虚方法slot设置0，也就是地址为0
+	这个slot值为0，导致两个问题：
+	a、当前类不能实例化，考虑如果可以实例化，调用对应的虚方法，就是引用地址为0的方法，当然不行。
+		也就是说，纯虚方法会导致当前类为抽象类（即使提供方法实现），不能实例化。
+		编译报错：不能实例化抽象类，并且会指出纯虚方法。
+	b、子类必须重写虚方法，子类的虚方法表对父类进行整体拷贝。考虑如果没有重写，也就是子类对应的slot值也是0，这当然不行。
+	注意：纯虚方法也可以提供实现，相当于对于的纯虚方法slot值由0再改为实际的方法地址。
+@endverbatim
+*/
+编译链接的有关问题;
+
+/**
+@verbatim
+1、两个动态库，含有相同的C接口方法名，在linux下，找方法地址可能会找错误，windows不会找错
+@endverbatim
+*/
+方法地址找错;
+
+/** @} */
+
+/** @} */

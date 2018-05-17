@@ -1,0 +1,27 @@
+﻿/**
+* @defgroup 传输层
+* @{
+*/
+
+/**
+* @defgroup Effective__TCP__IP
+* @{
+*/
+
+/**
+@verbatim
+1、私有地址包括三块：
+	10.0.0.0　　 到 10.255.255.255
+	172.16.0.0   到 172.31.0.0
+	192.168.0.0  到 192.168.255.255
+2、私有地址接入公网，需要进行NAT（Network Address Translation）
+	出去进行SNAT，在NAT服务器修改Source
+	进来进行DNAT，在NAT服务器根据端口，修改Destination，也就是端口映射
+@endverbatim
+*/
+【T03】理解私有地址和NAT;
+
+
+/** @} */
+
+/** @} */

@@ -1,0 +1,26 @@
+﻿/**
+* @defgroup 传输层
+* @{
+*/
+
+/**
+* @defgroup Effective__TCP__IP
+* @{
+*/
+
+/**
+@verbatim
+1、TCP/IP应用程序分为
+	TCP服务器
+	TCP客户端
+	UDP服务器
+	UDP客户端
+2、构建框架库是比较简单的一件事，主要就是对socket编程。
+@endverbatim
+*/
+【T04】开发并使用应用程序框架;
+
+
+/** @} */
+
+/** @} */

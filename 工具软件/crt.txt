@@ -1,0 +1,67 @@
+/**
+* @defgroup 工具软件
+* @{
+*/
+
+/**
+* @defgroup CRT
+* @{
+*/
+
+/**
+@verbatim
+1、点击选项，会话选项只是修改当前连接的属性。
+2、需要设置全局选项，如下：常规-->默认会话-->编辑默认设置-->终端-->外观进行设置
+@endverbatim
+*/
+secureCRT修改终端外观;
+
+
+
+/**
+@verbatim
+1、一般情况下，我们使用SecureCRT连接Linux主机，当需要从Linux主机下载上传文件的时候，我们会使用SecureFX
+	SecureFX提供了一个UI界面，方便我们操作。
+2、当我们打开一个SecureFX界面的时候，可以看到多出一个连接SSH2，服务端的端口也是22，
+	可以认为SecureFX使用FTP over SSH2，也是连接SSH2服务的22端口
+	[root@localhost ~]# netstat -anp|grep :22
+	tcp        0      0 :::22                       :::*                        LISTEN      3677/sshd           
+	tcp        0      0 ::ffff:10.36.65.60:22       ::ffff:10.36.65.91:65484    ESTABLISHED 27260/1             
+	tcp        0     52 ::ffff:10.36.65.60:22       ::ffff:10.36.65.80:45270    ESTABLISHED 20651/3             
+	[root@localhost ~]# netstat -anp|grep :22
+	tcp        0      0 :::22                       :::*                        LISTEN      3677/sshd           
+	tcp        0      0 ::ffff:10.36.65.60:22       ::ffff:10.36.65.91:65484    ESTABLISHED 27260/1             
+	tcp        0     52 ::ffff:10.36.65.60:22       ::ffff:10.36.65.80:45270    ESTABLISHED 20651/3             
+	tcp        0      0 ::ffff:10.36.65.60:22       ::ffff:10.36.65.80:34391    ESTABLISHED 4528/sshd: root@not 
+3、当SecureFX不能使用的时候，我们可以使用SFTP（Secure FTP），不同于SecureFX，SFTP服务是SSH2的一个子服务
+	作为客户端FTP不需要新建一个TCP连接，而是直接使用当前SecureCRT的连接。
+4、具体操作如下：
+	a、右击当前SecureCRT的连接标签，选择 连接SFTP标签页，也就是作为FTP客户端，连接SSH2的子服务SFTP。
+		这个过程，不会新建TCP连接，而且交互是加密的。
+	b、然后作为FTP客户端，可以使用一些FTP的命令，也可以通过help查看有哪些命令。
+	c、下载文件，如下：
+		sftp> get main
+		Downloading main from /home/niu11/main
+		100% 266KB    266KB/s 00:00:00     
+		/home/niu11/main: 272894 bytes transferred in 0 seconds (266 KB/s)
+		这个时候，不知道下载到本地的哪个地方，使用lpwd，查看本地的当前目录，如下：
+		sftp> lpwd
+		//10.30.21.200/UserDesktop01/25697/MyDoc
+	d、上传文件，如下：
+		sftp> put desktop.ini
+		Uploading desktop.ini to /home/niu11/desktop.ini
+		100% 402 bytes    402 bytes/s 00:00:00     
+		//10.30.21.200/UserDesktop01/25697/MyDoc/desktop.ini: 402 bytes transferred in 0 seconds (402 bytes/s)
+5、除此之外，还可以使用
+	sz 下载
+	rz 上传
+	在会话选项-->终端-->X/Y/Zmodem看到，上传下载的目录。
+@endverbatim
+*/
+使用SFTP下载上传文件;
+
+
+
+/** @} */
+
+/** @} */

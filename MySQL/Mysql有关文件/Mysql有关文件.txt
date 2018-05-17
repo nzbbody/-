@@ -1,0 +1,156 @@
+/**
+* @defgroup MySQL
+* @{
+*/
+
+/**
+* @defgroup Mysql有关文件
+* @{
+*/
+
+/**
+@verbatim
+1、在linux上安装好mysql之后，存在很多mysql有关的文件。
+2、/etc/rc.d/init.d/mysql是mysql服务的启动脚本，是对mysqld_safe的封装，
+	mysqld_safe是一个脚本，是对可执行文件mysqld的封装。
+3、/usr/bin/mysql 是mysql客户端命令行工具，在同目录下还有其他的可执行文件，mysqldump，mysqladmin，mysqlimport。
+	注意：mysqld_safe也在这个目录，但是mysqld不在这个目录，mysqld在/usr/sbin/下面，
+	/usr/sbin/ 目录下面放了很多服务，s认为是服务的意思。
+4、/usr/lib/mysql 是一个目录，里面放着mysql有关的库文件。
+5、/usr/include/mysql 是一个目录，里面放在很多的头文件，其中有一个目录mysql，里面是mysqlclient有关的头文件
+6、/usr/share/mysql 下面放着一些mysql脚本文件，比如 mysql_system_tables_data.sql
+7、/var/lib/mysql 是mysql数据库的存放目录，每个数据库有一个对应的文件，其中mysql文件就是mysql数据库。其他的文件如下：
+	a、auto.cnf是mysql server的uuid
+	b、ib_logfile0是日志文件，还有一个ib_logfile1，大小相同
+	c、localhost.localdomain.err是错误日志
+	d、localhost.localdomain.pid是mysql服务的进程ID
+8、通过show variables like '%dir%' ，可以查看相应的目录文件。
+@endverbatim
+*/
+文件介绍;
+
+/**
+@verbatim
+1、初始化选项文件
+	window下在mysql的安装目录，文件为 my.ini
+	Linux下/etc/my.cnf
+2、错误日志文件
+	错误日志文件和数据库的数据文件放在一起，通过选项datadir=配置数据文件的目录。
+	mysql的错误日志文件是排查错误的重要手段。
+3、查询日志文件
+	分为慢查询日志和普通查询日志
+4、二进制日志文件
+	这个文件在数据库复制的时候非常重要，master在binlog记录下做的事情，slave从master请求binlog，
+	然后把事情重放一遍，保证数据同步。mysql的复制是slave端配置master端的信息，也就是slave主动连接
+	master，请求二进制日志。这一点和oracle不同，oracle是master主动推送给slave二进制日志。
+	mysql的二进制日志文件前缀一般配置为 mysql-bin
+5、中继日志和复制状态文件
+	relay-bin 		中继日志，保存读取到的master二进制日志
+	relay-log.info	复制状态日志，保存处理的进度和中继日志文件的位置
+6、数据文件
+	每个数据库对应一个目录，目录中有一些表文件
+7、其他文件
+	进程id文件 pid
+	sock文件
+@endverbatim
+*/
+文件结构;
+
+
+/**
+@verbatim
+1、mysql的数据文件存放在data目录，每个数据库有一个对应的目录。
+2、对于MyISAM引擎，每个表有三个文件：
+	.frm	是元数据文件，保存表结构信息
+	.myd	【my data】是表数据文件，保存表的数据，也就是一组记录
+	.myi	【my index】是表索引文件，保存表的索引信息，一个表上的所有索引都保存在这个文件
+3、对于INNODB引擎，每个表也都有一个对应的.frm文件，用于保存表结构信息。
+	默认情况下，INNODB所有表的数据和索引都保存在 ibdata1 文件中。
+	这会导致文件ibdata1非常大，怎么解决？
+4、可以设置每个表使用一个独立的文件，来保存自身的数据和索引，只需要在mysql的配置中增加配置项
+	innodb_file_per_table
+	可以看到每个表都有一个对应的.ibd文件
+5、对于已经存在比较大的ibdata1，怎么办？
+	先把数据导出来，删除ibdata1文件，配置成innodb_file_per_table，然后还原数据
+6、对于INNODB引擎，还需要记录事务，因此有事务日志。
+	INNODB有若干个 事务日志组，一个事务日志组至少有两个事务日志文件，这些事务日志文件大小相同，预分配好内存，
+	文件的内存都是二进制0，INNODB会轮巡写事务日志文件。
+	默认情况下，只有一个事务日志组，事务日志组有两个文件，分别是ib_logfile0 和 ib_logfile1，
+	初始的时候，ib_logfile0 和 ib_logfile1文件的内容都是二进制0
+7、注意：事务日志和二进制日志的区别。
+	事务日志是INNODB引擎记录事务，为了事务的前滚和后滚。
+	二进制日志（binlog）所有的引擎都会记录，可以认为记录mysql的操作，发给从库，在从库上重放，达到数据同步。
+8、.err是错误日志文件，记录mysql的出错信息
+9、.pid是保存进程ID，停止mysql服务，这个文件就会自动删除。
+10、对于查询日志，需要配置
+	log=C:\ProgramData\MySQL\MySQL Server 5.5\data\log.txt
+11、对于慢查询日志，需要配置
+	long_query_time=0.1
+	log-slow-queries=C:\ProgramData\MySQL\MySQL Server 5.5\data/slowquery.txt
+	特别注意：\s会被转义，因此需要使用C:\ProgramData\MySQL\MySQL Server 5.5\data/slowquery.txt
+	或者C:\ProgramData\MySQL\MySQL Server 5.5\data\\slowquery.txt
+12、通过show variables like '%log%'; 可以看到各种日志文件的配置信息，如下：	
+	mysql> show variables like '%log%';
+	+-----------------------------------------+-------------------------------------------------------------+
+	| Variable_name                           | Value                                                       |
+	+-----------------------------------------+-------------------------------------------------------------+
+	| back_log                                | 50                                                          |
+	| binlog_cache_size                       | 32768                                                       |
+	| binlog_direct_non_transactional_updates | OFF                                                         |
+	| binlog_format                           | STATEMENT                                                   |
+	| binlog_stmt_cache_size                  | 32768                                                       |
+	| expire_logs_days                        | 0                                                           |
+	| general_log                             | ON                                                          |
+	| general_log_file                        | C:\ProgramData\MySQL\MySQL Server 5.5\data\log.txt          |
+	| innodb_flush_log_at_trx_commit          | 1                                                           |
+	| innodb_locks_unsafe_for_binlog          | OFF                                                         |
+	| innodb_log_buffer_size                  | 2097152                                                     |
+	| innodb_log_file_size                    | 55574528                                                    |
+	| innodb_log_files_in_group               | 2                                                           |
+	| innodb_log_group_home_dir               | .\                                                          |
+	| innodb_mirrored_log_groups              | 1                                                           |
+	| log                                     | ON                                                          |
+	| log_bin                                 | OFF                                                         |
+	| log_bin_trust_function_creators         | OFF                                                         |
+	| log_error                               | C:\ProgramData\MySQL\MySQL Server 5.5\Data\pvs256971713.err |
+	| log_output                              | FILE                                                        |
+	| log_queries_not_using_indexes           | OFF                                                         |
+	| log_slave_updates                       | OFF                                                         |
+	| log_slow_queries                        | ON                                                          |
+	| log_warnings                            | 1                                                           |
+	| max_binlog_cache_size                   | 18446744073709547520                                        |
+	| max_binlog_size                         | 1073741824                                                  |
+	| max_binlog_stmt_cache_size              | 18446744073709547520                                        |
+	| max_relay_log_size                      | 0                                                           |
+	| relay_log                               |                                                             |
+	| relay_log_index                         |                                                             |
+	| relay_log_info_file                     | relay-log.info                                              |
+	| relay_log_purge                         | ON                                                          |
+	| relay_log_recovery                      | OFF                                                         |
+	| relay_log_space_limit                   | 0                                                           |
+	| slow_query_log                          | ON                                                          |
+	| slow_query_log_file                     | C:\ProgramData\MySQL\MySQL Server 5.5\data/slowquery.txt    |
+	| sql_log_bin                             | ON                                                          |
+	| sql_log_off                             | OFF                                                         |
+	| sync_binlog                             | 0                                                           |
+	| sync_relay_log                          | 0                                                           |
+	| sync_relay_log_info                     | 0                                                           |
+	+-----------------------------------------+-------------------------------------------------------------+
+	以及慢查询的时间设置
+	mysql> show variables like '%long%';
+	+---------------------------------------------------+----------+
+	| Variable_name                                     | Value    |
+	+---------------------------------------------------+----------+
+	| long_query_time                                   | 0.100000 |
+	| max_long_data_size                                | 1048576  |
+	| performance_schema_events_waits_history_long_size | 10000    |
+	+---------------------------------------------------+----------+
+@endverbatim
+*/
+mysql数据文件;
+
+
+
+/** @} */
+
+/** @} */

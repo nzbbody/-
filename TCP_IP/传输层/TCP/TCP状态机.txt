@@ -1,0 +1,58 @@
+﻿/**
+* @defgroup TCP
+* @{
+*/
+
+/**
+使用网络助手观察tcp状态机
+@verbatim
+场景一：客户端主动断开连接
+1、服务端使用12345端口监听，客户端去连接。
+2、服务端的网络连接
+	C:\Users\niu>netstat -ano|findstr 12345
+	TCP    10.65.200.168:12345    0.0.0.0:0              LISTENING       7064
+	TCP    10.65.200.168:12345    10.36.65.80:34814      ESTABLISHED     7064
+3、客户端的网络连接
+	C:\Users\25697>netstat -ano|findstr 12345
+	TCP    10.36.65.80:34814      10.65.200.168:12345    ESTABLISHED     6208
+4、注意：netstat的输出最后一个字段是进程Id，前面一个端口是当前进程的端口，后面一个端口是对端进程的端口。
+	对于在一台机器上的输出，很有帮助，如下在Linux下：
+	[root@localhost IBP]# netstat -anp|grep 9932
+	tcp        0      0 0.0.0.0:9932                0.0.0.0:*                   LISTEN      22851/./vmu_main    
+	tcp        0      0 172.16.2.102:9932           172.16.2.102:43061          ESTABLISHED 22851/./vmu_main    
+	tcp        0      0 172.16.2.102:9932           172.16.2.102:43008          ESTABLISHED 22851/./vmu_main    
+	tcp        0      0 172.16.2.102:43061          172.16.2.102:9932           ESTABLISHED 22734/./vms_main    
+	tcp        0      0 172.16.2.102:43008          172.16.2.102:9932           ESTABLISHED 22792/./mgw_main
+5、这个时候抓包可以看到连接的三次握手。
+6、然后客户端主动断开连接。
+7、服务端的网络连接
+	C:\Users\niu>netstat -ano|findstr 12345
+	TCP    10.65.200.168:12345    0.0.0.0:0              LISTENING       7064
+	TCP    10.65.200.168:12345    10.36.65.80:34814      CLOSE_WAIT      7064
+8、客户端的网络连接
+	C:\Users\25697>netstat -ano|findstr 12345
+	TCP    10.36.65.80:34814      10.65.200.168:12345    FIN_WAIT_2      6208
+9、分析如下：
+	客户端主动断开连接，先发送fin包，进入FIN_WAIT_1状态，服务端回复ack，客户端进入FIN_WAIT_2状态
+	同时服务端进入CLOSE_WAIT状态
+	按道理，这种情况下，服务端应该接着发送fin包，进入LAST_ACK状态
+	客户端收到fin包，回复ack（服务端收到ack进入CLOSED状态），进入TIME_WAIT状态，经过2MSL（2 Max Segment Lifetime）进入CLOSED状态
+10、但是服务端并没有发送第二个fin包，这时候状态一直保持。
+	过了两分钟之后，处于半连接的客户端意识到这个问题，于是发送rst包进行复位，两端的连接close掉。
+	注意：还有一种情况发送rst包，就是去连接没有监听的端口，对端发送rst包
+11、为什么服务端没有发送第二个fin包？
+	推测：发送fin包意味着我没有数据发给对方了，作为被动关闭的服务端可能不知道是否还有数据发给对方。
+@endverbatim
+
+@verbatim
+场景二：服务端主动断开连接
+1、服务端主动断开连接，可以看到断开连接的四次握手。
+2、服务端发送fin包，客户端回复ack，然后发送fin包，服务端回复ack，进入TIME_WAIT状态，客户端收到ack立即进入CLOSED状态
+@endverbatim
+*/
+TCP状态机;
+
+
+/** @} */
+
+

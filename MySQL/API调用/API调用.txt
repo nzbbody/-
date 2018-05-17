@@ -1,0 +1,85 @@
+/**
+* @defgroup MySQL
+* @{
+*/
+
+/**
+* @defgroup API调用
+* @{
+*/
+
+/**
+@verbatim
+1、对于select语句和存储过程，释放结果集的做法不一样，如下：
+	int DBMysql::Test()
+	{
+		if(mysql_query(_conn,"select devid from device") != SUCCESS)
+		{
+			return FAILURE;
+		}
+	
+		MYSQL_RES* results = mysql_store_result(_conn);
+		if(results == NULL)
+		{
+			return FAILURE;
+		}
+		
+		MYSQL_ROW row;
+		while((row = mysql_fetch_row(results)) != NULL)
+		{
+			LogInfo(DBLog,"%s",*row);
+		}
+	
+		freeResults(results,false);
+		return SUCCESS;
+	}
+	
+	int DBMysql::TestProcedure()
+	{
+		char* sql = "call niu1";
+		if(mysql_query(_conn,sql) != SUCCESS)
+		{
+			return FAILURE;
+		}
+	
+		MYSQL_RES* results = mysql_store_result(_conn);
+		if(results == NULL)
+		{
+			return FAILURE;
+		}
+	
+		MYSQL_ROW row;
+		while((row = mysql_fetch_row(results)) != NULL)
+		{
+			LogInfo(DBLog,"%s",*row);
+		}
+	
+		freeResults(results,true);
+		return SUCCESS;
+	}
+	
+	int	DBMysql::freeResults(MYSQL_RES* results,bool isProcedure)
+	{
+		if(isProcedure == true)
+		{
+			do
+			{
+				results = mysql_store_result(_conn);
+				mysql_free_result(results);
+			}
+			while((0 == mysql_next_result(_conn)));
+		}
+		else
+		{
+			mysql_free_result(results);
+		}
+		return SUCCESS;
+	}
+@endverbatim
+*/
+free结果集;
+
+
+/** @} */
+
+/** @} */

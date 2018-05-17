@@ -1,0 +1,117 @@
+/**
+* @defgroup Algorithm
+* @{
+*/
+
+/**
+@verbatim
+/*
+	这里的int* q 是一维数组，对于4皇后，就是q[4] 
+	按道理需要二维数组表示棋盘，这里做了简化。比如4皇后，
+	使用一维数组，q[4]四个元素，表示4行，a[0]的值表示第0行，Queen放在第几列
+	比如a[0]=2, 表示第0行，Queen放在第2列
+*/
+int* q; 	
+
+//输出一个解
+void PrintQueen_N(int n)  
+{
+	static int count = 0;  //输出解的同时，记录解的个数
+	printf("第[%d]个解：",++count);  
+	for(int i=0;i<n;i++)
+	{
+		printf("(%d,%d) ",i,q[i]); 
+	}		
+	printf("\n"); 
+
+	for(int i=0;i<n;i++)	// 遍历行
+	{                  
+		for(int j=0;j<n;j++) // 遍历列
+		{  
+			if(q[i]==j) // 如果行的取值等于当前列，说明这个位置,放置Queen
+			{
+				printf("● "); 					
+			}				 
+			else 
+			{
+				printf("○ "); 
+			}				
+		}  
+		printf("\n");  
+	}  
+} 
+
+/*
+	检查在第row行的第col列，放置Queen是否合法
+	如何检查？
+	前面的row-1行已经放置了Queen，遍历这些Queen，检查Queen与当前位置(row,col)是否冲突
+*/
+bool IsValid(int row,int col)    
+{
+	// 遍历每一行的Queen
+	for(int i=0;i<row;++i)
+	{
+		/*
+			检查Queen与当前位置是否冲突
+			因为一行一行地放置Queen，肯定不在同一行了
+			要检查是否在同一列或者在对角线上。
+			同一列：q[i]==col 第i行Queen放的列等于当前列
+			对角线： 左上到右下，行-行==列-列
+					 左下到右上，行-行==-(列-列)
+					 也就是abs(r1-r2)=abs(c1-c2)
+		*/
+		if(q[i]==col || abs(i-row)==abs(q[i]-col)) // 位置不合法
+		{
+			return false;
+		}
+	}
+	return true;
+}
+
+// 在每一行放置Queen 
+void PlaceQueenInRow(int row,int n)    
+{		
+	if(row>=n) // 从0行开始，已经放到第n行，放置结束
+	{
+		PrintQueen_N(n);  
+	}		
+	else // 在第row行放置Queen
+	{
+		// 对于第row行，遍历所有的列，逐个尝试
+		for(int j=0;j<n;j++)  
+		{  
+			if(IsValid(row,j)) // 判断row的j列放置Queen和否合法
+			{
+				q[row] = j;    //合法，标识第row的Queen放在第j列
+				PlaceQueenInRow(row+1,n);  //在下一行放置  
+			}  
+		}  
+	}  
+}
+
+void Queen_N(int queenNum)
+{
+	q = new int[queenNum];
+	PlaceQueenInRow(0,queenNum);
+	delete[] q;
+}
+@endverbatim
+
+@verbatim
+运行程序，得出n皇后解的个数：
+1		1
+2		0
+3		0
+4		2
+5		10
+6		4
+7		40
+8		92
+9		352
+10		724
+@endverbatim
+*/
+n皇后问题;
+
+
+/** @} */

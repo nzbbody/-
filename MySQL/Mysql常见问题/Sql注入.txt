@@ -1,0 +1,65 @@
+﻿
+/**
+* @defgroup Mysql常见问题
+* @{
+*/
+
+/**
+@verbatim
+1、利用sql的语法特点，绕过正常的处理流程，入侵数据库。
+2、举例来说：
+	void TestSqlInject(otl_connect& otlConn)
+	{
+		// 使用or
+		string name="Andy";
+		string password="1' or 1='1";
+	
+		// 使用注释
+		//string name="Andy'/*";
+		//string password="*/'";	
+	
+		char sql[1024] = {0};
+		sprintf(sql,"select id from user where name='%s' and password='%s'",
+			name.c_str(),
+			password.c_str());
+	
+		otl_stream stream(1, sql, otlConn);
+		
+		int userId = -1;
+		stream>>userId;
+	}
+	这种情况，在只有用户名的情况就可以登入系统。
+	原因是拼接的sql语句，绕过了正常的条件检查。通过给name和password设置特殊的值，可以造成各种各样的sql注入，
+	在没有用户名的情况下，也可以登入系统。
+3、sql注入产生的原因是：对用户的输入没有严格检查，导致拼接的sql语句表达了其他的语义。怎么解决？
+4、方法1：不要拼接sql语句，而是使用绑定变量。
+	这种方法相当于，发给mysql一个框架，把空留着，MySQL解析，然后填空。在这种情况下，用户的输入，只是变量，
+	不能再表达其他的语义。如下：
+	void RefuseSqlInject(otl_connect& otlConn)
+	{
+		// 使用or
+		string name="Andy";
+		string password="1' or 1='1";
+	
+		// 使用注释
+		//string name="Andy'/*";
+		//string password="*/'";	
+	
+		char sql[1024] = {0};
+		sprintf(sql,"select id from user "
+		"where name=:Name<char[100]> and password=:Password<char[100]>");
+	
+		otl_stream stream(1, sql, otlConn);
+		
+		int userId = -1;
+		stream<<name<<password;
+		stream>>userId;
+	}
+5、检查用户的输入，就是检查name，password是否包含/ * or 这一类的特殊字符或者是关键字，包含直接返回错误。
+	可以使用mysql自带的检查方法，也可以自己实现方法，更针对性检查。
+@endverbatim
+*/
+Sql注入;
+
+
+/** @} */

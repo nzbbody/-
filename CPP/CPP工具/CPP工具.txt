@@ -1,0 +1,153 @@
+﻿/**
+* @defgroup CPP
+* @{
+*/
+
+/**
+* @defgroup CPP工具
+* @{
+*/
+
+/**
+1、头文件
+@verbatim
+	#ifndef TIMER_H_
+	#define TIMER_H_
+	
+	typedef void (*TimerTick)(void* param);
+	
+	struct TimerInfo
+	{
+		TimerTick _TimerTick;
+		void*	  _Param;
+		int		  _Start;
+		int		  _Interval;
+	
+		TimerInfo(TimerTick timerTick,void* param,int start,int interval)
+		{
+			_TimerTick = timerTick;		
+			_Param     = param;
+			_Start     = start;
+			_Interval  = interval;
+		}
+	};
+	
+	class Timer
+	{
+	public:
+		Timer(TimerTick timerTick,void* param,int start,int interval);
+	};
+#endif
+@endverbatim
+
+2、实现
+@verbatim
+	#include "timer.h"
+	#ifdef WIN32
+	#include <windows.h>
+	#else
+	#include <pthread.h>
+	#include <unistd.h>
+	#endif
+	
+	void NiuSleep(int ms)
+	{
+		#ifdef WIN32
+			::Sleep(ms);
+		#else
+			::usleep(ms*1000);
+		#endif
+	}
+	
+	
+	#ifdef WIN32
+	DWORD WINAPI ThreadRun(PVOID param)
+	#else
+	void* ThreadRun(void* param)
+	#endif
+	{
+		TimerInfo* timerInfo = (TimerInfo*)param;
+		NiuSleep(timerInfo->_Start);
+	
+		while(true)
+		{
+			timerInfo->_TimerTick(timerInfo->_Param);
+			NiuSleep(timerInfo->_Interval);
+		}
+		
+		return 0;
+	}
+	
+	Timer::Timer(TimerTick timerTick,void* param,int start,int interval)
+	{
+		TimerInfo* timerInfo = new TimerInfo(timerTick,param,start,interval);
+	
+		#ifdef WIN32
+		HANDLE hThread = CreateThread(NULL,0,ThreadRun,timerInfo,0,NULL);
+		CloseHandle(hThread);
+		#else
+		pthread_t hThread;
+		pthread_create(&hThread,NULL,ThreadRun,(void*)timerInfo);
+		#endif
+	}
+@endverbatim
+
+3、测试代码
+@verbatim
+	#include "timer.h"
+	#include <stdio.h>
+	
+	void tick(void* param)
+	{
+		printf("haha\n");
+	}
+	
+	int main(int argc,char* argv[])
+	{
+		Timer timer(tick,NULL,5000,1000);
+	
+		getchar();
+		return 0;
+	}
+@endverbatim
+
+4、编译测试
+@verbatim
+	[root@localhost Timer]# ll
+	total 12
+	-rw-r--r-- 1 root root 181 Jan  7 17:17 main.cpp
+	-rw-r--r-- 1 root root 823 Jan  7 17:15 timer.cpp
+	-rw-r--r-- 1 root root 441 Jan  7 16:47 timer.h
+	
+	[root@localhost Timer]# g++ -c timer.cpp
+	In file included from timer.cpp:1:
+	timer.h:28:7: warning: no newline at end of file
+	timer.cpp:48:2: warning: no newline at end of file
+	
+	[root@localhost Timer]# g++ -c main.cpp
+	In file included from main.cpp:1:
+	timer.h:28:7: warning: no newline at end of file
+	main.cpp:16:2: warning: no newline at end of file
+	
+	[root@localhost Timer]# g++ -o main main.o timer.o -lpthread
+	
+	[root@localhost Timer]# ll
+	total 28
+	-rwxr-xr-x 1 root root 6485 Jan  7 17:23 main
+	-rw-r--r-- 1 root root  181 Jan  7 17:17 main.cpp
+	-rw-r--r-- 1 root root 1308 Jan  7 17:23 main.o
+	-rw-r--r-- 1 root root  823 Jan  7 17:15 timer.cpp
+	-rw-r--r-- 1 root root  441 Jan  7 16:47 timer.h
+	-rw-r--r-- 1 root root 1856 Jan  7 17:23 timer.o
+	
+	[root@localhost Timer]# ./main
+	haha
+	haha
+	haha
+@endverbatim
+*/
+C++跨平台定时器;
+
+/** @} */
+
+/** @} */

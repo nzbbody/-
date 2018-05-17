@@ -1,0 +1,41 @@
+/**
+* @defgroup Mysql语法
+* @{
+*/
+
+/**
+@verbatim
+1、创建主键
+	alter table t1 add primary key(c1);
+2、删除主键
+	alter table t1 drop primary key;
+3、查看主键
+	show index from t1;
+	或者
+	desc t1;
+@endverbatim
+*/
+主键;
+
+
+/**
+@verbatim
+1、创建索引
+	alter table t1 add index index_c2(c2);
+	或者
+	create index index_c2 on t1(c2);
+2、删除索引
+	alter table t1 drop index index_c2;
+	或者
+	drop index index_c2 on t1;
+3、查看索引
+	show index from t1;
+	或者
+	desc t1;
+@endverbatim
+*/
+索引;
+
+
+/** @} */
+

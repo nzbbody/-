@@ -1,0 +1,158 @@
+﻿/**
+* @defgroup 编程珠玑
+* @{
+*/
+
+/**
+* @defgroup 随机数
+* @{
+*/
+
+
+/**
+@verbatim
+1、产生随机数[0,5)，也就是说得到数字0,1,2,3,4的概率都是1/5，现在考虑，已有方法Random_7
+	根据这个方法，构造方法Random_5_By_Random_7，怎么办？
+2、这是一个大范围的随机数，像小范围映射，解决办法很简单，就是对5取模。但是仔细想想，就发现不对，
+	Random_7产生[0,7)每个数字的概率都是1/7，如果直接对5取模，导致0,1的概率是2/7,而2,3,4的概率
+	是1/7，这显然不满足随机数的要求。
+3、怎么解决上面的问题？
+	原因是：大范围向小范围映射，由于不能整除，导致部分数字的概率增加，解决办法就是，去掉超出的部分，
+	比如Random_5_By_Random_7，如果Random_7产生的随机数>=5，重新再产生，一直循环下去，直到产生的数字
+	满足要求。
+4、那这样产生[0,5)每个数字的概率是多少呢？是1/7吗？
+	错，还是1/5, 为什么？从数学角度来看，以0为例，概率为：
+	第1次产生0：1/7 
+	第2次产生0：2/7*(1/7)		//前面1次产生的是5,6，再试第2次
+	第3次产生0：(2/7)^2*(1/7)	//前面2次产生的是5,6，再试第3次
+	....
+	总概率 1/7+2/7*(1/7)+(2/7)^2*(1/7)... = 1/7*((2/7)^0+(2/7)^1+(2/7)^2+...)
+	等比数列求和，设y=1+n+n^2+n^3+....
+	则ny=n+n^2+n^3+n^4.... 相减，得到
+	(1-n)y=1-n^m，其中n小于1，m为无穷大，则y = 1/(1-n),n为2/7,则y为7/5
+	产生0的概率为 1/7*(7/5) = 1/5
+5、那接着思考，Random_7_By_Random_5，该怎么实现呢？
+	先考虑Random_10_By_Random_5，当然不能直接映射。如果直接映射，[0,5)都是1/5，[5,10)都是0
+	容易想到的办法是 2*Random_5,这个也不对，这样的话，1的概率是0,2的概率是1/5
+	那么Random_5+Random_5，不对，0的概率是1/5*(1/5)=1/25
+	而我们期望的是[1,10)每个数字的概率都是1/10
+6、怎么解决上面的问题？
+	必须是从大范围向小范围映射值，同时裁剪掉不满足条件的数字，继续下去。怎么扩大Random_5呢？
+	连续产生两次，范围就是5*5=25，对7取余，去掉21,22,23,24
+@endverbatim
+
+@verbatim
+int Random_5()
+{
+	static bool isFirstCall = true;
+	if(isFirstCall)
+	{
+		srand(time(NULL));
+		isFirstCall = false;
+	}		
+	return rand()%5;
+}
+
+int Random_7()
+{
+	static bool isFirstCall = true;
+	if(isFirstCall)
+	{
+		srand(time(NULL));
+		isFirstCall = false;
+	}		
+	return rand()%7;
+}
+
+int Random_5_By_Random_7()
+{
+	int a = Random_7();
+	while(a>=5)
+	{
+		a=Random_7();
+	}
+	return a;
+}
+
+// 想象一个二维数组，第一次产生行数，第二次产生行的第几个元素。
+int Random_7_By_Random_5()
+{
+	int row = Random_5();
+	int col = Random_5();
+	while(row*5+col >= 21)
+	{
+		row = Random_5();
+		col = Random_5();
+	}
+	return (row*5+col)%7;
+}
+@endverbatim
+*/
+产生随机数;
+
+
+
+/**
+@verbatim
+1、从[0,7)中随机产生两个数，解决办法是调用两次 Random_7，共有49种组合。
+2、考虑，从[0,7)中随机选择两个不重复的数字，这与上面的情况完全不同。这种情况要保证：
+	每个数字被选中的概率是2/7
+3、怎么办？
+	容易想到的办法是，遍历[0,7), 每次产生一个随机数，随机数对7取模，小于2【概率是2/7】,
+	表示当前数字被选中。如下：
+	int Select_2_From_7(vector<int>& intVec)
+	{
+		intVec.clear();
+		for(int i=0;i<7;++i)
+		{
+			if(Random_7()%7 <2)
+			{
+				intVec.push_back(i);
+			}
+		}
+		return 0;
+	}
+4、这个做法有问题，我们要保证intVec的size为2，上面的做法会导致intVec的size不确定。
+	因为上面遍历的时候，把每个数字被选的事件当成了互不关联的独立事件，这个是错误的。
+	考虑，1被选的情况，跟0是否被选有关系：
+	0被选[2/7]，1被选的概率为1/6
+	0没有被选[5/7]，1被选的概率为2/6
+	1被选的总概率为 2/7*(1/6)+5/7*(2/6)=2/7
+5、思路是：对于0，是从7个里面选，对于1，是从6个里面选，对于2是从5个里面选，也就是说，
+	遍历过程中，分母是一直减小的。每次选中一个，分子减少1
+@endverbatim
+
+@verbatim
+int Select_2_From_7(vector<int>& intVec)
+{
+	static bool isFirstCall = true;
+	if(isFirstCall)
+	{
+		srand(time(NULL));
+		isFirstCall = false;
+	}
+	
+	intVec.clear();
+
+	int total = 7;
+	int select = 2;
+	for(int i=0;i<total;++i)
+	{
+		if(rand()%(total-i) <select)
+		{
+			intVec.push_back(i);
+			--select;
+		}
+	}
+	return 0;
+}
+@endverbatim
+*/
+取样问题;
+
+
+
+
+/** @} */
+
+/** @} */

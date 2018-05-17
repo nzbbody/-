@@ -1,0 +1,499 @@
+/**
+* @defgroup Linux
+* @{
+*/
+
+/**
+* @defgroup 常见问题
+* @{
+*/
+
+/**
+@verbatim
+1、运行缺少库，需要添加依赖库的路径，有两种办法。
+2、第一种办法：
+	export LD_LIBRARY_PATH = xxx
+3、第二种办法：
+	修改 /etc/ld.so.conf 添加路径，
+	然后执行 ldconfig
+@endverbatim
+*/
+运行缺少库;
+
+/**
+@verbatim
+1、ctrl，按下v，再按下i
+@endverbatim
+*/
+shell如何输入制表符;
+
+/**
+@verbatim
+1、空白字符包括：空格符，制表符，换行符
+2、Windows换行符为\r\n, 使用notepad++显示所有字符，显示CRLF，使用linux cat -A 显示^M$
+3、Linux换行符为\n, 使用notepad++显示所有字符，显示LF，使用linux cat -A 显示$
+4、在Linux下面，如何去除^M？
+	我们知道^M这个字符就是\r，因此可以对\r进行替换
+	sed "s/\r//g" -i 111
+	或者直接对^M进行替换，需要注意的是，不能直接输入^和M，必须使用Ctrl+V，然后Ctrl+M，表示空白字符\r
+	sed "s/^M//g" -i 111
+@endverbatim
+@see
+*/
+Linux换行符;
+
+
+/**
+@verbatim
+1、考虑下面的代码：
+	#include <stdio.h>
+	int main(int argc, char* argv[])
+	{
+		printf("hello ");
+		printf("world");
+		getchar();
+		return 0;
+	}
+2、在windows下面没有问题，正常输出。但是在linux下面，printf输出不及时。
+3、原因是：在linux系统下，printf函数是行缓冲式的输出，当printf遇到\n时，或者缓冲区满时，
+	才会将缓冲区里的内容刷新到标准输出(stdout).
+4、怎么解决这个问题？
+	a、输出的结尾加上\n
+	b、或者在printf后面，调用 fflush(stdout)
+	如下：
+	#include <stdio.h>
+	int main(int argc, char* argv[])
+	{
+			printf("hello \n");
+			printf("world");
+			fflush(stdout);
+			getchar();
+			return 0;
+	}
+5、奇怪的是，调用过一次 fflush(stdout); 之后，以后都会实时刷新，不知道为什么。
+@endverbatim
+@see
+*/
+linux下printf函数输出不及时;
+
+
+
+
+/**
+@verbatim
+1、pwd是工作目录，不是脚本所在的目录，所谓工作目录就是：在哪个目录下面工作。
+	考虑脚本aa.sh中有 echo $(pwd)，从aa.sh所在目录调用aa.sh，回显aa.sh所在目录。
+	但是，从目录A去调用aa.sh，回显目录A，从目录B去调用aa.sh，回显目录B
+	特别注意：从不同的目录调用aa.sh，后面的参数不同，因为需要指定aa.sh的位置。
+	也就是说，从哪个目录去调用【也就是工作目录】，pwd就是哪个目录。
+2、下面使用python来举例说明：
+	a、os.getcwd()：获取当前工作目录，也就是在哪个目录下运行这个程序。
+		举例来说：假设F:\aaa\bbb\ccc目录下有个文件 TestDir.py，打印当前工作目录。进入windows命令行窗口：
+		在F:\aaa\bbb\ccc运行 python TestDir.py，输出F:\aaa\bbb\ccc
+		在F:\aaa\bbb运行 python ccc/TestDir.py，输出F:\aaa\bbb
+		在F:\aaa运行 python bbb/ccc/TestDir.py，输出F:\aaa
+	b、如果我想获取TestDir.py文件所在的目录，怎么办？
+		使用sys.path[0] 如下：
+		import os
+		print(os.getcwd())		
+		import sys
+		print(sys.path[0],end='')
+3、如何获取脚本所在的决定路径呢？
+	shPath=$(cd $(dirname $0);pwd)
+	echo $shPath
+	cd $(dirname $0) 进入脚本所在目录，工作目录变化，pwd获取工作目录，也就是脚本所在目录，返回工作目录的值。
+4、注意：$(cd $(dirname $0);pwd)返回后，工作目录还是原来的工作目录。
+	要想改变工作目录，使用cd $(dirname $0)，不能获取命令的返回值。
+	为什么？
+	可以认为，获取命令的返回值，相当于进入新的工作目录，返回后，又退出新的工作目录，回到原来的工作目录。
+5、$(dirname $0) 返回第一个参数的目录，第一个参数就是脚本。没有必要，转到目录，再pwd，直接获取返回值就好了。如下：
+	SHELL_HOME=`dirname $0`
+@endverbatim
+*/
+获取脚本所在的绝对路径;
+
+
+/**
+@verbatim
+库					头文件						描述
+libGL.so			<GL/gl.h>					实现到OpenGL API的接口
+libGLU.so			<GL/glu.h>					实现到OpenGL API的接口
+libImlib.so			<Imlib.h>					实现一套图像处理例程
+libc.so				无							实现标准C库(不需要头文件)
+libcom_err.so		<com_err.h>					实现出错处理例程的集合
+libcrypt.so			<crypt.h>					实现加密函数的集合
+libcurses.so		<curses.h>					光标字符模式的屏幕操作库
+libdb.so			<db.h>						创建和操作数据库的库
+libdl.so			<dlfcn.h>					让程序在运行时加载和使用库代码而无须在编译时链接库
+libform.so			<form.h>					实现字符模式应用程序的窗体处理能力
+libglib.so			<glib.h>					Glib库,提供了大多数程序需要的大量基本工具函数,比如散列表等
+libgthread.so		<glib.h>					实现对Glib的线程支持
+libgtk.so			<gtk/gtk.h>					GIMP下的X库
+libhistory.so		<readline/readline.h>		实现GNU readline(libreadline)包中的命令行历史机制
+libjpeg.so			<jpeglib.h>					定义到JPEG库的接口,赋予应用程序使用JPEG图像文件的能力
+libm.so				<math.h>					实现标准C数学库
+libmenu.so			<menu.h>					提供在字符模式屏幕上创建和使用菜单的例程
+libncurses.so		<ncurses.h>					使用ncurses文本模式屏幕控制系统的应用程序的基础库
+libnss.so			<nss.h>						用于名字服务切换工具的功能,提供了名字数据库比如DNS接口
+libpanel.so			<panel.h>					提供在字符模式屏幕上创建和使用面板的例程
+libpbm.so			<pbm.h>						可移植的位图库,实现了使用多种格式单色位图的接口
+libpgm.so			<pgm.h>						可移植的灰度图库,实现了使用多种格式灰色位图的接口
+libpng.so			<png.h>						用于编码,解码和操作PNG格式图像文件的参考实现
+libpnm.so			<pnm.h>						可移植anymap库是使用多种位图格式的基础库
+libppm.so			<ppm.h>						可移植的像素图库实现了使用多种格式彩色像素图的接口
+libpthread.so		<pthread.h>					实现了POSIX线程库,标准的Linux多线程库
+libreadline.so		<readline/readline.h>		GNU readline包的基础库,该软件包能够让应用软件存储,记忆并且编辑命令行.
+libresolv.so		<resolv.h>					提供使用因特网域名服务器和服务的接口
+libslang.so			<slang.h>					提供方便的脚本语言S-lang,用于嵌入其它应用程序
+libtiff.so			<tiffio.h>					读写TIFF格式图像文件的库
+libz.so				<zlib.h>					通用压缩例程库
+libvga.so			<vga.h>						Linux的底层VGA和SVGA图形库
+@endverbatim
+*/
+Linux环境常用库的介绍;
+
+
+/**
+@verbatim
+1、信号是unix中最古老的进程通信的一种方式，他是软件层次上对中断机制的模拟，是一种异步通信方式.
+	信号可以实现用户空间进程和内核空间进程的交互，内核进程可以利用他通知用户空间进程发生了哪些系统事件.
+	我们可以任何时候给进程发送信号而无需知道进程的状态，如果进程当前并未处于执行态，则信号则会由内核保存起来.
+	如果进程是阻塞状态，那么信号传递会被延迟，直到阻塞结束时才会传递给进程。
+2、查看所有的信号，如下：
+	[root@localhost mysql]# kill -l
+	1) SIGHUP       2) SIGINT       3) SIGQUIT      4) SIGILL       5) SIGTRAP
+	6) SIGABRT      7) SIGBUS       8) SIGFPE       9) SIGKILL     10) SIGUSR1
+	11) SIGSEGV     12) SIGUSR2     13) SIGPIPE     14) SIGALRM     15) SIGTERM
+	16) SIGSTKFLT   17) SIGCHLD     18) SIGCONT     19) SIGSTOP     20) SIGTSTP
+	21) SIGTTIN     22) SIGTTOU     23) SIGURG      24) SIGXCPU     25) SIGXFSZ
+	26) SIGVTALRM   27) SIGPROF     28) SIGWINCH    29) SIGIO       30) SIGPWR
+	31) SIGSYS      34) SIGRTMIN    35) SIGRTMIN+1  36) SIGRTMIN+2  37) SIGRTMIN+3
+	38) SIGRTMIN+4  39) SIGRTMIN+5  40) SIGRTMIN+6  41) SIGRTMIN+7  42) SIGRTMIN+8
+	43) SIGRTMIN+9  44) SIGRTMIN+10 45) SIGRTMIN+11 46) SIGRTMIN+12 47) SIGRTMIN+13
+	48) SIGRTMIN+14 49) SIGRTMIN+15 50) SIGRTMAX-14 51) SIGRTMAX-13 52) SIGRTMAX-12
+	53) SIGRTMAX-11 54) SIGRTMAX-10 55) SIGRTMAX-9  56) SIGRTMAX-8  57) SIGRTMAX-7
+	58) SIGRTMAX-6  59) SIGRTMAX-5  60) SIGRTMAX-4  61) SIGRTMAX-3  62) SIGRTMAX-2
+	63) SIGRTMAX-1  64) SIGRTMAX
+3、前32种信号会有各种不同的名称，后32种会以“SIGRTMIN”或者“SIGRTMAX”开头。
+	前者是从unix继承下来的信号，称为不可靠信号(也称为非实时信号)。
+	后者为了解决“不可靠信号”的问题进行了更改和扩充的信号形成了可靠信号(也称为实时信号)
+4、如果想要了解可靠与不可靠信号，需要了解信号的生命周期:
+	一个完整的信号周期可以分为三个重要阶段，三个重要阶段有四个重要事件刻画的：
+	信号产生，信号在进程中注册，信号在进程中注销，执行信号处理函数
+5、可靠信号与不可靠信号的区别：
+	不可靠信号如果发现信号已经在进程中注册，就会忽略该信号，因此若前一个信号还没有注销又产生了新的信号就是导致信号丢失。
+	可靠信号发送给一个进程时，不管该信号是否已经在进程中注册，都会被再注册一次，因此信号不会丢失。
+	所有可靠信号都支持排队，所有不可靠信号都不支持排队。
+	注：这里信号的产生，注册，注销等是指信号的内部的实现机制，而不是调用信号的函数实现。
+	所以信号注册与否，与本节后面讲到的发送信号函数(kill等)以及信号安装函数(signal()等)无关，只与信号值有关。
+6、用户进程对信号的响应有三种方式：
+	忽略信号，对信号不做任何处理，但是又两个信号是不能忽略的，即SIGKILL,SIGSTOP
+	捕捉信号，定义信号处理函数，当信号发送时，执行相应的自定义处理函数
+	执行缺省操作，linux对每种信号都规定了默认操作
+7、kill()方法
+	kill()函数和熟知的kill系统命令一样，可以发送信号给信号和进程组（实际上kill系统命令只是对kill函数的一个简单封装）
+	需要注意的是他不仅可以终止进程(发送SIGKILL信号)，也可以向进程发送其他信号。
+8、raise()方法
+	与kill函数不同的是raise()函数允许进程向自身发送信号。
+9、alarm()方法
+	alarm()也称为闹钟函数，可以在进程中设置一个定时器，等到时间到达时，就会想进程发送SIGALARM信号。
+	注意的是一个进程只能有一个闹钟时间，如果调用alarm()之前已经设置了闹钟时间，那么任何以前的闹钟时间都会被新值所代替
+10、pause()方法
+	此函数用于将进程挂起直到捕捉到信号为止，这个函数很常用，通常用于判断信号是否已到
+@endverbatim
+*/
+linux进程通信__发送信号的函数;
+
+/**
+@verbatim
+1、考虑下面的代码，如下：
+	#include <string>
+	#include <vector>
+	using namespace std;
+	int main(int argc, char* argv[])
+	{
+			int i=0;
+			vector<char*> pVec;
+			while(true)
+			{
+					printf("num=%d\n",i++);
+					//fflush(stdout);
+					usleep(2000*1000);
+					//sleep(2);
+					char* pc = new char[1024*1024];
+					pc = new char[1024*1024];
+					memset(pc,0,1024*1024);
+					pVec.push_back(pc);
+			}
+			return 0;
+	}
+2、程序每次new出1M，然后再new出1M，前面的1M不使用，使用后面的1M。使用top|grep main，打印如下：
+	32596 root      15   0 13084 6016  760 S  0.0  1.2   0:00.00 root     main
+	32596 root      15   0 15140 7048  760 S  0.0  1.4   0:00.00 root     main
+	32596 root      15   0 17196 8080  760 S  0.0  1.6   0:00.00 root     main
+	32596 root      15   0 19252 9112  760 S  0.0  1.8   0:00.00 root     main
+	32596 root      15   0 21308 9.9m  760 S  0.0  2.0   0:00.00 root     main
+	32596 root      15   0 23364  10m  760 S  0.0  2.2   0:00.00 root     main
+	32596 root      15   0 25420  11m  760 S  0.0  2.4   0:00.00 root     main
+	32596 root      15   0 27476  12m  760 S  0.0  2.6   0:00.00 root     main
+	32596 root      15   0 29532  13m  760 S  0.0  2.8   0:00.00 root     main
+	32596 root      15   0 31588  14m  760 S  1.0  3.0   0:00.01 root     main
+	32596 root      15   0 31588  14m  760 S  0.0  3.0   0:00.01 root     main
+	32596 root      15   0 33644  15m  760 S  0.0  3.2   0:00.01 root     main
+3、可以看到VIRT每次增加2M，而RES每次增加1M，SHR是共享内存，不变化。
+	刚开始的时候，单位是KB，RES大于10M，使用M作为单位。
+4、为什么VIRT每次增加2M，而RES每次增加1M？
+	VIRT是虚拟内存，包括常驻内存和交换到硬盘的内存。
+	RES是常驻内存，每次new出2M，只有1M使用，在常驻内存，另外1M没有使用。
+	可以认为Linux操作系统很聪明，没有使用的1M直接交换到硬盘中。
+5、怎么看出交换出去的内存大小？
+	top命令后，按下f，按下p选中p: SWAP       = Swapped size (kb)，然后回车，可以看到
+	32661 root      15   0 29532  13m  760 S  1.0  2.8   0:00.02 root      14m main
+	VIRT	29532 KB 
+	RES		13M
+	SWAP	14M	
+6、看进程是否内存泄露，要看VIRT虚拟内存，因为程序有些内存分配了，却从来没有使用，这也是内存泄露。
+7、同样的程序，在Windows下面，表现不一样，在Windows虚拟内存和常驻内存大小差不多。
+	在windows如何查看虚拟内存？
+	任务管理器-->查看-->选择列-->内存-提交大小就是虚拟内存
+	而内存-专用工作集就是常驻内存
+@endverbatim
+*/
+虚拟内存和常驻内存;
+
+/**
+@verbatim
+1、xxx.d是目录，这里的d是directory，比如rc.d
+2、xxxd是守护进程文件，也就是服务进程文件，这里的d是daemo，比如mysqld，httpd
+3、rc文件，这个有争议，一说是run command，一说是run control，是脚本类文件，程序启动时运行的脚本。
+@endverbatim
+*/
+Linux文件命名;
+
+/**
+@verbatim
+1、脚本如下：
+	[root@localhost localconfig]# more niu.sh 
+	#! /bin/sh
+	set -x
+	sleep 5
+	echo 'over'
+2、使用system调用，如下：
+	#include <stdio.h>
+	#include <stdlib.h>
+	
+	int main(int argc,char* argv[])
+	{
+	
+			char script[256] = {0};
+			sprintf(script,"./niu.sh");
+			system(script);
+			return 0;
+	}
+3、使用popen调用，如下：
+	#include <stdio.h>
+	#include <stdlib.h>
+	
+	int main(int argc,char* argv[])
+	{
+	
+			char script[256] = {0};
+			sprintf(script,"./niu.sh");
+	
+			printf("Exe Script[%s]", script);
+			FILE* fp = popen(script,"r");
+			pclose(fp);
+	
+			return 0;
+	}
+4、这里存在问题，由于脚本执行需要5秒钟，导致程序卡住5秒，怎么办？
+	把脚本放入后台运行，如下：
+	sprintf(script,"./niu.sh &");
+5、system与popen的区别：
+	system和popen都是执行了类似的运行流程，大致是fork->execl->return。
+	但是我们看到system在执行期间调用进程会一直等待shell命令执行完成(waitpid等待子进程结束)才返回，
+	但是popen无须等待shell命令执行完成就返回了。
+	我们可以理解system为串行执行，在执行期间调用进程放弃了”控制权”，popen为并行执行。 
+	popen中的子进程没人给它收尸了啊？是的，如果你没有在调用popen后调用pclose那么这个子进程就可能变成僵尸。
+6、另外一个重要的区别是：popen可以与标准IO流进行交互。如果存在交互过程，即使脚本放入后台运行，如下：
+	#include <stdio.h>
+	#include <stdlib.h>
+	
+	int main(int argc,char* argv[])
+	{
+	
+			char script[256] = {0};
+			sprintf(script,"./niu.sh &");
+	//      system(script);
+	
+			printf("Exe Script[%s]", script);
+			FILE* fp = popen(script,"r");
+			char outBuf[256] = {0};
+			fread(outBuf,1024,1,fp);
+			printf("Exe Result:%s",outBuf);
+			pclose(fp);
+	
+			return 0;
+	}
+	为什么？
+	很好理解，因为要进行输入，或者获取输出。
+@endverbatim
+*/
+system与popen;
+
+
+/**
+@verbatim
+1、tty(终端设备的统称)
+	tty一词源于Teletypes，或者teletypewriters，原来指的是电传打字机，是通过串行线用打印机键盘通过阅读和发送信息的东西。
+	后来这东西被键盘与显示器取代，所以现在叫终端比较合适。
+	终端是一种字符型设备，它有多种类型，通常使用tty来简称各种类型的终端设备。
+2、pty（虚拟终端):
+	但是如果我们远程telnet到主机或使用xterm时不也需要一个终端交互么？是的，这就是虚拟终端pty(pseudo-tty)
+3、pts/ptmx(pts/ptmx结合使用，进而实现pty)
+	pts(pseudo-terminal slave)是pty的实现方法，与ptmx(pseudo-terminal master)配合使用实现pty。 
+@endverbatim
+*/
+tty__pty__pts__ptmx;
+
+/**
+@verbatim
+1、新建用户登陆后，发现命令提示符如下：
+	-bash-3.2$ 
+2、设置命令提示符，选项如下：
+	\d ：代表日期，格式为weekday month date，例如："Mon Aug 1"
+	\H ：完整的主机名称。例如：我的机器名称为：fc4.linux，则这个名称就是fc4.linux
+	\h ：仅取主机的第一个名字，如上例，则为fc4，.linux则被省略
+	\t ：显示时间为24小时格式，如：HH：MM：SS
+	\T ：显示时间为12小时格式
+	\A ：显示时间为24小时格式：HH：MM
+	\u ：当前用户的账号名称
+	\v ：BASH的版本信息
+	\w ：完整的工作目录名称。家目录会以 ~代替
+	\W ：利用basename取得工作目录名称，所以只会列出最后一个目录
+	\# ：下达的第几个命令
+	\$ ：提示字符，如果是root时，提示符为：# ，普通用户则为：$
+3、示例如下：
+	-bash-3.2$ export PS1='[\u @\W]'
+	[niu @~]cd /home
+	[niu @home] 
+@endverbatim
+*/
+linux提示符设置;
+
+
+/**
+@verbatim
+1、当前目录下文件的个数
+	[niu_zibin@localhost time]$ ll|grep '^-'|wc -l
+2、当前目录下文件夹的个数
+	[niu_zibin@localhost time]$ ll|grep '^d'|wc -l
+3、在当前目录下递归，统计文件的个数
+	[niu_zibin@localhost time]$ ll -R|grep '^-'|wc -l
+4、在当前目录下递归，统计文件夹的个数
+	[niu_zibin@localhost time]$ ll -R|grep '^d'|wc -l
+@endverbatim
+*/
+Linux统计文件、文件夹的个数;
+
+/**
+@verbatim
+1、命令是history，列出当前用户最新的10条操作记录，如下：
+	[root@localhost ~]# history 10
+	691* 2016-09-27 16-27-29 root: 
+	692* 2016-09-27 16-28-23 root: 
+	693  2016-09-27 16-31-03 root: history
+	694  2016-09-27 16-31-24 root: history 10
+	695  2016-09-27 16-37-58 root: history
+	696  2016-09-27 16-38-03 root: history 10
+	697  2016-09-27 16-38-48 root: ll
+	698  2016-09-27 16-38-50 root: ll -a
+	699  2016-09-27 16-39-06 root: more .bash_history
+	700  2016-09-27 16-39-52 root: history 10
+	会列出操作者和操作时间。
+2、history只能列出当前用户的操作记录，也就是说，用户A不能查看用户B的操作记录。
+3、注意：连续两次相同的操作，不会重复记录，如下：
+	[root@localhost dmu]# history 10
+	702  2016-09-27 16-42-15 root: history
+	703  2016-09-27 16-45-11 root: cd /usr/local/datafs/IBP
+	704  2016-09-27 16-45-14 root: cd dmu
+	705  2016-09-27 16-45-17 root: ./dmu_start.sh 
+	706  2016-09-27 16-45-29 root: history 10
+	707  2016-09-27 16-45-52 root: history|grep dmu_start.sh
+	708  2016-09-27 16-46-44 root: ll
+	709  2016-09-27 16-46-56 root: history
+	710  2016-09-27 16-47-03 root: ll
+	711  2016-09-27 16-47-06 root: history 10
+	[root@localhost dmu]# history 10
+	702  2016-09-27 16-42-15 root: history
+	703  2016-09-27 16-45-11 root: cd /usr/local/datafs/IBP
+	704  2016-09-27 16-45-14 root: cd dmu
+	705  2016-09-27 16-45-17 root: ./dmu_start.sh 
+	706  2016-09-27 16-45-29 root: history 10
+	707  2016-09-27 16-45-52 root: history|grep dmu_start.sh
+	708  2016-09-27 16-46-44 root: ll
+	709  2016-09-27 16-46-56 root: history
+	710  2016-09-27 16-47-03 root: ll
+	711  2016-09-27 16-47-06 root: history 10
+4、根据操作序号，引用操作，如下：
+	[root@localhost dmu]# history 10
+	702  2016-09-27 16-42-15 root: history
+	703  2016-09-27 16-45-11 root: cd /usr/local/datafs/IBP
+	704  2016-09-27 16-45-14 root: cd dmu
+	705  2016-09-27 16-45-17 root: ./dmu_start.sh 
+	706  2016-09-27 16-45-29 root: history 10
+	707  2016-09-27 16-45-52 root: history|grep dmu_start.sh
+	708  2016-09-27 16-46-44 root: ll
+	709  2016-09-27 16-46-56 root: history
+	710  2016-09-27 16-47-03 root: ll
+	711  2016-09-27 16-47-06 root: history 10
+	[root@localhost dmu]# !711
+	history 10
+	702  2016-09-27 16-42-15 root: history
+	703  2016-09-27 16-45-11 root: cd /usr/local/datafs/IBP
+	704  2016-09-27 16-45-14 root: cd dmu
+	705  2016-09-27 16-45-17 root: ./dmu_start.sh 
+	706  2016-09-27 16-45-29 root: history 10
+	707  2016-09-27 16-45-52 root: history|grep dmu_start.sh
+	708  2016-09-27 16-46-44 root: ll
+	709  2016-09-27 16-46-56 root: history
+	710  2016-09-27 16-47-03 root: ll
+	711  2016-09-27 16-47-06 root: history 10
+@endverbatim
+*/
+linux查看历史操作记录;
+
+/**
+@verbatim
+/		: 	this is root directory	root 用户根目录
+/bin	: 	commands in this dir are all system installed user commands	系统的一些指令
+/sbin	: 	commands in this dir are all system installed super user commands	超级用户指令系统管理命令，这里存放的是系统管理员使用的管理程序 
+/usr/bin: 	user commands for applications	后期安装的一些软件的运行脚本
+/usr/sbin:	super user commands for applications	超级用户的一些管理程序
+
+主目录：/root、/home/username
+用户可执行文件：/bin、/usr/bin、/usr/local/bin
+系统可执行文件：/sbin、/usr/sbin、/usr/local/sbin
+其他挂载点：/media、/mnt
+配置：/etc
+临时文件：/tmp
+内核和Bootloader：/boot
+服务器数据：/var、/srv
+系统信息：/proc、/sys
+共享库：/lib、/usr/lib、/usr/local/lib
+ 
+每个用户都拥有一个主目录。所有用户的个人文件（配置、数据甚至应用程序）都放在其中。
+根的主目录为/root。大多数非根主目录包含在 /home 树中，通常以用户命名。
+重要的二进制位于 /bin（用户二进制）以及 /sbin（系统二进制）中。
+不重要的二进制（如图形环境或Office 工具）安装在 /usr/bin 和 /usr/sbin中。
+进行这种分隔是为了尽可能地缩小根分区。使用源代码编译的软件通常位于 /usr/local/bin 和 /usr/local/sbin中。
+
+注意：usr很多人误以为是user的简写，实际上是unix system resource的简写
+@endverbatim
+*/
+linux下有关的目录;
+
+
+/** @} */
+
+/** @} */

@@ -1,0 +1,20 @@
+/**
+* @defgroup Mysql常见错误
+* @{
+*/
+
+
+/**
+@verbatim
+1172 - Result consisted of more than one row
+错误原因：使用select aaa into bbb，而select出来的记录个数大于1，而bbb只接受一个。
+注：select出来的记录个数为0没有关系。
+
+怎么解决？
+对于每一条记录的Id都要处理，使用游标。
+@endverbatim
+*/
+Error_1172;
+
+
+/** @} */

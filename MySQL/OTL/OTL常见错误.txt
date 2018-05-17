@@ -1,0 +1,431 @@
+/**
+* @defgroup OTL
+* @{
+*/
+
+/**
+* @defgroup OTL常见错误
+* @{
+*/
+
+/**
+@verbatim
+otl_stream::operator>>() should have been called before otl_stream::operator int()
+1、错误原因如下：
+	把otl的输出写入到const int或者const对象的int字段。
+	错误已经说得很明白，>>要在int()之前调用，而这里是const int
+2、错误示例代码
+	char sql[1024] = {0};
+
+	int result =0;
+	const int& dd = result;
+
+	sprintf(sql,"call test1(:in_Age<int>)");
+	otl_stream stream1(1, sql, otlConn,otl_implicit_select);
+
+	stream1<<101;
+	stream1>>dd;
+@endverbatim
+@see
+*/
+Error_32019;
+
+/**
+@verbatim
+1、存在问题：服务使用otl与mysql连接，如果长时间没有交互，再去执行sql语句，会报错 MySQL server has gone away
+2、因为没有sql断开连接的通知，为了解决这个问题，有以下几种策略：
+	a、每次直接执行sql语句，出现异常，重新连接mysql，再去执行
+	b、类似tcp的保活机制，与mysql的连接，定时执行一个简单的sql语句，有异常断开重连，从而保持连接
+	c、每次执行sql语句之前，先执行一个简单测试语句，测试连接是否正常，如果异常，断开重连，保证下面的sql语句正常执行
+3、在dmu和vmu中，使用了第一种方式，对执行sql语句进行了封装，有异常，重新连接，再去执行，最多三次。
+	但是这里有个地方需要注意，如下：
+	try
+	{
+		wall_cfg_list wall_list;
+		otl_stream walls;
+		// 在executeSql检查是否有异常
+		executeSql("{call vms_query_wall(:id<int>)}",walls,1,otl_implicit_select);
+		walls << -1;
+		
+		while (!walls.eof())
+		{
+			wall_cfg cfg;
+			walls >> cfg.id >> cfg.state >> cfg.domain >> cfg.name >> cfg.description;
+			wall_list.wall_list.push_back(cfg);
+		}
+	}
+	catch (otl_exception &e)
+	{	
+		LogErr(VMULOG, "dealtvWallQueryAll failed, errorMsg[%s], sql[%s]",	e.msg, e.stm_text);
+		return IBP_Err_DBQuery_Fail;
+	}
+	return IBP_Err_OK;
+
+	假如在executeSql中出现异常，executeSql并不能捕获到，要等到执行 walls << -1; 才会抛出异常。
+	也就是说，输入绑定变量之后，otl才能判断出异常。一旦出现这种情况，客户端的每次查询都是异常，没有重连mysql的过程。
+4、怎么解决上面的问题？
+	使用绑定变量，可以解决两个问题：
+	a、批量操作，提高性能，减少sql的解析过程，循环传入参数。
+	b、预防sql注入。
+	如果不存在上面的两种情况，解决办法就是不使用绑定变量。如下：
+	char sql[1024]={0};
+	sprintf(sql,"call vms_query_wal(-1)");
+
+	wall_cfg_list wall_list;
+	otl_stream walls;
+	executeSql(sql,walls,1,otl_implicit_select);
+5、但是有些情况，必须使用绑定变量，比如批量操作或者防止sql注入。
+	这个时候，方法executeSql封装不起作用，因为输入绑定变量才抛出异常。需要对整个方法封装，有异常重连。
+	但是因为操作数据库的方法很多，每个方法不一样，导致每个封装都不一样，很困难。
+6、怎么办？
+	需要结合第二种方式或者第三种方式来处理，这就导致增加了额外的开销，因为额外执行了没有效果的sql语句。
+	哪种方式更好？
+	取决于本身执行sql语句的频率，如果频率很高，采用第二种方式，否者用第三种方式。
+@endverbatim
+@see
+*/
+使用otl的一个注意事项;
+
+
+
+/**
+@verbatim
+/*
+	千万不要定义宏OTL_ODBC_MYSQL，这玩意是针对MyODBC 2.5，
+	如果定义了宏OTL_ODBC_MYSQL，会导致下面的情况：
+	mysql服务关闭
+	应用程序连接失败，sleep，然后重新连接，一直循环
+	mysql服务启动，
+	这个时候，重新连接mysql服务不能连接成功
+	
+	另外还有一点，otl_connect& otlConn不要使用动态分配。
+/*
+#ifndef OTL_ODBC_MYSQL
+#define OTL_ODBC_MYSQL // 错误
+#endif
+
+#ifndef OTL_ODBC
+#define OTL_ODBC // 正确，Compile OTL 4/ODBC
+#endif
+
+@endverbatim
+@see
+*/
+重连数据库失败;
+
+
+/**
+@verbatim
+1、报错 Incompatible data types in stream operation，说的很清楚，不匹配的数据类型。
+2、错误代码 
+	void Test2(otl_connect& otlConn)
+	{
+		char* sql ="select now()";
+		try
+		{		
+			otl_stream stream(1,sql,otlConn);
+			string aa;
+			stream>>aa;
+			int hh = 0;
+		}
+		catch (otl_exception& ex)
+		{
+			printf("ExecuteSql Error, ErrorMsg[%s], Sql[%s]",
+				ex.msg,
+				ex.stm_text);
+		}
+	}
+	错误原因是：select出来now()，类型是datetime，而aa是string类型，类型不匹配。
+3、怎么解决？
+	进行类型转化，如下：
+	char* sql ="select cast(now() as char(32))";
+	char* sql ="select convert(now(), char(32))";
+@endverbatim
+*/
+流操作数据类型不匹配;
+
+
+/**
+@verbatim
+
+/*
+	在Windows下面，加上 stream.flush(); 会明显影响效率，速度慢很多。
+	但是，奇怪的是，在Linux环境下，加上 stream.flush(); 
+	能够完整插入1000条，而且效率特别高，违反常识。
+*/
+#ifdef WIN32
+#define FLUSH(s)
+#else 
+#define FLUSH(s)	s.flush()
+#endif
+
+@endverbatim
+@see
+*/
+stream_flush;
+
+
+/**
+@verbatim
+1、代码如下：
+	void TestCache(otl_connect& otlConn)
+	{
+		try
+		{
+			char sql[1024] = {0};
+			sprintf(sql,"call test1(1)");
+			otl_stream stream(100, sql, otlConn,otl_implicit_select);
+	
+			int id;
+			while(!stream.eof())
+			{
+				stream>>id;
+				char sql2[1024] = {0};
+				sprintf(sql2,"call test2(:Id<int>)");
+				otl_stream stream2(100, sql2, otlConn,otl_implicit_select);
+				stream2<<id;
+	　　          
+	　　　　　　　int ff =0;
+				while(!stream2.eof())
+				{
+					stream2>>ff;
+				}
+			}
+		}
+		catch(otl_exception& ex)
+		{
+			printf("ExecuteSql Error, ErrorMsg[%s], Sql[%s]",
+				ex.msg,
+				ex.stm_text);
+		}
+	}
+2、执行otl_stream stream2(100, sql2, otlConn,otl_implicit_select);的时候出错，如下：
+	Commands out of sync; you can't run this command now
+	特别注意：如果test1 只返回1条或者0条记录，不会导致这个异常。
+3、错误原因：mysql上一次的查询没有将结果集释放掉，又进行下一次的查询。
+4、otl：在第一个stream读取期间，第二个stream使用了绑定变量，会导致上面的问题，不知道otl内部是怎么封装的。
+5、解决办法：
+	a、第二个stream不使用绑定变量，如下：
+	void TestCache(otl_connect& otlConn)
+	{
+		try
+		{
+			char sql[1024] = {0};
+			sprintf(sql,"call test1(1)");
+			otl_stream stream(100, sql, otlConn,otl_implicit_select);
+	
+			int id;
+			while(!stream.eof())
+			{
+				stream>>id;
+				char sql2[1024] = {0};
+				sprintf(sql2,"call test2(%d)",id);
+				otl_stream stream2(100, sql2, otlConn,otl_implicit_select);
+	
+				int ff =0;
+				while(!stream2.eof())
+				{
+					stream2>>ff;
+				}
+			}
+		}
+		catch(otl_exception& ex)
+		{
+			printf("ExecuteSql Error, ErrorMsg[%s], Sql[%s]",
+				ex.msg,
+				ex.stm_text);
+		}
+	} 
+	b、先把第一个stream读取完，再进行第二个stream，如下：
+	void TestCache(otl_connect& otlConn)
+	{
+		try
+		{
+			char sql[1024] = {0};
+			sprintf(sql,"call test1(1)");
+			otl_stream stream(100, sql, otlConn,otl_implicit_select);
+	
+			vector<int> intVec;
+			int id;
+			while(!stream.eof())
+			{
+				stream>>id;
+				intVec.push_back(id);            
+			}
+	
+			for(vector<int>::iterator iter = intVec.begin();
+				iter != intVec.end(); ++iter)
+			{
+				char sql2[1024] = {0};
+				sprintf(sql2,"call test2(:Id<int>)");
+				otl_stream stream2(100, sql2, otlConn,otl_implicit_select);
+				stream2<<id;
+	
+				int ff =0;
+				while(!stream2.eof())
+				{
+					stream>>ff;
+				}
+			}
+		}
+		catch(otl_exception& ex)
+		{
+			printf("ExecuteSql Error, ErrorMsg[%s], Sql[%s]",
+				ex.msg,
+				ex.stm_text);
+		}
+	}
+6、特别注意：使用存储过程，存储过程内部使用游标，并且存储过程有返回值（即select），也会导致上面的情况，
+	必须修改实现，使用等效的方法处理。
+@endverbatim
+@see
+*/
+mysql_Commands_out_of_sync;
+
+/**
+@verbatim
+1、举例来看，如下：
+	mysql> desc t3;
+	+-------+------------+------+-----+---------+-------+
+	| Field | Type       | Null | Key | Default | Extra |
+	+-------+------------+------+-----+---------+-------+
+	| c1    | int(11)    | YES  |     | NULL    |       |
+	| c2    | varchar(6) | YES  |     | NULL    |       |
+	+-------+------------+------+-----+---------+-------+
+	2 rows in set
+2、示例代码
+	void Test4(otl_connect& otlConn)
+	{
+		char* sql ="insert into t3(c1,c2) value(:C1<int>,:C2<char[100]>)";
+		unsigned int aaa = 1001;
+		string name = "Andy";
+		try
+		{		
+			otl_stream stream(1,sql,otlConn);
+			stream<<aaa<<name;
+		}
+		catch (otl_exception& ex)
+		{
+			printf("ExecuteSql Error, ErrorMsg[%s], Sql[%s]",
+				ex.msg,
+				ex.stm_text);
+		}
+	}
+	执行 stream<<aaa<<name; 报错 Incompatible data types in stream operation 
+	也就是 流操作存在不兼容的数据类型
+3、原因是：
+	绑定变量的时候，告诉它是int类型，但是实际上传输的是unsigned int类型，otl类型检查非常严格，认为有错误。
+4、解决办法是：
+	修改绑定变量的类型，如下：
+	char* sql ="insert into t3(c1,c2) value(:C1<unsigned int>,:C2<char[100]>)";
+	或者修改传输变量的类型，如下：
+	int aaa = 1001;
+5、特别需要注意的是：mysql本身是弱类型的。
+	也就是说，int可以当成varchar来使用，varchar也可以当成int来使用。如下：
+	mysql> desc t3;
+	+-------+------------+------+-----+---------+-------+
+	| Field | Type       | Null | Key | Default | Extra |
+	+-------+------------+------+-----+---------+-------+
+	| c1    | int(11)    | YES  |     | NULL    |       |
+	| c2    | varchar(6) | YES  |     | NULL    |       |
+	+-------+------------+------+-----+---------+-------+
+	2 rows in set
+	
+	mysql> select * from t3;
+	Empty set
+	
+	mysql> insert into t3(c1,c2) value('1001',456);
+	Query OK, 1 row affected
+	
+	mysql> show warnings;
+	Empty set
+	
+	mysql> select * from t3;
+	+------+-----+
+	| c1   | c2  |
+	+------+-----+
+	| 1001 | 456 |
+	+------+-----+
+	1 row in set
+	也就是insert into t3(c1,c2) value('1001',456); 可以照样插入成功，而且没有告警。
+6、现在考虑，把varchar当成int来使用，但是不是有效的int值，如下：
+	mysql> insert into t3(c1,c2) value('a1001',456);
+	Query OK, 1 row affected
+	
+	mysql> show warnings;
+	+---------+------+-----------------------------------------------------------+
+	| Level   | Code | Message                                                   |
+	+---------+------+-----------------------------------------------------------+
+	| Warning | 1366 | Incorrect integer value: 'a1001' for column 'c1' at row 1 |
+	+---------+------+-----------------------------------------------------------+
+	1 row in set
+	
+	mysql> select * from t3;
+	+------+-----+
+	| c1   | c2  |
+	+------+-----+
+	| 1001 | 456 |
+	|    0 | 456 |
+	+------+-----+
+	2 rows in set
+	可以看到，产生了告警，但是记录还是插入进去了，数据进行强制转为0
+7、如果希望这种情况报错，怎么办？
+	设置sql模式为更严格的检查，如下：
+	mysql> select @@session.sql_mode;
+	+--------------------+
+	| @@session.sql_mode |
+	+--------------------+
+	|                    |
+	+--------------------+
+	1 row in set
+	
+	mysql> set @@session.sql_mode='strict_trans_tables';
+	Query OK, 0 rows affected
+	
+	mysql> insert into t3(c1,c2) value('a1001',456);
+	1366 - Incorrect integer value: 'a1001' for column 'c1' at row 1
+8、注意：即使更严格的sql模式，insert into t3(c1,c2) value('1001',456); 也不会有异常。
+	mysql> select @@session.sql_mode;
+	+---------------------+
+	| @@session.sql_mode  |
+	+---------------------+
+	| STRICT_TRANS_TABLES |
+	+---------------------+
+	1 row in set
+	
+	mysql> insert into t3(c1,c2) value('1001',456);
+	Query OK, 1 row affected
+	
+	mysql> show warnings;
+	Empty set
+@endverbatim
+*/
+使用绑定变量otl对类型检查非常严格;
+
+/**
+@verbatim
+1、问题表现是：执行查询得到记录，在其它地方修改这条记录，再次查询，还是老的记录。
+2、思考为什么？
+	原因是当前没有设置自动提交，相当于在当前start一个事务，这个事务的隔离级别默认是可重复读。
+	读取一条记录，其它事务修改了这条记录，再次读取还是老的记录，这就是问题所在。
+	也就是说，在当前事务的执行过程中，其它事务的修改，在当前事务不可见，这显然不是用户期望的。
+3、事务的可重复读是如何实现的？
+	使用多版本并发控制，MVCC（MultiVersion Concurrency Control），每个连接对应一个版本，也就是数据库快照。
+	和写时拷贝的道理类似，道理应该是一开始，大家都开启一个事务，在事务操作过程中，共享一个版本。
+	如果只是读，没问题，大家继续共享这个版本。
+	但是，当一个Session连接在事务操作过程中，修改了数据，就为这个Session连接做个版本的拷贝，
+	修改的只是他自己的版本，其它的Session连接是看不到的。
+	对于修改了数据的Session连接，提交之后，合并到主干版本，其它新开启的事务就能看到这个修改。
+4、怎么解决？
+	a、设置当前连接session为自动提交，每次查询都是一条独立的事务。
+	b、修改当前连接session的事务隔离级别。但是这样会存在其它问题：
+		隔离级别设置为提交读，导致问题，两次读取中间，其它事务修改了记录，导致两次读取不一致，也就是不可重复读。
+		隔离级别设置为串行化，会严重影响访问性能。
+@endverbatim
+*/
+otl查询结果与预期不一致;
+
+
+/** @} */
+
+/** @} */

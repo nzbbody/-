@@ -1,0 +1,36 @@
+/**
+* @defgroup Mysql常见错误
+* @{
+*/
+
+/**
+@verbatim
+ERROR 1045 access denied for user 'root'@'localhost' using password yes
+原因是：root的密码错误了。
+解决思路：关闭mysql服务，重新启动mysql服务，启动mysql的时候，指定不需要校验密码。
+然后登陆mysql，修改密码，退出。再重新启动mysql服务。
+1、关闭mysql
+2、启动mysql，指定不需要校验密码
+	C:\Program Files\MySQL\MySQL Server 5.1\bin>mysqld --defaults-file="C:\Program
+	Files\MySQL\MySQL Server 5.1\my.ini" --console --skip-grant-tables
+3、再开一个窗口，root登陆，修改密码
+	C:\Program Files\MySQL\MySQL Server 5.1\bin>mysql -uroot mysql 
+	(解释： -uroot mysql 后面这个mysql指的是连接到mysql库，因为跳过权限验证，所以这时候可以不用密码就可以登录mysql)
+	mysql>
+	mysql> UPDATE user SET Password=PASSWORD('newpassword') where USER='root'; 
+	mysql> FLUSH PRIVILEGES; 
+	mysql> quit 
+	特别注意：修改密码之后，不要忘记FLUSH PRIVILEGES; 否者还是密码错误。
+4、再重新启动mysql 
+5、linux下面类似，执行 service mysql start --skip-grant-tables;
+6、特别注意：1045是密码错误，using password yes 表示使用了密码，但是密码错误。
+	using password no 表示没有输入密码。
+	要与1130错误区分，1130是远程连接的用户没有权限，不允许连接。
+	mysql服务先检查，远程连接的用户是否有权限（也就是是否允许连接），然后检查用户名和密码。
+@endverbatim
+@see
+*/
+Error_1045;
+
+
+/** @} */

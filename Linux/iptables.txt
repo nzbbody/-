@@ -1,0 +1,413 @@
+/**
+* @defgroup Linux
+* @{
+*/
+
+/**
+* @defgroup iptables
+* @{
+*/
+
+
+/**
+@verbatim
+1、解决什么问题？
+	对网络数据包进行管理，包括状态跟踪，标记，地址转换，过滤等。
+2、怎么解决？
+	iptables使用规则管理数据包，规则就是模式/行为的概念，模式是指满足什么条件，行为是指做什么事情。
+	针对iptables就是，检查一个数据包是否满足某个条件，如果满足，就进行相应的操作。
+3、可以从不同的角度对规则进行分组。从功能的角度来看，分为：
+	raw表：		确定是否对该数据包进行状态跟踪
+	mangle表：	为数据包设置标记
+	nat表：		修改数据包中的源、目标IP地址或端口
+	filter表：	确定是否放行该数据包（过滤）
+4、根据处理的时机，也就是从处理流程的角度来看，分为5个节点（也就是链），分别为：
+	PREROUTING		路由前
+	INPUT			数据包流入口
+	FORWARD			转发管卡
+	OUTPUT			数据包出口
+	POSTROUTING：	路由后
+	
+	注意：每个节点所拥有的功能是不一样的，如下：
+	PREROUTING		mangle，nat
+	INPUT			mangle，filter
+	FORWARD			mangle，filter
+	OUTPUT			mangle，nat，filter
+	POSTROUTING：	mangle，nat
+	
+	从另外一个角度看，列出每个功能可以在那些节点使用。如下：
+	[root@localhost dll3]# iptables -t filter --list
+	Chain INPUT (policy ACCEPT)
+	target     prot opt source               destination         
+	DROP       icmp --  anywhere             anywhere            icmp echo-reply 
+	
+	Chain FORWARD (policy ACCEPT)
+	target     prot opt source               destination         
+	
+	Chain OUTPUT (policy ACCEPT)
+	target     prot opt source               destination
+5、Iptables命令的语法格式：
+	iptables  [-t 表名]  管理选项  [链名]  [条件匹配]  [-j 目标动作或跳转]
+6、禁止10.36.65.80连接本机的tcp端口9000，如下：
+	[root@localhost dll3]# iptables -t filter -A INPUT -p tcp --dport 9000 -j DROP
+	[root@localhost dll3]# service iptables status
+	Table: filter
+	Chain INPUT (policy ACCEPT)
+	num  target     prot opt source               destination         
+	1    DROP       tcp  --  0.0.0.0/0            0.0.0.0/0           tcp dpt:9000 
+	
+	Chain FORWARD (policy ACCEPT)
+	num  target     prot opt source               destination         
+	
+	Chain OUTPUT (policy ACCEPT)
+	num  target     prot opt source               destination  
+	注意：这里的policy有两种情况：
+		ACCEPT：是黑名单策略，假定都能做，没说不能做，就都能做。
+		DROP：	是白名单策略，假定都不能做，说了你能做，你才能做。
+7、我能够ping通10.36.65.80，但是不让10.36.65.80 ping通我。
+	ping的实现是使用icmp协议，请求是8，回复是0，不让10.36.65.80 ping通我，办法就是：
+	在入口禁掉请求（类型是8），或者在出口禁掉回复（类型是0），如下：
+	iptables -t filter -A INPUT -p icmp --icmp-type 8 -j DROP 或者
+	iptables -t filter -A OUTPUT -p icmp --icmp-type 0 -j DROP
+8、反过来一下，让10.36.65.80能够ping通我，但是我不能ping通10.36.65.80，怎么办？
+	办法是：在出口禁掉请求（类型是8），或者在入口禁掉回复（类型是0），如下：
+	iptables -t filter -A OUTPUT -p icmp --icmp-type 8 -j DROP 或者
+	iptables -t filter -A INPUT -p icmp --icmp-type 0 -j DROP
+9、注意：我们系统的iptables设置脚本在 /usr/local/appfs/bin目录中
+@endverbatim
+*/
+理解iptables;
+
+/**
+@verbatim
+1、添加规则链
+	[root@localhost ~]# iptables -t nat -A PREROUTING -p tcp --dport 9812 -j DNAT --to-destination 192.167.1.109
+	[root@localhost ~]# iptables -t nat -A PREROUTING -p tcp --dport 3389 -j DNAT --to-destination 10.36.65.43
+	[root@localhost ~]# service iptables status
+	Table: filter
+	Chain INPUT (policy ACCEPT)
+	num  target     prot opt source               destination         
+	
+	Chain FORWARD (policy ACCEPT)
+	num  target     prot opt source               destination         
+	
+	Chain OUTPUT (policy ACCEPT)
+	num  target     prot opt source               destination         
+	
+	Table: nat
+	Chain PREROUTING (policy ACCEPT)
+	num  target     prot opt source               destination         
+	1    DNAT       tcp  --  0.0.0.0/0            0.0.0.0/0           tcp dpt:9812 to:192.167.1.109 
+	2    DNAT       tcp  --  0.0.0.0/0            0.0.0.0/0           tcp dpt:3389 to:10.36.65.43 
+	
+	Chain POSTROUTING (policy ACCEPT)
+	num  target     prot opt source               destination         
+	
+	Chain OUTPUT (policy ACCEPT)
+	num  target     prot opt source               destination
+2、查看某个条件的规则链
+	[root@localhost ~]# iptables -t nat -L PREROUTING --line-number
+	Chain PREROUTING (policy ACCEPT)
+	num  target     prot opt source               destination         
+	1    DNAT       tcp  --  anywhere             anywhere            tcp dpt:9812 to:192.167.1.109 
+	2    DNAT       tcp  --  anywhere             anywhere            tcp dpt:ms-wbt-server to:10.36.65.43 
+3、删除某个规则链
+	[root@localhost ~]# iptables -t nat -D PREROUTING 1
+	[root@localhost ~]# iptables -t nat -L PREROUTING --line-number
+	Chain PREROUTING (policy ACCEPT)
+	num  target     prot opt source               destination         
+	1    DNAT       tcp  --  anywhere             anywhere            tcp dpt:ms-wbt-server to:10.36.65.43 
+4、清除规则链
+	[root@localhost ~]# iptables -F -t nat
+	[root@localhost ~]# iptables -t nat -L PREROUTING --line-number
+	Chain PREROUTING (policy ACCEPT)
+	num  target     prot opt source               destination 
+@endverbatim
+*/
+iptables常用的操作;
+
+
+/**
+@verbatim
+1、场景如下：两台设备A和B，其中设备A开启外网172.16.2.29，设备B关闭外网，两台设备的内网通过网线直连。
+	设备A的内网192.167.1.108，设备B的内网192.167.1.109
+2、设备B在端口9812监听，现在从外网172.16.2.101 去连接端口9812，需要设置根据端口进行目标地址转换。
+	也就是DNAT（Destination Network Address Translation），在设备A设置iptables如下：
+	iptables -t nat -A PREROUTING -p tcp --dport 9812 -j DNAT --to-destination 192.167.1.109
+3、现在从172.16.2.101 进行 telnet 172.16.2.29 9812 发现操作失败。
+	抓包发现，发送了sync同步包，但是没有收到ack回复，tcp发送了很多的 retransmission （重传sync包）
+4、进一步定位发现，同步包sync从172.16.2.101发到了172.16.2.29，然后172.16.2.29根据端口进行目标地址转换，
+	转发给了 192.167.1.109，但是192.167.1.109 没有发送ack包
+5、问题也就是，192.167.1.109 没有把包发送出来。查看路由表，如下：
+	[root@localhost ~]# route
+	Kernel IP routing table
+	Destination     Gateway         Genmask         Flags Metric Ref    Use Iface
+	192.167.1.0     *               255.255.255.0   U     0      0        0 eth1
+6、原因找到了，也就是从192.167.1.109 向172.16.2.101 回复ack包的时候，没有路由。这里只配置了
+	到目标网路192.167.1.0的路由表，因此需要增加默认路由，如下：
+	[root@localhost ~]# route add default gw 192.167.1.108
+	[root@localhost ~]# route -n
+	Kernel IP routing table
+	Destination     Gateway         Genmask         Flags Metric Ref    Use Iface
+	192.167.1.0     0.0.0.0         255.255.255.0   U     0      0        0 eth1
+	0.0.0.0         192.167.1.108   0.0.0.0         UG    0      0        0 eth1
+	然后telnet成功。
+7、注意：删除路由表，如下：
+	route del default gw 192.167.1.108
+@endverbatim
+*/
+设置了DNAT但是telnet不通;
+
+/**
+@verbatim
+1、Linux两个网卡，子网掩码不一样，但是前缀一样，导致网络异常。场景如下：
+	eth0 192.168.1.108 255.255.0.0
+	eth1 192.168.1.213 255.255.255.0 
+	当前主机的网络设置为192.168.1.109 255.255.0.0，然后与eth0使用网线直连，发现ping 192.168.1.108不通，为什么？
+2、ping程序使用网络层协议ICMP（Internet控制消息协议），网线直连按道理都是可以ping通的，思考为什么。
+	首先从109到达108是可以的，问题出在从108回来的路上。查看Linux上面的路由信息，如下：
+	[root@localhost IBP]# route -n
+	Kernel IP routing table
+	Destination     Gateway         Genmask         Flags Metric Ref    Use Iface
+	192.168.1.0     0.0.0.0         255.255.255.0   U     0      0        0 eth1
+	192.168.0.0     0.0.0.0         255.255.0.0     U     0      0        0 eth0
+	问题是：路由匹配是最长匹配，也就是先找小范围，再找大范围，从108回来的时候，路由选择从eth1发送数据，
+	108主机和eth0直连，当然收不到eth1的回复。
+3、怎么验证这个问题？
+4、在Linux将eth1关闭，使路由从eth0发出数据，网络正常。如下：
+	ifconfig eth1 down
+5、增加一条更加匹配的路由，使路由从eth0发出数据，网络正常。如下
+	route add -net 192.168.1.109 netmask 255.255.255.255 eth0
+6、特别说明，正常情况下，多网卡不应该这么配置，应该是子网掩码不一样，前缀也不一样。
+@endverbatim
+@see
+*/
+多网卡网线直连网络异常;
+
+
+/**
+@verbatim
+1、考虑下面的场景：现场有linux主机和windows主机，二者内网通过网线直连，只有linux主机对外暴露外网地址。
+	也就是说，在外网只能访问linux主机。那么从外网如何访问windows主机？
+2、现在考虑其他的场景：
+	两台设备都是linux：  在其中一台linux主机上通过ssh登录另一台linux主机。
+	两台设备都是windows：在其中一台windows主机上通过远程桌面登录另一台windows主机。
+	一台windows，一台linux，windows暴露外网地址：在windows主机上通过ssh登录另一台linux主机。
+3、现在的问题是：一台windows，一台linux，linux暴露外网地址，怎么办？
+4、使用iptables进行目标地址转换（DNAT），对linux主机的3389连接（远程桌面请求）转到windows上面。
+5、windows远程桌面服务的监听端口是 3389，内网直连的ip地址分别为：
+	linux：  192.167.1.108
+	windows：192.167.1.109
+	在linux主机设置DNAT，如下：
+		iptables -t nat -A PREROUTING -p tcp --dport 3389 -j DNAT --to-destination 192.167.1.109
+	同时在windows主机设置默认网关为 192.167.1.108
+6、这个时候远程桌面linux主机，即进入到windows主机。
+7、特别注意，这种情况下，在远端，linux主机，windows主机查看tcp连接，如下：
+	在远端：		TCP    10.36.65.80:40542      172.16.2.31:3389       ESTABLISHED     4224
+	在linux主机：	没有连接，因为进行了转换
+	在windows主机:	TCP    192.167.1.109:3389     10.36.65.80:40542      ESTABLISHED     1880
+8、另外注意：根据端口转换，端口可以不一样。如下：
+	iptables -t nat -A PREROUTING -d 10.22.4.201 -p tcp --dport 1734 -j DNAT --to-destination 192.168.1.152:1733
+	这个时候查看tcp连接，分别是：
+	在远端：		TCP    10.36.65.80:29315      10.22.4.201:1734       ESTABLISHED     4172
+	跳板linux主机：	没有连接，因为进行了转换
+	目标linux主机:	tcp        0    296 192.168.1.152:1733          10.36.65.80:29315           ESTABLISHED 20069/sshd
+	从10.22.4.201:1734 到 192.168.1.152:1733 就是转换的过程。
+@endverbatim
+*/
+以linux主机为跳板登录windows主机;
+
+/**
+@verbatim
+1、这里-i，-o后面跟的是网络接口，也就是eth0，或者eth1
+2、注意：出去和进来的转换时机是不同的。
+	出去是修改源IP，源IP不影响选路，先确定路由怎么走，再修改源IP，
+	进来是修改目的IP，目的IP确定了路由选择，因此先把目的IP改好，然后确定路由。
+3、有时候把iptables的设置脚本，从Windows主机上传到Linux主机，执行会报很奇怪的错误。
+	原因是，上传过程中有某些不可见的无效字符，解决办法是：在Linux主机新建一个文件，把内容拷贝到新建文件中。
+@endverbatim
+
+@verbatim
+#!/bin/sh -x
+
+case $1 in 
+start) 
+echo "start iptables server" 
+
+#clear nat rules
+iptables -t nat -F
+
+#out
+iptables -t nat -A POSTROUTING -s 192.168.250.0/24 -o eth0 -j SNAT --to-source 10.1.208.200
+
+#in
+iptables -t nat -A PREROUTING -d 10.1.208.200 -p tcp --dport 9810:9819 -j DNAT --to-destination 192.168.250.201
+iptables -t nat -A PREROUTING -d 10.1.208.200 -p tcp --dport 554 -j DNAT --to-destination 192.168.250.201
+iptables -t nat -A PREROUTING -d 10.1.208.200 -p tcp --dport 8080 -j DNAT --to-destination 192.168.250.201
+iptables -t nat -A PREROUTING -d 10.1.208.200 -p tcp --dport 30000:32999 -j DNAT --to-destination 192.168.250.201
+iptables -t nat -A PREROUTING -d 10.1.208.200 -p udp --dport 30000:32999 -j DNAT --to-destination 192.168.250.201
+
+iptables -t nat -A PREROUTING -d 10.1.208.200 -p tcp --dport 9820:9829 -j DNAT --to-destination 192.168.250.201
+
+iptables -t nat -A PREROUTING -d 10.1.208.200 -p tcp --dport 9830:9839 -j DNAT --to-destination 192.168.250.204
+iptables -t nat -A PREROUTING -d 10.1.208.200 -p tcp --dport 33000:35999 -j DNAT --to-destination 192.168.250.204
+iptables -t nat -A PREROUTING -d 10.1.208.200 -p udp --dport 33000:35999 -j DNAT --to-destination 192.168.250.204
+
+iptables -t nat -A PREROUTING -d 10.1.208.200 -p tcp --dport 9840:9879 -j DNAT --to-destination 192.168.250.201
+
+iptables -t nat -A PREROUTING -d 10.1.208.200 -p tcp --dport 9890:9899 -j DNAT --to-destination 192.168.250.201
+iptables -t nat -A PREROUTING -d 10.1.208.200 -p udp --dport 36000:37999 -j DNAT --to-destination 192.168.250.201
+iptables -t nat -A PREROUTING -d 10.1.208.200 -p udp --dport 5070 -j DNAT --to-destination 192.168.250.201
+
+iptables -t nat -A PREROUTING -d 10.1.208.200 -p tcp --dport 9930:9939 -j DNAT --to-destination 192.168.250.202
+iptables -t nat -A PREROUTING -d 10.1.208.200 -p tcp --dport 38000:38999 -j DNAT --to-destination 192.168.250.202
+iptables -t nat -A PREROUTING -d 10.1.208.200 -p udp --dport 38000:38999 -j DNAT --to-destination 192.168.250.202
+
+iptables -t nat -A PREROUTING -d 10.1.208.200 -p tcp --dport 9950 -j DNAT --to-destination 192.168.250.201
+
+iptables -t nat -A PREROUTING -d 10.1.208.200 -p tcp --dport 8800:8810 -j DNAT --to-destination 192.168.250.203
+iptables -t nat -A PREROUTING -d 10.1.208.200 -p udp --dport 50000:60000 -j DNAT --to-destination 192.168.250.203
+iptables -t nat -A PREROUTING -d 10.1.208.200 -p udp --dport 5060 -j DNAT --to-destination 192.168.250.203
+iptables -t nat -A PREROUTING -d 10.1.208.200 -p udp --dport 5080 -j DNAT --to-destination 192.168.250.203
+
+iptables -t nat -A PREROUTING -d 10.1.208.200 -p tcp --dport 12366 -j DNAT --to-destination 192.168.250.205
+iptables -t nat -A PREROUTING -d 10.1.208.200 -p udp --dport 12366 -j DNAT --to-destination 192.168.250.205
+
+# 下面一行特别关键，默认ip_forward取0，是禁止数据包转发的，要开启，iptables的SNAT和DNAT才能起作用
+echo "1" >/proc/sys/net/ipv4/ip_forward
+;;
+
+stop) 
+echo "stop iptables server" 
+iptables -t nat -F
+;;
+
+*) 
+echo "Usage: $0" {start|stop} 
+esac 
+@endverbatim
+*/
+一个iptables示例;
+
+
+/**
+@verbatim
+1、第一个问题：
+	对于12U设备，主控板对外暴露外网ip地址eth0:1为10.22.4.201，内网ip地址eth0为192.168.1.164
+	dmu业务板的内网ip地址eth0为192.168.1.160，在主控板设置DNAT，对于连接主控板的9820端口，映射到dmu业务板的9820端口
+	主控板eth0和业务板eth0内网连接，不是网线直连或者说同一个交换机。
+	而是做在硬件上，背板直通，通过主控板上的交换芯片连在一起。
+	（注意：/proc/sys/net/ipv4/ip_forward必须设置为1）
+	我现在从10.36.65.80去连接10.22.4.201:9820，是可以成功的。
+	现在我从主控板10.22.4.201上去连接10.22.4.201:9820，能不能成功？
+2、不能成功。为什么？
+	从外部来的请求（源IP不是10.22.4.201），路由怎么走之前，先修改目的IP地址，就是-A PREROUTING。
+	也就是说，这里有一个路由判断的过程，而从主控板10.22.4.201上去连接10.22.4.201:9820，是不经过网络的，
+	在IP层短路，直接放入IP的接收队列中，不存在路由判断过程，没有执行DANT的流程。
+3、现在考虑，从内网，比如vru的板卡192.168.1.163，去连接10.22.4.201:9820，能不能成功？
+	源IP是192.168.1.163，目的IP是10.22.4.201，因此需要路由。
+	从192.168.1.163到10.22.4.201:9820有两个过程，SNAT和DNAT，DNAT在路由前决定，目的IP地址修改为192.168.1.160，
+	然后，SANT在路由后决定，源IP修改为10.22.4.201，现在报文变成从10.22.4.201到192.168.1.160，没有问题，能够成功。
+4、也就是说，这里外部来的请求是指，可以认为除了当前主控板（10.22.4.201）的请求都是外部请求，
+	包括外网来的请求和自己内部业务板卡来的请求。因为内网来的请求，先修改了目的IP，才能确定路由，然后，再修改源IP。
+	怎么理解？因为源IP不影响选路，在选路后，再修改源IP。
+	因此，业务板卡可以去连接主控板的外网地址[10.22.4.201]，通过端口映射，连接到其他的业务板卡，当然也可以连接到自己。
+5、第二个问题：
+	当前主机A为10.36.65.80，主机B为10.36.65.81，主机C为10.36.65.82
+	在主机B设置DNAT（根据端口进行映射，目标网络地址转换），主机A连接主机B的1734端口，主机B映射到主机C的1733
+	想一想，DNAT能否实现上述的功能。
+6、答案是不能，为什么？
+	考虑，主机A连接主机B的1734端口，主机B映射到主机C的1733，在主机B上DNAT，并没有修改源IP，源IP地址是A，目的IP是C，
+	现在请求发给了C，请求流程是可以的。但是回复流程走不通，因为C看到请求的IP是A，主机C和主机A在一个网络（通过交换机），
+	主机C直接回复给主机A，也就是说请求流程是A-->B-->C，但是回复流程是C-->A
+	这显然不对。
+	那么，你会说，我把主机C的网关设置为主机B，强制回复流程为C-->B-->A
+	这也是不行的，因为只有跨网络的时候，才使用网关，主机C到主机A并没有跨网络。
+@endverbatim
+*/
+iptables的常见问题;
+
+
+/**
+@verbatim
+1、考虑主机A为NAT（外网172.16.3.150，内网192.168.3.150），主机B只有内网（192.168.3.151）与主机A通过内网连接。
+2、在主机A设置iptables，从主机B连接外网主机C（10.36.65.80）比如通过telnet，如下：
+	在主机B可以看到连接，是到10.36.65.80，如下：
+	[root@localhost ~]# netstat -anp|grep 1237
+	tcp        0      0 192.168.3.151:37825         10.36.65.80:1237            ESTABLISHED 21586/telnet 
+	
+	从主机C也可以看到连接，连接是来自主机A的外网172.16.3.150，如下：
+	C:\Users\25697>netstat -ano|findstr 1237
+	TCP    10.36.65.80:1237       0.0.0.0:0              LISTENING       7620
+	TCP    10.36.65.80:1237       172.16.3.150:37825     ESTABLISHED     7620
+
+	特别注意：在主机A上看不到连接信息。
+3、现在抓包来分析，如下：
+	从主机B可以看到192.168.3.151到10.36.65.80的数据包
+	
+	从主机C可以看到172.16.3.150到10.36.65.80的数据包
+	
+	特别注意：在主机A上可以看到，两份数据包，是重复的。
+	一份是是192.168.3.151到10.36.65.80，另一份是172.16.3.150到10.36.65.80
+	为什么？ 因为NAT在网卡之间进行转发，这些数据都被抓到。
+@endverbatim
+*/
+iptables连接和抓包的问题;
+
+/**
+@verbatim
+1、NAT解决什么问题？
+	NAT分为DNAT和SNAT
+2、DNAT是从公网访问NAT设备后面的内网设备，在NAT上把目的IP地址修改为内网IP地址。
+	修改目的IP地址可以根据目的IP或者目的端口。
+	根据目的IP来修改的场景是：
+		路由器后面有一个主控板，把对路由器的访问都转到主控板，目的端口不做修改。
+	根据目的端口来修改的场景是：
+		主控板后面有一组业务板卡（主控板与它们是背板直通），
+		在主控板上根据目的端口，映射到不同的业务板卡上，映射的过程中，端口可以不修改，也可以修改。
+3、SNAT从内网访问公网，在NAT对源IP地址修改，修改为NAT的公网IP地址。
+@endverbatim
+*/
+iptables的NAT设置;
+
+/**
+@verbatim
+1、NAT和路由器都是技术手段，为了解决某个问题。它们分别解决什么问题？
+2、NAT本来是为了解决IP地址不够的问题，把一组设备封装一下，对外暴露一个IP地址，内部包含一组IP地址。
+	封装的口子就是NAT设备，这就产生问题，内部设备怎么和外部设备交互？
+3、这需要在NAT设备上使用iptables设置DNAT和SNAT
+	对于外部到NAT设备的请求，根据目的IP地址（也就是NAT的外网IP），转化为内网的某一台设备A，
+	我们在设备A上面部署所有的服务。有时候，服务需要部署到不同的设备上，这就需要在NAT设备上，
+	根据目的端口映射到不同的内网设备上。
+	如果从内网访问公网，需要在NAT设备上，把源IP地址修改为NAT的外网设备，这样从公网的回复，发给NAT设备，
+	然后NAT转给对应的内网设备。
+	注意：NAT只需要设置请求的映射，回复的映射NAT会自动处理。
+4、路由器是为了连接不同的网络，本质上是架构逻辑，不分什么公网私网，记录了网络节点和路径信息，
+	也就是从一个节点到一个节点，怎么走。这个路径往往是动态计算出来的，会根据节点和路径的变化进行调整，
+	计算出一条新的路径，这条新路径往往是最优的。
+5、简单总结就是：转换和转发。
+	NAT会根据需要转换源IP或者目的IP。
+	而路由器只是当前节点记录到另一个节点，应该经过哪个节点，也就是下一跳。
+	转发的过程中，源和目的IP地址不会变化，确定下一跳的mac地址，
+	也就是，网络层源和目的IP不变，链路层mac地址发生变化，就是直接通信的节点mac地址。
+6、现实的场景往往是：
+	局域网内有多个小网络，每个小网络关联一个自己的路由器，路由器之间连接，从而实现小网络之间的通信。
+	当去连接公网的时候，有一个专门的NAT负责与外部公网通信。
+	在公网上，又会有多个路由器连接，内部来的请求，经过NAT发到公网上，在公网上经过路由器达到目的。
+7、NAT和路由器的功能有重合，都能实现从一个网络访问另一个网络，但是他们的解决思路不一样。考虑：
+	PC1<-->R1<-->R2<-->PC2
+	如果只是路由，PC1要和PC2通信，PC1的网关设置为R1，PC2的网关设置为R2，
+	R1记录到PC2的报文，要经过R2，同理，R2记录到PC1的报文，要经过R1，
+	PC1发报文给PC2，源IP是PC1，目的IP是PC2，整个转发过程中报文的源和目的IP地址不变。
+	首先要发给R1，这个时候目的mac地址就是R1，当R1转发给R2的时候，链路层的源mac地址是R1，目的mac地址是R2	
+	但是，如果在R1上设置了NAT，当PC1发送报文经过R1出来的时候，源IP地址就转化为R1的IP地址，
+	当R2回复的时候，看到的是R1的IP地址，直接发给R1。因为不是发给PC1，路由表都不需要记录到达PC1需要经过R1
+8、之所以很容易把NAT和路由器搞混淆，是因为目前的路由器具备很多功能，比如DHTP，NAT，而且默认是开启NAT的。
+9、NAT是在路由器上增加了转换功能，因此NAT肯定是路由器，但路由器并不一定是NAT。
+@endverbatim
+*/
+NAT与路由器的区别;
+
+/** @} */
+
+/** @} */

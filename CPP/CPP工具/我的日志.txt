@@ -1,0 +1,267 @@
+/**
+* @defgroup CPP工具
+* @{
+*/
+
+
+
+/**
+头文件
+@verbatim
+#ifndef NIU_LOG_H_
+#define NIU_LOG_H_
+
+#ifdef DLL_FILE
+#define DLL_API __declspec(dllexport)
+#else
+#define DLL_API __declspec(dllimport)
+#endif
+
+#include <stdarg.h>
+#include <string>
+#include <windows.h>
+
+using namespace std;
+
+#define LOG_DEBUG	1
+#define LOG_INFO	2
+#define LOG_WARN	4
+#define LOG_ERROR	8
+#define LOG_FATAL	16
+
+#define OUTPUT_STD		1
+#define OUTPUT_CONSOLE	2
+
+
+class DLL_API NiuLog
+{
+public:
+	NiuLog();
+public:
+	void Debug(const char* file,const char* func,int lineNum,const char* format, ...);
+	void Info (const char* file,const char* func,int lineNum,const char* format, ...);
+	void Warn (const char* file,const char* func,int lineNum,const char* format, ...);
+	void Error(const char* file,const char* func,int lineNum,const char* format, ...);
+	void Fatal(const char* file,const char* func,int lineNum,const char* format, ...);
+
+	void SetLevel(int level);
+	void GetLevel(int& level);
+
+	void SetOutput(int output);
+	void GetOutput(int& output);
+
+	inline void SetConsoleColor(WORD colorValue);
+
+private:
+	inline string getNowTimeAsString();
+	
+private:
+	int		_level;
+	int		_output;
+	HANDLE	_consoleHandle;
+};
+
+#define LogDebug(log,format,...) do\
+{\
+	log.Debug(__FILE__, __FUNCTION__, __LINE__,format,##__VA_ARGS__);\
+}while(0)
+
+#define LogInfo(log,format,...) do\
+{\
+	log.Info(__FILE__, __FUNCTION__, __LINE__,format,##__VA_ARGS__);\
+}while(0)
+
+#define LogWarn(log,format,...) do\
+{\
+	log.Warn(__FILE__, __FUNCTION__, __LINE__,format,##__VA_ARGS__);\
+}while(0)
+
+#define LogError(log,format,...) do\
+{\
+	log.Error(__FILE__, __FUNCTION__, __LINE__,format,##__VA_ARGS__);\
+}while(0)
+
+#define LogFatal(log,format,...) do\
+{\
+	log.Fatal(__FILE__, __FUNCTION__, __LINE__,format,##__VA_ARGS__);\
+}while(0)
+
+#endif
+@endverbatim
+
+源代码
+@verbatim
+#include "niu_log.h"
+
+#include <stdio.h>
+#include <time.h>
+
+
+#define LOG(x) do\
+{\
+	if((_output & (OUTPUT_STD+OUTPUT_CONSOLE)) == 0)\
+	{\
+		return;\
+	}\
+	if((_level & LOG_##x) == 0)\
+	{\
+		return;\
+	}\
+	char buf[2048] = {0};\
+	sprintf(buf,"[" #x " %s %s:%s:%d] ",\
+		this->getNowTimeAsString().c_str(),\
+		file,\
+		func,\
+		lineNum);\
+	char* p = buf+strlen(buf);\
+	va_list ap;\
+	va_start(ap, format);\
+	p += _vsnprintf(p, sizeof(buf) - 1, format, ap);\
+	va_end(ap);\
+	int len = strlen(buf);\
+	buf[len] = '\r';\
+	buf[len+1] = '\n';\
+	if((_output & OUTPUT_STD) >0)\
+	{\
+		printf(buf);\
+	}\
+	if((_output & OUTPUT_CONSOLE) >0)\
+	{\
+		::OutputDebugStringA(buf);\
+	}\
+} while (0)
+
+
+NiuLog::NiuLog()
+{
+	_consoleHandle = GetStdHandle(STD_OUTPUT_HANDLE); 
+}
+
+void NiuLog::Debug(const char* file,const char* func,int lineNum,const char* format, ...)
+{
+	SetConsoleColor(FOREGROUND_GREEN);
+	LOG(DEBUG);
+}
+
+void NiuLog::Info(const char* file,const char* func,int lineNum,const char* format, ...)
+{
+	SetConsoleColor(FOREGROUND_RED|FOREGROUND_GREEN|FOREGROUND_BLUE);
+	LOG(INFO);
+}
+
+void NiuLog::Warn(const char* file,const char* func,int lineNum,const char* format, ...)
+{
+	SetConsoleColor(FOREGROUND_RED|FOREGROUND_GREEN|FOREGROUND_INTENSITY);
+	LOG(WARN);
+}
+
+void NiuLog::Error(const char* file,const char* func,int lineNum,const char* format, ...)
+{
+	SetConsoleColor(FOREGROUND_RED|FOREGROUND_INTENSITY);
+	LOG(ERROR);
+}
+
+void NiuLog::Fatal(const char* file,const char* func,int lineNum,const char* format, ...)
+{
+	SetConsoleColor(FOREGROUND_BLUE|FOREGROUND_INTENSITY);
+	LOG(FATAL);
+}
+
+void NiuLog::SetLevel(int level)
+{
+	_level = level;
+}
+
+void NiuLog::SetOutput(int output)
+{
+	_output = output;
+}
+
+string NiuLog::getNowTimeAsString()
+{
+	char buf[64] = {0};
+	time_t now = time(NULL);
+	//方法1：
+	/*tm* ptm = localtime(&now);
+	sprintf(buf, "%04d-%02d-%02d %02d:%02d:%02d", 
+		ptm->tm_year+1900, 
+		ptm->tm_mon+1, 
+		ptm->tm_mday,
+		ptm->tm_hour,
+		ptm->tm_min, 
+		ptm->tm_sec);*/
+
+	//方法2：
+	strftime(buf, 64, "%Y-%m-%d %H:%M:%S",localtime(&now));
+	return buf;
+}
+
+
+void NiuLog::SetConsoleColor(WORD colorValue)  
+{  
+	if (_consoleHandle != INVALID_HANDLE_VALUE)
+	{
+		SetConsoleTextAttribute(_consoleHandle, colorValue); 
+	}	
+}  
+@endverbatim
+
+测试
+@verbatim
+#include "niu_log.h"
+#include <string>
+
+using namespace std;
+
+int main(int argc, char* argv[])
+{
+	NiuLog log;
+	log.SetLevel(LOG_DEBUG|LOG_INFO|LOG_WARN|LOG_ERROR|LOG_FATAL);
+	log.SetOutput(OUTPUT_STD|OUTPUT_CONSOLE);
+
+	LogDebug(log,"This is Debug");
+	LogInfo (log,"This is Info");
+	LogWarn (log,"This is Warn");
+	LogError(log,"This is Error");
+	LogFatal(log,"This is Fatal");
+
+	getchar();
+	return 0;
+}
+@endverbatim
+*/
+我的日志;
+
+/**
+@verbatim
+int len = 50;
+string str ="";
+for(int i=0; i<len;++i)
+{
+	str+="|";
+}
+log.SetConsoleColor(FOREGROUND_RED|FOREGROUND_GREEN|FOREGROUND_BLUE);
+printf("start...\n");
+printf("%s\r",str.c_str()); // 打印竖线，然后回到行首
+
+str ="";
+for(int i=0; i<len;++i)
+{
+	str+=">";
+}
+log.SetConsoleColor(FOREGROUND_GREEN|FOREGROUND_INTENSITY);
+
+for (int i = 0; i < len; ++i)  
+{  
+	putchar(str[i]);  
+	Sleep(200);  
+}  
+putchar('\n');
+printf("end\n");
+@endverbatim
+*/
+控制台进度条;
+
+
+
+/** @} */

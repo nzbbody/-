@@ -1,0 +1,298 @@
+
+/**
+* @defgroup Mysql事务
+* @{
+*/
+
+/**
+@verbatim
+1、锁的类型分为读锁和写锁，这个很好区分。可以这样认为：如果有增删改，就是写锁。如果是查询，就是读锁。
+2、锁的粒度也就是锁的范围，分为行锁和表锁。锁的范围和多个因素有关，包括事务隔离级别、是否使用索引。
+
+测试 read-committed，结果是行锁
+事务A:
+mysql> select @@session.tx_isolation;
++------------------------+
+| @@session.tx_isolation |
++------------------------+
+| READ-COMMITTED |
++------------------------+
+1 row in set (0.00 sec)
+
+mysql> start transaction;
+Query OK, 0 rows affected (0.00 sec)
+
+mysql> update test set num=num+1 where id=1;
+Query OK, 1 row affected (0.00 sec)
+Rows matched: 1 Changed: 1 Warnings: 0
+
+事务B:
+mysql> select @@session.tx_isolation;
++------------------------+
+| @@session.tx_isolation |
++------------------------+
+| READ-COMMITTED |
++------------------------+
+1 row in set (0.00 sec)
+
+mysql> start transaction;
+Query OK, 0 rows affected (0.00 sec)
+
+mysql> update test set num=num+1 where id=2;
+Query OK, 1 row affected (0.00 sec)
+Rows matched: 1 Changed: 1 Warnings: 0
+查询事务:
+mysql> select * from information_schema.innodb_trx\G
+*************************** 1. row ***************************
+trx_id: DAB09
+trx_state: RUNNING
+trx_started: 2015-07-02 08:41:28
+trx_requested_lock_id: NULL
+trx_wait_started: NULL
+trx_weight: 3
+trx_mysql_thread_id: 3
+trx_query: NULL
+trx_operation_state: NULL
+trx_tables_in_use: 0
+trx_tables_locked: 0
+trx_lock_structs: 2
+trx_lock_memory_bytes: 320
+trx_rows_locked: 1
+trx_rows_modified: 1
+trx_concurrency_tickets: 0
+trx_isolation_level: READ COMMITTED
+trx_unique_checks: 1
+trx_foreign_key_checks: 1
+trx_last_foreign_key_error: NULL
+trx_adaptive_hash_latched: 0
+trx_adaptive_hash_timeout: 10000
+*************************** 2. row ***************************
+trx_id: DAB08
+trx_state: RUNNING
+trx_started: 2015-07-02 08:41:00
+trx_requested_lock_id: NULL
+trx_wait_started: NULL
+trx_weight: 3
+trx_mysql_thread_id: 2
+trx_query: NULL
+trx_operation_state: NULL
+trx_tables_in_use: 0
+trx_tables_locked: 0
+trx_lock_structs: 2
+trx_lock_memory_bytes: 320
+trx_rows_locked: 1
+trx_rows_modified: 1
+trx_concurrency_tickets: 0
+trx_isolation_level: READ COMMITTED
+trx_unique_checks: 1
+trx_foreign_key_checks: 1
+trx_last_foreign_key_error: NULL
+trx_adaptive_hash_latched: 0
+trx_adaptive_hash_timeout: 10000
+2 rows in set (0.00 sec)
+两个事务之间没有lock wait，说明read-committed是行锁
+
+测试 repeatable-read，结果是表锁
+事务A:
+mysql> select @@session.tx_isolation;
++------------------------+
+| @@session.tx_isolation |
++------------------------+
+| REPEATABLE-READ |
++------------------------+
+1 row in set (0.01 sec)
+
+mysql> start transaction;
+Query OK, 0 rows affected (0.00 sec)
+
+mysql> update test set num=num+1 where id=1;
+Query OK, 1 row affected (0.00 sec)
+Rows matched: 1 Changed: 1 Warnings: 0
+
+事务B:
+mysql> select @@session.tx_isolation;
++------------------------+
+| @@session.tx_isolation |
++------------------------+
+| REPEATABLE-READ |
++------------------------+
+1 row in set (0.00 sec)
+
+mysql> start transaction;
+Query OK, 0 rows affected (0.00 sec)
+
+mysql> update test set num=num+1 where id=2;
+
+ 
+
+查询事务:
+mysql> select * from information_schema.innodb_trx\G
+*************************** 1. row ***************************
+trx_id: DAB1A
+trx_state: LOCK WAIT
+trx_started: 2015-07-02 09:31:29
+trx_requested_lock_id: DAB1A:0:100841:2
+trx_wait_started: 2015-07-02 09:31:29
+trx_weight: 2
+trx_mysql_thread_id: 3
+trx_query: update test set num=num+1 where id=2
+trx_operation_state: starting index read
+trx_tables_in_use: 1
+trx_tables_locked: 1
+trx_lock_structs: 2
+trx_lock_memory_bytes: 320
+trx_rows_locked: 1
+trx_rows_modified: 0
+trx_concurrency_tickets: 0
+trx_isolation_level: REPEATABLE READ
+trx_unique_checks: 1
+trx_foreign_key_checks: 1
+trx_last_foreign_key_error: NULL
+trx_adaptive_hash_latched: 0
+trx_adaptive_hash_timeout: 10000
+*************************** 2. row ***************************
+trx_id: DAB19
+trx_state: RUNNING
+trx_started: 2015-07-02 09:31:21
+trx_requested_lock_id: NULL
+trx_wait_started: NULL
+trx_weight: 3
+trx_mysql_thread_id: 2
+trx_query: NULL
+trx_operation_state: NULL
+trx_tables_in_use: 0
+trx_tables_locked: 0
+trx_lock_structs: 2
+trx_lock_memory_bytes: 320
+trx_rows_locked: 4
+trx_rows_modified: 1
+trx_concurrency_tickets: 0
+trx_isolation_level: REPEATABLE READ
+trx_unique_checks: 1
+trx_foreign_key_checks: 1
+trx_last_foreign_key_error: NULL
+trx_adaptive_hash_latched: 0
+trx_adaptive_hash_timeout: 10000
+2 rows in set (0.00 sec)
+
+事务B处于lock wait状态，说明repeatable-read是表锁
+
+测试 repeatable-read，查询条件使用主键，也就是id为primary key，结果是行锁
+mysql> desc test;
++-------+---------+------+-----+---------+-------+
+| Field | Type | Null | Key | Default | Extra |
++-------+---------+------+-----+---------+-------+
+| ID | int(11) | NO | | 0 | |
+| NUM | int(11) | YES | | NULL | |
++-------+---------+------+-----+---------+-------+
+2 rows in set (0.01 sec)
+
+mysql> alter table test add primary key(id);
+Query OK, 0 rows affected (14.70 sec)
+Records: 0 Duplicates: 0 Warnings: 0
+
+mysql> desc test;
++-------+---------+------+-----+---------+-------+
+| Field | Type | Null | Key | Default | Extra |
++-------+---------+------+-----+---------+-------+
+| ID | int(11) | NO | PRI | 0 | |
+| NUM | int(11) | YES | | NULL | |
++-------+---------+------+-----+---------+-------+
+2 rows in set (0.01 sec)
+
+事务A:
+mysql> select @@session.tx_isolation;
++------------------------+
+| @@session.tx_isolation |
++------------------------+
+| REPEATABLE-READ |
++------------------------+
+1 row in set (0.00 sec)
+
+mysql> start transaction;
+Query OK, 0 rows affected (0.00 sec)
+
+mysql> update test set num=num+1 where id=1;
+Query OK, 1 row affected (0.00 sec)
+Rows matched: 1 Changed: 1 Warnings: 0
+
+事务B:
+mysql> select @@session.tx_isolation;
++------------------------+
+| @@session.tx_isolation |
++------------------------+
+| REPEATABLE-READ |
++------------------------+
+1 row in set (0.00 sec)
+
+mysql> start transaction;
+Query OK, 0 rows affected (0.00 sec)
+
+mysql> update test set num=num+1 where id=2;
+Query OK, 1 row affected (0.00 sec)
+Rows matched: 1 Changed: 1 Warnings: 0
+
+
+查询事务:
+mysql> select * from information_schema.innodb_trx\G
+*************************** 1. row ***************************
+trx_id: DAB23
+trx_state: RUNNING
+trx_started: 2015-07-02 09:38:48
+trx_requested_lock_id: NULL
+trx_wait_started: NULL
+trx_weight: 3
+trx_mysql_thread_id: 3
+trx_query: NULL
+trx_operation_state: NULL
+trx_tables_in_use: 0
+trx_tables_locked: 0
+trx_lock_structs: 2
+trx_lock_memory_bytes: 320
+trx_rows_locked: 1
+trx_rows_modified: 1
+trx_concurrency_tickets: 0
+trx_isolation_level: REPEATABLE READ
+trx_unique_checks: 1
+trx_foreign_key_checks: 1
+trx_last_foreign_key_error: NULL
+trx_adaptive_hash_latched: 0
+trx_adaptive_hash_timeout: 10000
+*************************** 2. row ***************************
+trx_id: DAB22
+trx_state: RUNNING
+trx_started: 2015-07-02 09:38:45
+trx_requested_lock_id: NULL
+trx_wait_started: NULL
+trx_weight: 3
+trx_mysql_thread_id: 2
+trx_query: NULL
+trx_operation_state: NULL
+trx_tables_in_use: 0
+trx_tables_locked: 0
+trx_lock_structs: 2
+trx_lock_memory_bytes: 320
+trx_rows_locked: 1
+trx_rows_modified: 1
+trx_concurrency_tickets: 0
+trx_isolation_level: REPEATABLE READ
+trx_unique_checks: 1
+trx_foreign_key_checks: 1
+trx_last_foreign_key_error: NULL
+trx_adaptive_hash_latched: 0
+trx_adaptive_hash_timeout: 10000
+2 rows in set (0.00 sec)
+
+表test的id为主键，上面的两个事务，没有lock wait，说明通过主键操作，是行锁。为什么？
+
+这是因为innodb主键索引（聚集索引），可以直接定位相应的行，不需要锁住整个表。对于辅助索引也是同样的道理，是行锁。因为对于辅助索引，也要使用主键索引定位到相应的行。
+
+也就是说innodb 使用索引，只会去锁相应的行（有可能还包括当前行附近的行），而不是锁住整个表。
+
+注意：查询加锁信息，除了表innodb_trx，还有表innodb_locks, innodb_lock_waits，这些表都在information_schema数据库
+@endverbatim
+*/
+锁的粒度;
+
+
+/** @} */

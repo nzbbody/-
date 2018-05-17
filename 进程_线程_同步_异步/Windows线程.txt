@@ -1,0 +1,64 @@
+﻿/**
+* @defgroup 进程_线程_同步_异步
+* @{
+*/
+
+/**
+@verbatim
+这里为什么创建线程之后，马上CloseHandle？如下：
+HANDLE hThread = CreateThread(NULL,0,CommWithClient,&acceptSocket,0,NULL);
+CloseHandle(hThread);
+
+原因是：创建线程后返回线程句柄，新创建的线程内核对象引用计数是2，一个是线程本身，
+一个是创建线程的线程，也就是说当前线程对新创建的线程保持一个引用。
+当前线程调用CloseHandle，使引用计数减1，新线程运行结束后，引用计数再减1，
+这时候为0，系统删除新创建的内核对象，这是正常的流程。
+
+如果当前线程没有调用CloseHandle，新线程运行结束后，引用计数减1，这时候为1，
+系统不会删除新创建的内核对象。当然，整个程序运行结束后，系统还是会回收这些内存。
+也就是说，不调用CloseHandle，会导致程序运行期间的内存泄露。
+
+当然，这还要考虑实际的需求，如果新创建的线程运行结束，后续还要使用，就不要调用CloseHandle
+@endverbatim
+*/
+Windows线程CloseHandle;
+
+
+/**
+@verbatim
+windows CreateSemaphore,  ReleaseSemaphore,  WaitforSingleObject, WaitforMultipleObject
+
+模拟场景，
+1、一个生产者，一个消费者，共享缓冲区大小为1，
+2、一个生产者，一个消费者，共享缓冲区大小为5（注：可以同时生产5个）
+3、两个生产者，一个消费者，共享缓冲区大小为5（注：可以同时生产5个）
+
+注意：可以同时生产5个，满了就不能生产了，这一点和tcp的滑动窗口类似。
+
+另外信号量PV操作，可以表达语义：共享区没有了资源，消费者要等待。不能表达语义：共享区满了，生产者要等待。
+也就是说，只有P操作要等待。
+如果要表达，共享区满了，生产者要等待。需要使用反向的信号量。
+sem_for_consume(0,5); 容量为5，可以消耗的数量为0，与共享缓冲区保持一致。只有sem_for_consume的情况，代码如下：
+
+produce();
+sem_for_consume.V();
+
+sem_for_consume.P();
+consume();
+
+加上一个反向的信号量。
+sem_for_produce(5,5); 容量为5，可以生产的数量为5，与共享缓冲区相反。加上反向的信号量，代码如下：
+
+sem_for_produce.P();
+produce();
+sem_for_consume.V();
+
+sem_for_consume.P();
+consume();
+sem_for_produce.V();
+
+@endverbatim
+*/
+线程同步信号量semaphore;
+
+/** @} */

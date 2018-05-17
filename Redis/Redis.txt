@@ -1,0 +1,276 @@
+﻿/**
+* @defgroup Redis
+* @{
+*/
+
+/**
+@verbatim
+1、Redis是一个开源的使用ANSI C语言编写、支持网络、可基于内存亦可持久化的日志型、Key-Value数据库，并提供多种语言的API。
+	从2010年3月15日起，Redis的开发工作由VMware主持。从2013年5月开始，Redis的开发由Pivotal赞助。
+2、下载 redis-3.2.6.tar.gz，解压，进入目录redis-3.2.6，然后make
+3、在src目录下，生成一些二进制可执行文件。如下：
+	[root@localhost src]# ll|grep -v "\."
+	total 33384
+	-rwxrwxrwx 1 root root    8173 Dec  6 16:38 Makefile
+	-rwxr-xr-x 1 root root 4560528 Feb 10 09:38 redis-benchmark
+	-rwxr-xr-x 1 root root   16880 Feb 10 09:38 redis-check-aof
+	-rwxr-xr-x 1 root root 6401156 Feb 10 09:38 redis-check-rdb
+	-rwxr-xr-x 1 root root 4661462 Feb 10 09:38 redis-cli
+	-rwxr-xr-x 1 root root 6401156 Feb 10 09:38 redis-sentinel
+	-rwxr-xr-x 1 root root 6401156 Feb 10 09:38 redis-server
+	文件介绍如下：
+	./redis-benchmark 	//用于进行redis性能测试的工具
+	./redis-check-dump 	//用于修复出问题的dump.rdb文件
+	./redis-cli 		//redis的客户端
+	./redis-server 		//redis的服务端
+	./redis-check-aof 	//用于修复出问题的AOF文件
+	./redis-sentinel 	//用于集群管理
+4、启动redis服务，如下：
+	[root@localhost src]# ./redis-server
+	监听端口是6379，如下：
+	[root@localhost ~]# netstat -anp|grep 6379
+	tcp        0      0 0.0.0.0:6379                0.0.0.0:*                   LISTEN      3408/redis-server * 
+	tcp        0      0 :::6379                     :::*                        LISTEN      3408/redis-server *
+5、启动redis客户端，如下：
+	[root@localhost src]# ./redis-cli --help
+	查看帮助信息
+6、设置，获取，删除，最简单的例子如下：
+	[root@localhost src]# ./redis-cli
+	127.0.0.1:6379> get name
+	(nil)
+	127.0.0.1:6379> set name andy
+	OK
+	127.0.0.1:6379> get name
+	"andy"
+	127.0.0.1:6379> del name
+	(integer) 1
+	127.0.0.1:6379> get name
+	(nil)
+@endverbatim
+*/
+Redis简单示例;
+
+
+/**
+@verbatim
+1、redis持久化有两种方式：分别是RDB（Redis DataBase）和AOF（Append Only File）
+	RDB，简而言之，就是在不同的时间点，将redis存储的数据生成快照并存储到磁盘等介质上；
+	AOF，则是换了一个角度来实现持久化，那就是将redis执行过的所有写指令记录下来。
+	在下次redis重新启动时，只要把这些写指令从前到后再重复执行一遍，就可以实现数据恢复了。
+2、其实RDB和AOF两种方式也可以同时使用，在这种情况下，如果redis重启的话，则会优先采用AOF方式来进行数据恢复，
+	这是因为AOF方式的数据恢复完整度更高。如果你没有数据持久化的需求，也完全可以关闭RDB和AOF方式，
+	这样的话，redis将变成一个纯内存数据库，就像memcache一样。
+3、不进行持久化，需要取消rdb方式和和aof方式，分别如下：
+	注销rdb的保存策略
+	#save 900 1
+	#save 300 10
+	#save 60 10000
+	取消aof方式
+	appendonly no	
+	启动redis服务，指定配置文件，如下：
+	[root@localhost src]# ./redis-server ../redis.conf
+	注意：在这种方式下，设置一些key，当重启redis服务后，之前设置的key不存在。
+4、使用RDB方式持久化，开启保存策略，如下：
+	save 900 1		至少有1个key被更改时，900秒后保存
+	save 300 10		至少有10个key被更改时，300秒后保存
+	save 60 10000	至少有10000个key被更改时，60秒后保存
+	这些保存策略是或的关系，有一个满足就执行。
+	RDB的保存策略是异步的，有很大延迟，很导致一部分数据丢失。
+5、现在设置以上的保存策略，先删除当前目录的dump.rdb，运行如下：
+	a、启动redis服务
+		[root@localhost src]# ./redis-server ../redis.conf 
+	b、设置一个key，查询当前目录，并没有dump.rdb文件，说明没有触发保存条件。
+	c、这个时候异常关闭，kill -9杀掉redis服务，会导致数据丢失。
+		特别注意：使用ctrl+c方式，redis会立即进行持久化。
+		这是因为redis可以捕获到ctrl+c的signal，刷新到文件，然后退出。但是不能捕捉到kill -9
+		sigaction不能捕捉到kill -9和kill -19，其他都能捕捉到。
+6、使用AOF方式持久化，设置如下：
+	appendonly yes
+	会在当前目录下，生成文件 appendonly yes
+	刷新策略有：
+	# appendfsync always
+	# appendfsync everysec
+	# appendfsync no
+7、如果两种持久化方式都开启了，会优先使用AOF方式。
+@endverbatim
+*/
+Redis持久化;
+
+/**
+@verbatim
+1、默认情况下，访问redis服务是不需要密码的，如果在不信任的网络环境中，需要设置密码。
+2、查询当前密码，为空（也就是不需要密码），如下：
+	172.16.2.16:6379> config get requirepass
+	1) "requirepass"
+	2) ""
+3、如何设置密码？
+	修改配置文件的requirepass项，如下：
+	requirepass 123456
+	然后重启redis服务
+4、不重启服务的情况下，怎么修改密码？
+	172.16.2.16:6379> config get requirepass
+	1) "requirepass"
+	2) ""
+	172.16.2.16:6379> config set requirepass 123456
+	OK
+	172.16.2.16:6379> config get requirepass
+	(error) NOAUTH Authentication required.
+	172.16.2.16:6379> auth 123456
+	OK
+	172.16.2.16:6379> config get requirepass
+	1) "requirepass"
+	2) "123456"
+	注意：一旦设置了密码，接下来的操作，首先需要认证。
+5、如何登陆有密码的redis服务？
+	a、登录时认证
+	[root@localhost src]# ./redis-cli -h 172.16.2.16 -p 6379 -a 123456
+	b、先登录，再认证
+	[root@localhost src]# ./redis-cli -h 172.16.2.16 -p 6379
+	172.16.2.16:6379> get name
+	(error) NOAUTH Authentication required.
+	172.16.2.16:6379> auth 123456
+	OK
+6、主从复制的时候，master有密码，slave怎么设置？
+	# masterauth <master-password>
+	修改为
+	masterauth 123456
+@endverbatim
+*/
+Redis安全;
+
+/**
+@verbatim
+1、现在有两个redis，172.16.2.16为master，10.65.200.202为salve
+2、在slave端修改配置项 salveof，如下：
+	slaveof 172.16.2.16 6379
+3、在这种情况下，master端的修改，会同步到slave端。
+4、但是slave端不能执行写操作，如下：
+	127.0.0.1:6379> get name
+	"andy"
+	127.0.0.1:6379> set name bill
+	(error) READONLY You can't write against a read only slave.
+	原因是：如果slave可以写操作，就会导致主从数据不一致。因此，默认配置slave只能读操作。
+5、当然，也可以配置写操作，如下：
+	slave-read-only no
+	但是，slave端的修改，不会同步到master端。
+6、mysql是支持主主复制的，也就是两个设备互为主从。如果把两个redis设置为互为主从，行不行？
+	目前的redis版本不支持互为主从。如果两个redis配置成互为主从，redis服务报错，如下：
+	Master does not support PSYNC or is in error state (reply: -ERR Can't SYNC while not connected with my master)
+7、也就是说，redis要实现主主复制，需要应用层管理。
+	A仅仅作为master，B设置为A的salve。
+	在某个条件下，B不再作为A的slave，仅仅设置为master，同时A设置为B的slave。
+	注意：这里redis主主复制是指任一时刻只有一个方向的复制，并不是完全意义的主主复制，完全意义的主主复制是同时两个方向。
+@endverbatim
+*/
+Redis复制;
+
+
+/**
+@verbatim
+1、开源软件往往做的非常出色，错误的时候，会告诉你原因，以及怎么修改，仔细阅读就能明白。比如这个错误：
+	[root@localhost src]# ./redis-cli -h 172.16.2.16 -p 6379
+	172.16.2.16:6379> get name
+	(error) DENIED Redis is running in protected mode because protected mode is enabled, no bind address was specified, 
+	no authentication password is requested to clients. In this mode connections are only accepted from the loopback interface. 
+	If you want to connect from external computers to Redis you may adopt one of the following solutions: 
+	1) Just disable protected mode sending the command 'CONFIG SET protected-mode no' from the loopback interface by connecting to Redis from the same host the server is running, however MAKE SURE Redis is not publicly accessible from internet if you do so. Use CONFIG REWRITE to make this change permanent. 
+	2) Alternatively you can just disable the protected mode by editing the Redis configuration file, and setting the protected mode option to 'no', and then restarting the server. 
+	3) If you started the server manually just for testing, restart it with the '--protected-mode no' option. 
+	4) Setup a bind address or an authentication password. NOTE: You only need to do one of the above things in order for the server to start accepting connections from the outside.
+	已经告诉错误原因：默认情况下redis运行在保护模式（这种模式下，访问不需要密码），但是这种模式只允许本地回路访问。
+	按照第二种方式修改。
+	# are explicitly listed using the "bind" directive.
+	protected-mode no
+2、重新启动redis服务，要想配置文件起效，启动的时候，必须指定配置文件。如下：
+	[root@localhost src]# ./redis-server ../redis.conf 
+	但是，这个时候从外部连接，报错：
+	[root@localhost src]# ./redis-cli -h 172.16.2.16 -p 6379
+	Could not connect to Redis at 172.16.2.16:6379: Connection refused
+3、查看监听信息，如下：
+	[root@localhost src]# netstat -anp|grep 6379
+	tcp        0      0 127.0.0.1:6379              0.0.0.0:*                   LISTEN      4201/./redis-server
+	原因是配置文件redis.conf配置了只在127.0.0.1上绑定监听，取消一下。
+	# IF YOU ARE SURE YOU WANT YOUR INSTANCE TO LISTEN TO ALL THE INTERFACES
+	# JUST COMMENT THE FOLLOWING LINE.
+	# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	#bind 127.0.0.1
+4、重启服务即可。
+@endverbatim
+*/
+DENIED_Redis_is_running_in_protected_mode;
+
+/**
+@verbatim
+1、hiredis是redis数据库的C接口，目录为/redis-3.2.6/deps/hiredis
+2、示例代码如下：
+	#include <stdio.h>
+	#include <stdlib.h>
+	#include <stddef.h>
+	#include <stdarg.h>
+	#include <string.h>
+	#include <assert.h>
+	#include "hiredis.h"
+	
+	int main()
+	{
+		//连接redis
+		redisContext* c = redisConnect("127.0.0.1", 6379);
+		if ( c->err)
+		{
+			redisFree(c);
+			printf("Connect to redisServer faile\n");
+			return -1;
+		}
+		printf("Connect to redisServer Success\n");
+	    
+		const char* setCommand = "set name andy";
+		redisReply* r = (redisReply*)redisCommand(c, setCommand);
+	    
+		if( NULL == r)
+		{
+			printf("Execut setCommand failure\n");
+			redisFree(c);
+			return -1;
+		}
+		if( !(r->type == REDIS_REPLY_STATUS && strcasecmp(r->str,"OK")==0))
+		{
+			printf("Failed to execute command[%s]\n",setCommand);
+			freeReplyObject(r);
+			redisFree(c);
+			return -1;
+		}
+		freeReplyObject(r);
+		printf("Succeed to execute command[%s]\n", setCommand);
+		
+		
+		const char* getCommand = "get name";
+		r = (redisReply*)redisCommand(c, getCommand);
+		if ( r->type != REDIS_REPLY_STRING)
+		{
+			printf("Failed to execute command[%s]\n",getCommand);
+			freeReplyObject(r);
+			redisFree(c);
+			return -1;
+		}
+		printf("Succeed to execute command[%s]\n", getCommand);
+		printf("The value of 'name' is %s\n", r->str);
+		freeReplyObject(r);
+		
+		redisFree(c);
+		return 0;
+	}
+3、编译，运行如下：
+	[root@localhost hiredis]# g++ -o main main.cpp libhiredis.a
+	[root@localhost hiredis]# ./main
+	Connect to redisServer Success
+	Succeed to execute command[set name andy]
+	Succeed to execute command[get name]
+	The value of 'name' is andy
+@endverbatim
+*/
+Redis接口的调用;
+
+
+
+
+/** @} */

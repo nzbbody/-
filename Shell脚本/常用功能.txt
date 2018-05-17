@@ -1,0 +1,182 @@
+﻿/**
+* @defgroup Shell脚本
+* @{
+*/
+
+/**
+* @defgroup Shell脚本常用功能
+* @{
+*/
+
+/**
+@verbatim
+1、以sudo为例说明
+	#! /bin/bash -x
+	echo ruanxiaopang|sudo -S ifconfig eth0 192.168.29.129 netmask 255.255.255.0
+	sudo route add default gw 192.168.29.2
+	注意，这里对于sudo命令，必须加上 -S 选项，有些情况可能不需要。sudo --help，看到如下：
+	-S, --stdin                 read password from standard input
+@endverbatim
+*/
+脚本交互自动输入密码;
+
+/**
+@verbatim
+1、考虑下面的需求，如下：
+	[niu_zibin@localhost ~]$ andy100=hhh
+	[niu_zibin@localhost ~]$ name=andy
+	[niu_zibin@localhost ~]$ num=100
+	变量name和变量num组成andy100，我该如何引用呢？
+	尝试如下：
+	[niu_zibin@localhost ~]$ echo $name$num
+	andy100
+	[niu_zibin@localhost ~]$ echo $($name$num)
+	-bash: andy100: command not found
+2、怎么解决这个问题，也就是说，如何对变量的取值再一次解引用。
+3、这需要间接引用变量的语法，也就是两次解引用。如下：
+	[niu_zibin@localhost ~]$ tmp="$name$num"
+	[niu_zibin@localhost ~]$ echo ${tmp}
+	andy100
+	[niu_zibin@localhost ~]$ echo ${!tmp}
+	hhh
+	还有另外一种办法：
+	[niu_zibin@localhost ~]$ eval aaa=\$${tmp}
+	[niu_zibin@localhost ~]$ echo $aaa
+	hhh
+@endverbatim
+*/
+间接引用变量;
+
+
+/**
+@verbatim
+1、当前目录有如下的文件：
+	[root@localhost tmp]# ll
+	total 0
+	-rw-r--r-- 1 root root 0 2015-10-28 19:22 aaa
+	-rw-r--r-- 1 root root 0 2015-10-28 19:22 bbb
+	-rw-r--r-- 1 root root 0 2015-10-28 19:20 file1
+	-rw-r--r-- 1 root root 0 2015-10-28 19:20 file2
+	-rw-r--r-- 1 root root 0 2015-10-28 19:21 log1
+	-rw-r--r-- 1 root root 0 2015-10-28 19:21 log2
+2、删除file开头的文件，如下：
+	[root@localhost tmp]# ll|grep -v total|cut -d ' ' -f 8|grep file|xargs rm -f
+	[root@localhost tmp]# ll
+	total 0
+	-rw-r--r-- 1 root root 0 2015-10-28 19:22 aaa
+	-rw-r--r-- 1 root root 0 2015-10-28 19:22 bbb
+	-rw-r--r-- 1 root root 0 2015-10-28 19:21 log1
+	-rw-r--r-- 1 root root 0 2015-10-28 19:21 log2
+	注意：这里必须使用xargs，xargs把前面的输出作为一个文件，而不是字符串。具体原因查看xargs命令。
+3、有没有其他的办法？
+	使用命令替换，直接使用一个命令的返回值，如下：
+	rm -f $(ll|grep -v total|cut -d ' ' -f 8|grep file)
+	等价于
+	rm -f `ll|grep -v total|cut -d ' ' -f 8|grep file`
+4、删除除了file开头的文件，怎么办？
+	使用grep -v反向选择。
+5、在windows下面用法类似，如下：
+	使用xargs把前一个命令的输出，作为后一个命令的参数
+	dir|findstr file|cut -d ' ' -f 21 -s|xargs rm
+6、考虑另一种方式，当前命令跟着另一个命令的输出，但是这存在问题：
+	在Windows下面，把一个命令的输出赋值给变量，或者作为其他命令的参数，
+	没有Linux类似的语法（Linux使用倒引号或者美元符号+小括号）
+7、在windows只能使用for循环，如下：
+	echo on
+	cd D:/test
+	setlocal enabledelayedexpansion
+	for /f %%i in ('dir /b /a:-d') do (
+		echo %%i|findstr "^file">nul
+		if !errorlevel! equ 0 (rm %%i)
+	)
+	pause
+8、特别需要注意的是：
+	a、因为在for是复合语句，需要使用延迟变量，setlocal enabledelayedexpansion 并且使用!var!的方式引用变量。
+	b、window下面的黑洞设备是 nul，而linux下面的黑洞设备是 /dev/null
+@endverbatim
+@see
+*/
+删除一部分文件;
+
+/**
+@verbatim
+1、先递归找出所有的txt文件，如下：
+	[root@localhost d1]# ll
+	total 4
+	-rw-r--r-- 1 root root 0 2016-11-02 17:51 111.txt
+	drwxr-xr-x 2 root root 0 2016-11-02 17:51 aaa
+	drwxr-xr-x 3 root root 0 2016-11-02 17:51 bbb
+	
+	[root@localhost d1]# find ./ -iname "*.txt"
+	./bbb/ccc/c2.txt
+	./bbb/ccc/c1.txt
+	./bbb/b2.txt
+	./bbb/b1.txt
+	./aaa/a2.txt
+	./aaa/a1.txt
+	./111.txt
+2、特别注意：find ./ -iname *.txt只能找到当前目录下的txt文件，
+	原因是：*作为通配符，必须处理一下，当成字符串的一部分。
+	[root@localhost d1]# find ./ -iname *.txt
+	./111.txt
+	还可以使用单引号或者转义字符，如下：
+	[root@localhost d1]# find ./ -iname '*.txt'
+	./bbb/ccc/c2.txt
+	./bbb/ccc/c1.txt
+	./bbb/b2.txt
+	./bbb/b1.txt
+	./aaa/a2.txt
+	./aaa/a1.txt
+	./111.txt
+	
+	[root@localhost d1]# find ./ -iname \*.txt
+	./bbb/ccc/c2.txt
+	./bbb/ccc/c1.txt
+	./bbb/b2.txt
+	./bbb/b1.txt
+	./aaa/a2.txt
+	./aaa/a1.txt
+	./111.txt
+3、找到这些文件，删除如下：
+	find ./ -iname "*.txt"|xargs rm -f
+@endverbatim
+*/
+linux递归删除txt文件;
+
+/**
+@verbatim
+1、考虑下面的情况，对var=1，对var加1，如下：
+	[root@localhost tmp]# var=1
+	[root@localhost tmp]# echo $var+1
+	1+1
+	这显然不是预期的行为。因为shell默认把var当成字符串处理。怎么解决这个问题？
+2、使用let
+	[root@localhost tmp]# var=1
+	[root@localhost tmp]# let var=var+1
+	[root@localhost tmp]# echo $var
+	2
+3、使用(())
+	[root@localhost tmp]# var=1
+	[root@localhost tmp]# ((var=var+1))
+	[root@localhost tmp]# echo $var
+	2
+4、使用$[]
+	[root@localhost tmp]# var=1
+	[root@localhost tmp]# var=$[$var+1]
+	[root@localhost tmp]# echo $var
+	2
+	$[]的执行过程是：对中括号中的表达式作为数字运算，$取出运算结果
+5、使用expr
+	[root@localhost tmp]# var=1
+	[root@localhost tmp]# var=`expr $var + 1`
+	[root@localhost tmp]# echo $var
+	2
+	特别注意：使用expr，运算符左右要有空格
+@endverbatim
+@see
+*/
+shell数值运算;
+
+/** @} */
+
+/** @} */

@@ -1,0 +1,44 @@
+/**
+* @defgroup Linux
+* @{
+*/
+
+
+/**
+@verbatim
+1、考虑下面的需求，在shell脚本运行过程中，提示用户输入，并且打印，也就是与用户进行交互。
+	使用read如下：
+	#! /bin/sh
+	read -p "please input your name: " name
+	echo "hello $name, welcome"
+2、检查用户的输入，如果名字太短，提示重新输入，直到满足要求。如下：
+	#! /bin/sh
+	read -p "please input your name: " name
+	
+	while [ ${#name} -lt 4 ]
+	do
+			echo "sorry, your name is too short"
+			read -p "try input again: " name
+	done
+	
+	echo "hello $name, welcome"
+3、如果用户没有输入，就一直卡在这里，怎么解决？
+	给出超时时间，没有输入，直接跳过去。如下：
+	#! /bin/sh
+	read -t5 -p "please input your name: " name
+	echo "hello $name, welcome"
+4、考虑输入密码，密码的位数最长是6位，输入6位后，直接返回，不等待输入enter，如下：
+	#! /bin/sh
+	read -n6 -p "please input your passwd: " passwd
+	echo "hello, password is $passwd"
+5、对于密码的输入，用户不期望显示输入的内容，使用-s 默读，如下：
+	#! /bin/sh
+	read -s -p "please input your passwd: " passwd
+	echo "hello, password is $passwd"
+@endverbatim
+@see
+*/
+read;
+
+
+/** @} */
