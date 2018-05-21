@@ -10,6 +10,40 @@
 
 /**
 @verbatim
+1、一般情况下，我们通过CS模式，调用MySQL客户端mysqlclient和MySQL服务交互。
+2、但是这种C/S的数据服务不适合于一些轻量级的应用，可以使用MySQL的Embedded模式，相当于以库的方式调用。
+3、这两种方式的区别是：
+	CS模式，客户端链接mysqlclient库，调用mysqlclient的接口，经过网络和mysql服务交互。
+	Embedded模式，客户端链接mysqld库，调用mysqld的接口，都在在本地操作。
+4、CS模式
+	sudo apt-get install libmysqlclient-dev
+	g++ -o Embed Embed.cc `mysql_config --include --libs` -std=c++11
+5、Embedded模式
+	sudo apt install libmysqld-dev
+	g++ -o Embed Embed.cc `mysql_config --include --libmysqld-libs` -std=c++11
+6、可以看一下，mysql_config的输出，如下：
+	niuzibin@ubuntu:~/work/CPP_2/Embed$ mysql_config
+	Usage: /usr/bin/mysql_config [OPTIONS]
+	Options:
+			--cflags         [-I/usr/include/mysql -DBIG_JOINS=1  -fno-strict-aliasing    -g -DNDEBUG]
+			--include        [-I/usr/include/mysql]
+			--libs           [-L/usr/lib/x86_64-linux-gnu -lmysqlclient -lpthread -lz -lm -ldl]
+			--libs_r         [-L/usr/lib/x86_64-linux-gnu -lmysqlclient_r -lpthread -lz -lm -ldl]
+			--plugindir      [/usr/lib/mysql/plugin]
+			--socket         [/var/run/mysqld/mysqld.sock]
+			--port           [0]
+			--version        [5.5.59]
+			--libmysqld-libs [-L/usr/lib/x86_64-linux-gnu -lmysqld -lpthread -lz -lm -lwrap -lcrypt -ldl -laio]
+			--variable=VAR   VAR is one of:
+					pkgincludedir [/usr/include/mysql]
+					pkglibdir     [/usr/lib/x86_64-linux-gnu]
+					plugindir     [/usr/lib/mysql/plugin]
+@endverbatim
+*/
+MySQL的Embedded模式;
+
+/**
+@verbatim
 1、通过select或者show variables 可以看到系统变量单词之间的分隔符是下划线，如下：
 	mysql> show variables like 'event%';
 	+-----------------+-------+
