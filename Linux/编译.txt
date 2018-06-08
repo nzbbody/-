@@ -307,64 +307,6 @@
 */
 PHONY的作用;
 
-/**
-@verbatim
-1、一般情况下，我们是手动编写makefile文件，然后执行make构建目标文件。
-2、有没有办法生成makefile文件呢？
-	这就是cmake，cmake根据文件CMakeLists.txt，生成文件makefile
-3、示例如下：
-	niuzibin@ubuntu:~/work/test1/cmake$ ll
-	total 16
-	drwxrwxr-x 2 niuzibin niuzibin 4096 Apr  9 00:17 ./
-	drwxrwxr-x 4 niuzibin niuzibin 4096 Apr  9 00:11 ../
-	-rw-rw-r-- 1 niuzibin niuzibin   45 Apr  9 00:12 CMakeLists.txt
-	-rw-rw-r-- 1 niuzibin niuzibin   89 Apr  9 00:12 hello.c
-	niuzibin@ubuntu:~/work/test1/cmake$ more hello.c 
-	#include <stdio.h>
-	int main(void)
-	{
-			printf("Hello world\n");
-			return 0;
-	}
-	niuzibin@ubuntu:~/work/test1/cmake$ more CMakeLists.txt 
-	PROJECT(HELLO)
-	ADD_EXECUTABLE(hello hello.c)
-4、执行cmake，如下：
-	niuzibin@ubuntu:~/work/test1/cmake$ cmake CMakeLists.txt 
-	-- The C compiler identification is GNU 4.8.4
-	-- The CXX compiler identification is GNU 4.8.4
-	-- Check for working C compiler: /usr/bin/cc
-	-- Check for working C compiler: /usr/bin/cc -- works
-	-- Detecting C compiler ABI info
-	-- Detecting C compiler ABI info - done
-	-- Check for working CXX compiler: /usr/bin/c++
-	-- Check for working CXX compiler: /usr/bin/c++ -- works
-	-- Detecting CXX compiler ABI info
-	-- Detecting CXX compiler ABI info - done
-	-- Configuring done
-	-- Generating done
-	-- Build files have been written to: /home/niuzibin/work/test1/cmake
-	niuzibin@ubuntu:~/work/test1/cmake$ ll
-	total 44
-	drwxrwxr-x 3 niuzibin niuzibin  4096 Apr  9 00:18 ./
-	drwxrwxr-x 4 niuzibin niuzibin  4096 Apr  9 00:11 ../
-	-rw-rw-r-- 1 niuzibin niuzibin 11953 Apr  9 00:18 CMakeCache.txt
-	drwxrwxr-x 5 niuzibin niuzibin  4096 Apr  9 00:18 CMakeFiles/
-	-rw-rw-r-- 1 niuzibin niuzibin  1603 Apr  9 00:18 cmake_install.cmake
-	-rw-rw-r-- 1 niuzibin niuzibin    45 Apr  9 00:12 CMakeLists.txt
-	-rw-rw-r-- 1 niuzibin niuzibin    89 Apr  9 00:12 hello.c
-	-rw-rw-r-- 1 niuzibin niuzibin  4592 Apr  9 00:18 Makefile
-5、生成了一堆的文件，这里我们只需要关心 Makefile文件，生成的Makefile文件内容很多很全面，执行一把make，如下：
-	niuzibin@ubuntu:~/work/test1/cmake$ make
-	Scanning dependencies of target hello
-	[100%] Building C object CMakeFiles/hello.dir/hello.c.o
-	Linking C executable hello
-	[100%] Built target hello
-	niuzibin@ubuntu:~/work/test1/cmake$ ./hello 
-	Hello world
-@endverbatim
-*/
-cmake;
 
 /**
 @verbatim

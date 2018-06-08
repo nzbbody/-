@@ -10,6 +10,165 @@
 
 /**
 @verbatim
+1、svn是集中式，git是分布式
+2、svn保存文件的差异，git保存文件的快照，对于修改的文件，做一个副本，也就是写时拷贝（COW）
+3、svn创建分支，相当于整体拷贝，git创建分支，在任意一个提交点（commit point）开启分支
+@endverbatim
+*/
+svn与git对照;
+
+
+/**
+@verbatim
+1、显示log
+	git log
+2、显示最近的两次提交log
+	git log -2
+3、显示每次提交的内容差异
+	git log -2 -p
+4、显示某个文件的内容差异
+	git log -2 -p .gitignore
+5、也可以通过show，显示某一个提交的内容差异，如下：
+	root@ubuntu:/home/disk1/GitTest# git log -1 -p .gitignore                         
+	commit 12fdff5b6cd259cff2952fce978f1555635d4bfc
+	Author: nzbbody <nzbbody@163.com>
+	Date:   Wed Jun 6 10:27:04 2018 +0800
+	
+		增加忽略的文件
+	
+	diff --git a/.gitignore b/.gitignore
+	index 259148f..645ee14 100644
+	--- a/.gitignore
+	+++ b/.gitignore
+	@@ -30,3 +30,6 @@
+	*.exe
+	*.out
+	*.app
+	+
+	+# Other temp file
+	+*.bak
+	root@ubuntu:/home/disk1/GitTest# git show 12fdff5b6cd259cff2952fce978f1555635d4bfc .gitignore
+	commit 12fdff5b6cd259cff2952fce978f1555635d4bfc
+	Author: nzbbody <nzbbody@163.com>
+	Date:   Wed Jun 6 10:27:04 2018 +0800
+	
+		增加忽略的文件
+	
+	diff --git a/.gitignore b/.gitignore
+	index 259148f..645ee14 100644
+	--- a/.gitignore
+	+++ b/.gitignore
+	@@ -30,3 +30,6 @@
+	*.exe
+	*.out
+	*.app
+	+
+	+# Other temp file
+	+*.bak
+@endverbatim
+*/
+log命令;
+
+/**
+@verbatim
+1、两个分支都提交了，然后merge时
+	办法是：解决冲突+add+commit
+2、push的时候，其实也是两个分支都提交了，需要merge
+	办法是：解决冲突+add+commit+push
+3、你可能会想，master改了，提交。test1改了，先把master分支merge到test1，然后add commit，存在冲突。
+	这种情况是不存在的。因为：test1修改了，没有提交的情况下，是不能merge的。
+@endverbatim
+*/
+冲突的情况只有两种;
+
+/**
+@verbatim
+1、远程有develop和niuzibin，在gitlab执行 merge niuzibin-->develop
+2、我的本地有 niuzibin，注意：本地的develop没有意义
+	本地的niuzibin分支，push到 origin/niuzibin
+3、我在本地修改 niuzibin分支，
+4、然后add commit，
+5、从origin/develop进行fetch，然后merge，有冲突，解决冲突，再次add commit push
+6、注意：4和5是不能颠倒顺序的，本地有修改，必须先提交，再merge
+@endverbatim
+*/
+我们的开发分支管理;
+
+/**
+@verbatim
+1、甲修改，commit push
+2、乙修改，commit push，报错
+	To https://github.com/nzbbody/GitTest
+	! [rejected]        master -> master (fetch first)
+	error: failed to push some refs to 'https://github.com/nzbbody/GitTest'
+	hint: Updates were rejected because the remote contains work that you do
+	hint: not have locally. This is usually caused by another repository pushing
+	hint: to the same ref. You may want to first integrate the remote changes
+	hint: (e.g., 'git pull ...') before pushing again.
+	hint: See the 'Note about fast-forwards' in 'git push --help' for details.
+3、提示，在push之前，先pull一下。我们使用fetch + merge
+4、执行
+	git fetch origin master
+	git merge origin/master
+5、merge有冲突，需要解决冲突，add commit push
+	root@ubuntu:/home/disk1/GitTest# git add readme.txt 
+	root@ubuntu:/home/disk1/GitTest# git commit -m"333444"
+	root@ubuntu:/home/disk1/GitTest# git push origin master:master
+@endverbatim
+*/
+push可能会有冲突;
+
+/**
+@verbatim
+1、git fetch origin master，通过fetch前后的文本对照和抓包，发现
+	fetch会获取远程分支的commit id，也就是本地的文件FETCH_HEAD，以及远程 origin/master的最新文件内容
+2、然后merge origin/master，会合并 origin/master 到 merge
+	也就是说，merge origin/master 并没有网络传输
+3、git pull origin master = git fetch origin master + merge origin/master
+	但是，一般不要使用pull，在背后进行merge总是不好的。
+@endverbatim
+*/
+看看fetch做了什么事情;
+
+/**
+@verbatim
+1、创建test1分支，修改文件，add、commit
+2、转到master分支，也修改文件，这个是时候，diff test1 master，看到的是提交的差异
+	注意：diff比较分支，是比较已经提交的分支。
+3、先不提交，merge试一下，报错
+	error: Your local changes to the following files would be overwritten by merge:
+			readme.txt
+	Please, commit your changes or stash them before you can merge.
+	Aborting
+4、提示：要求提交之后，再merge，如下：
+	root@ubuntu:/home/disk1/GitTest# git add readme.txt 
+	root@ubuntu:/home/disk1/GitTest# git commit -m"master"
+	[master 217992a] master
+	1 file changed, 1 insertion(+)
+	root@ubuntu:/home/disk1/GitTest# git merge test1      
+	Auto-merging readme.txt
+	CONFLICT (content): Merge conflict in readme.txt
+	Automatic merge failed; fix conflicts and then commit the result.
+5、这个时候，merge有冲突，需要解决冲突
+	解决冲突，然后再进行 add、commit
+6、结论：
+	当前分支修改后不提交，merge报错，要求先提交，再merge
+	提交后再merge，可能会冲突，需要解决冲突，然后add commit
+@endverbatim
+*/
+是不是只能merge提交的分支;
+
+
+/**
+@verbatim
+   工作区----【add】------->暂存区----【commit】-------->版本库
+   工作区<---【checkout】---暂存区<---【reset HEAD】-----版本库
+@endverbatim
+*/
+本地的修改状态;
+
+/**
+@verbatim
 1、git push命令用于将本地分支的更新，推送到远程主机。它的格式与git pull命令相似。
 	git push <远程主机名> <本地分支名>:<远程分支名>
 2、git push origin master
