@@ -46,7 +46,6 @@ void Base64_Encode(string& outStr, const unsigned char* inData,int inSize)
 	unsigned char a3;
 
 	int groupSize = inSize/3;
-	int LineLength=0;
 
 	for(int i=0; i<groupSize; i++)
 	{
@@ -124,12 +123,12 @@ void Base64_Decode(const string& inStr, unsigned char*& outData,int& outSize)
 				}
 				else
 				{
-					printf("Meet 4Th =");
+					//printf("Meet 4Th =");
 				}
 			}
 			else
 			{
-				printf("Meet 3Th =");
+				//printf("Meet 3Th =");
 			}
 			i += 4;
 		}
