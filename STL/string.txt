@@ -85,6 +85,43 @@ void RemoveLastElement(string& str)
 */
 string的常用方法;
 
+/**
+@verbatim
+1、考虑如下的代码：
+	#include <stdio.h>
+	#include <string>
+	using std::string;
+	
+	int main(int argc, char* argv[])
+	{
+		string aa = "abcde";
+		aa[2] = 0;
+		string bb(aa.c_str());
+		string cc(aa.c_str(), aa.size());
+	
+		printf("aa size[%d] value[%s]\n", aa.size(), aa.c_str());
+		printf("bb size[%d] value[%s]\n", bb.size(), bb.c_str());
+		printf("cc size[%d] value[%s]\n", cc.size(), cc.c_str());
+	
+		return 0;
+	}
+2、输出结果为：
+	aa size[5] value[ab]
+	bb size[2] value[ab]
+	cc size[5] value[ab]
+3、得出结论：
+	a、string中可以包含取值为0的字符，甚至可以是任意char类型的字符，其中很多是不可见的字符。
+	b、这里和预期不一致，关键的问题是，对于c_str()方法，仅仅返回一个char指针，没有其他的信息
+	c、在处理c_str()的时候，由于不知道处理的长度，只能是遇到\0结束，比如 string bb(aa.c_str()); 和 printf
+		而string cc(aa.c_str(), aa.size()); 能够正确处理，原因是后面给了长度信息。
+	d、也就是说，使用char*构造string的时候，要特别注意，如果预期遇到\0结束，没有问题。如果预期包含\0，必须带上长度信息。
+@endverbatim
+@see
+*/
+string中的特殊字符;
+
+
+
 /** @} */
 
 /** @} */

@@ -3,6 +3,14 @@
 * @{
 */
 
+/**
+@verbatim
+1、不要使用using namespace std; 因为这会名称空间污染。
+2、接口要暴露，就写在头文件，接口不暴露，就写在cpp文件，并且定义为 static内部链接。
+@endverbatim
+@see
+*/
+编码规范;
 
 /**
 @verbatim

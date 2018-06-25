@@ -10,6 +10,23 @@
 
 /**
 @verbatim
+1、一般是没有设置 ulimit -c unlimited
+2、如果设置了 ulimit -c unlimited，程序崩溃，可执行程序的当前目录没有产生dmp文件，检查这个目录是否有写文件的权限。
+3、如果目录有写文件的权限，则很大概率是生成在其它目录。
+    检查文件 /proc/sys/kernel/core_pattern
+    [root@HikvisionOS VTDUTest]# more /proc/sys/kernel/core_pattern                         
+    /opt/components_core/core-%e-%p-%t
+4、通过下面的信息，确认崩溃如下：
+    [root@HikvisionOS niuzb]# cat /var/log/messages |grep main
+    Jan 29 14:52:38 localhost kernel: traps: main[10196] trap divide error ip:4005c1 sp:7fff383a1a60 error:0 in main[400000+1000]
+    [root@HikvisionOS niuzb]# ll /opt/components_core/        
+    -rw------- 1 root root     413696 1月  29 14:52 core-main-10196-1517208758
+@endverbatim
+*/
+linux程序崩溃，没有产生dmp文件;
+
+/**
+@verbatim
 1、ps 结合管道，使用grep找到pid，kill -9 pid 强制杀死进程，如下：
 	[root@localhost lib_linux]# ps aux|grep cmu
 	root      4971  0.0  0.1   4492   792 pts/2    S    09:32   0:00 /bin/sh ./ibpctrl start cmu
