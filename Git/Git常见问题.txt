@@ -1,10 +1,10 @@
 /**
-* @defgroup Linux
+* @defgroup Git
 * @{
 */
 
 /**
-* @defgroup git
+* @defgroup Git常见问题
 * @{
 */
 
@@ -455,6 +455,7 @@ git撤销修改;
 @endverbatim
 */
 撤销本地修改;
+
 
 
 /** @} */
