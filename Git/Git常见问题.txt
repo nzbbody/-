@@ -9,6 +9,25 @@
 */
 
 /**
+@verbatim	
+1、https不可用
+	niuzibin@ubuntu:~/work/FLKDBEnc$ sudo git clone https://192.168.10.99/FLKDBEnc/FLKWebCrypt
+	Cloning into 'FLKWebCrypt'...
+	fatal: unable to access 'https://192.168.10.99/FLKDBEnc/FLKWebCrypt/': gnutls_handshake() failed: Handshake failed
+2、使用git@方式
+	https://192.168.10.99/profile/keys
+	找到generate it
+	本地执行 
+	ssh-keygen -t rsa -C "niuzibin@flksec.com"
+	cat ~/.ssh/id_rsa.pub
+3、产生的结果拷贝到 Key，然后add
+4、本地执行 git clone git@192.168.10.99:FLKDBEnc/FLKWebCrypt.git	
+@endverbatim
+*/
+https不可用;
+
+
+/**
 @verbatim
 1、其他人已经删除某个分支，但是本地还能看到，这个时候fetch报错，如下：
 	niuzibin@ubuntu:~/work/FLKDBEnc/FLKCDP$ git branch -a                   

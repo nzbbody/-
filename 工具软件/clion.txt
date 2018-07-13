@@ -16,6 +16,28 @@
 */
 CLion操作的问题;
 
+/**
+@verbatim
+1、设置一下
+	File --> Settings --> Editor --> General --> Code Completion 取消掉
+	File --> Settings --> Editor --> General --> Inspections C/C++取消掉
+2、取消Power Save Mode
+	找到右下角的人头，设置设置 Highlighting Level到最低
+@endverbatim
+*/
+clion使用很卡;
+
+
+/**
+@verbatim
+1、CLion报错，could not find java
+2、加上export就可以了，但是在CLion不知道在哪里添加
+3、换一种思路，在 .bashrc增加export，然后在shell脚本中，执行 source .bashrc
+	进入clion的执行路径，执行
+	/home/niuzibin/work/apps/clion-2016.1.1/bin/clion.sh
+@endverbatim
+*/
+CLion缺少库，需要export怎么办;
 
 
 
