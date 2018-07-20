@@ -10,6 +10,68 @@
 
 /**
 @verbatim	
+1、push做的事情
+	a、修改本地的 origin/master
+	b、提交到远程
+2、示例如下：
+	niuzibin@ubuntu:/home/disk1/GitTest$ git log -4 --oneline --decorate 
+	8cbb6c4 (HEAD, master) a
+	5109ccf (origin/master, origin/HEAD) b
+	b87db1d a
+	1e2d2d6 a
+	niuzibin@ubuntu:/home/disk1/GitTest$ git diff origin/master master  
+	diff --git a/readme.txt b/readme.txt
+	index ccc3e7b..db754db 100644
+	--- a/readme.txt
+	+++ b/readme.txt
+	@@ -1 +1 @@
+	-aaaaa
+	+bbbbb
+	niuzibin@ubuntu:/home/disk1/GitTest$ sudo git push origin master:master
+	Counting objects: 5, done.
+	Delta compression using up to 2 threads.
+	Compressing objects: 100% (2/2), done.
+	Writing objects: 100% (3/3), 242 bytes | 0 bytes/s, done.
+	Total 3 (delta 1), reused 0 (delta 0)
+	remote: Resolving deltas: 100% (1/1), completed with 1 local object.
+	To https://github.com/nzbbody/GitTest
+	5109ccf..8cbb6c4  master -> master
+	niuzibin@ubuntu:/home/disk1/GitTest$ git log -4 --oneline --decorate   
+	8cbb6c4 (HEAD, origin/master, origin/HEAD, master) a
+	5109ccf b
+	b87db1d a
+	1e2d2d6 a
+	niuzibin@ubuntu:/home/disk1/GitTest$ git diff origin/master master     
+	niuzibin@ubuntu:/home/disk1/GitTest$ 
+3、fetch做的事情
+	仅仅修改本地的origin/master，也就是把远程master的数据拿回来
+4、示例如下：
+	niuzibin@ubuntu:/home/disk1/GitTest$ git fetch origin master
+	remote: Counting objects: 3, done.
+	remote: Compressing objects: 100% (1/1), done.
+	remote: Total 3 (delta 1), reused 3 (delta 1), pack-reused 0
+	Unpacking objects: 100% (3/3), done.
+	From https://github.com/nzbbody/GitTest
+	* branch            master     -> FETCH_HEAD
+	8cbb6c4..c1e2a1e  master     -> origin/master
+	niuzibin@ubuntu:/home/disk1/GitTest$ git diff origin/master master  
+	diff --git a/readme.txt b/readme.txt
+	index 1188fe1..db754db 100644
+	--- a/readme.txt
+	+++ b/readme.txt
+	@@ -1 +1 @@
+	-ccccc
+	+bbbbb
+5、需要merge一下
+	git merge origin/master
+6、pull做的事情
+	【git pull origin master】 = 【git fetch origin master】 + 【git merge origin/master】
+@endverbatim
+*/
+push、fetch、pull;
+
+/**
+@verbatim	
 1、https不可用
 	niuzibin@ubuntu:~/work/FLKDBEnc$ sudo git clone https://192.168.10.99/FLKDBEnc/FLKWebCrypt
 	Cloning into 'FLKWebCrypt'...

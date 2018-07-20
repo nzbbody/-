@@ -4,9 +4,62 @@
 */
 
 /**
-* @defgroup 常见问题
+* @defgroup 工作常见问题
 * @{
 */
+
+/**
+@verbatim
+-- 创建表，添加记录
+create table staff(id int, name enc varchar(64), height enc float, weight enc float, basepay enc float, meritpay enc float, des enc varchar(128));
+insert into staff value(1,"滕海明",178.5,176.25,1000.50,200.35,"I am Frank, hello");
+insert into staff value(2,"陈明",170.5,150.25,900.15,310.45,"我叫陈明, 我来自上海");
+insert into staff value(3,"杨万年",171.5,155.25,984.15,264.45,"我是杨万年，我是安徽人，hello");
+insert into staff value(4,"刘新超",172.25,165.25,635.15,561.45,"大家好，我是刘新超");
+insert into staff value(5,"钟倩",162.5,100.25,844.15,190.45,"我是钟倩，九零后");
+insert into staff value(6,"倪飞",173.25,163.25,987.15,256.45,"我叫倪飞，我是安徽人");
+insert into staff value(7,"牛自宾",175.5,170.25,810.15,315.45,"我是牛自宾，我来自安徽");
+
+-- 查询所有的记录
+select * from staff;
+
+-- 最大值最小值【基本工资】
+select max(basepay),min(basepay) from staff;
+
+-- 密文的加减运算【基本工资+绩效工资】
+select basepay, meritpay, basepay+meritpay from staff;
+
+-- 密文的乘除【基本工资】
+select basepay, basepay*1.1, basepay/2.5 from staff;
+
+-- 密文的关键词模糊搜索
+
+select * from staff where name="杨万年";
+
+select * from staff where des like "%Frank%";
+select * from staff where des like "%hello";
+
+select * from staff where des like "%安徽";
+select * from staff where des like "%安徽%";
+@endverbatim
+*/
+GUI演示数据;
+
+/**
+@verbatim
+
+在mysql添加 mysqld
+
+init-connect='SET NAMES UTF8'
+skip-character-set-client-handshake
+character-set-server=utf8
+collation-server=utf8_general_ci
+重启mysql，重新创建数据库
+
+@endverbatim
+*/
+FLKJDBC中文插入失败;
+
 
 /**
 @verbatim	
@@ -28,7 +81,7 @@
 3、添加 Example Url
 	jdbc:mysql://127.0.0.1:3306/test1?characterEncoding=utf-8&user=root&password=letmein
 	test1是已存在的数据库
-	配置正确，显示对号
+	如果开始没有数据库，使用 jdbc:mysql://127.0.0.1:3306?characterEncoding=utf-8&user=root&password=letmein
 4、添加别名
 	找到MySQL Driver
 	点击 login 测试

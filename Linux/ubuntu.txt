@@ -10,6 +10,59 @@
 
 /**
 @verbatim
+1、准备的可执行文件，main
+2、制作脚本
+	#!/bin/sh
+	set -x
+	set -e
+	
+	shPath=$(cd $(dirname $0);pwd)
+	cd $shPath
+	
+	# read -p "please input version like 1.0.0:  " version
+	name="debtest"
+	version="1.0.0"
+	underline="_"
+	platform="amd64"
+	projName=${name}${underline}${version}${underline}${platform}
+	debName=${projName}".deb"
+	
+	if [  ! -d "./dist" ] ; then
+			mkdir "./dist"
+	fi
+	
+	cd ./dist
+	rm -fr *
+	
+	mkdir DEBIAN
+	cat>"./DEBIAN/control"<<EOF
+	package: $name
+	version: $version
+	architecture: $platform
+	maintainer: niuzibin
+	description: this is deb test
+	EOF
+	
+	mkdir -p ./usr/bin/
+	cp $shPath/main ./usr/bin/
+3、安装
+	./auto_deb.sh
+	sudo dpkg -i debtest_1.0.0_amd64.deb
+4、运行
+	main
+5、卸载
+	niuzibin@ubuntu:~/222$ dpkg -l |grep debtest                
+	ii  debtest                                               1.0.0                                               amd64        this is deb test
+	niuzibin@ubuntu:~/222$ sudo dpkg -r debtest
+	注意：卸载不是安装包的全称，而是 debtest
+@endverbatim
+*/
+deb包制作、安装、运行、卸载;
+
+
+
+/**
+@verbatim
 sudo apt --fix-broken install
 sudo apt-get update
 sudo apt-get upgrade
@@ -23,6 +76,54 @@ apt-get install openssh-server
 @endverbatim
 */
 安装ssh;
+
+/**
+@verbatim
+1、示例脚本如下：
+#! /bin/sh
+set -x
+set -e
+
+# read -p "please input version like 1.0.0:  " version
+name="masterkeymgr"
+version="1.0.0"
+underline="_"
+platform="amd64"
+projName=${name}${underline}${version}${underline}${platform}
+debName=${projName}".deb"
+
+
+# 脚本所在目录
+shPath=$(cd $(dirname $0);pwd)
+cd $shPath/../
+
+if [  ! -d "./dist" ] ; then
+        mkdir "./dist"
+fi
+
+cd ./dist
+rm -fr *
+
+mkdir DEBIAN
+cat>"./DEBIAN/control"<<EOF
+package: $name
+version: $version
+architecture: $platform
+maintainer: niuzibin
+description: this is masterkeymgr deb
+EOF
+
+mkdir -p ./usr/lib
+cp $shPath/../lib/libmasterkeymgr.so ./usr/lib
+
+mkdir -p ./usr/include
+cp $shPath/../src/masterkeymgr/masterkeymgr.h ./usr/include
+
+cd $shPath/../
+sudo dpkg -b dist $debName
+@endverbatim
+*/
+打包deb包;
 
 
 /** @} */

@@ -10,54 +10,6 @@
 
 /**
 @verbatim
-1、示例脚本如下：
-#! /bin/sh
-set -x
-set -e
-
-# read -p "please input version like 1.0.0:  " version
-name="masterkeymgr"
-version="1.0.0"
-underline="_"
-platform="amd64"
-projName=${name}${underline}${version}${underline}${platform}
-debName=${projName}".deb"
-
-
-# 脚本所在目录
-shPath=$(cd $(dirname $0);pwd)
-cd $shPath/../
-
-if [  ! -d "./dist" ] ; then
-        mkdir "./dist"
-fi
-
-cd ./dist
-rm -fr *
-
-mkdir DEBIAN
-cat>"./DEBIAN/control"<<EOF
-package: $name
-version: $version
-architecture: $platform
-maintainer: niuzibin
-description: this is masterkeymgr deb
-EOF
-
-mkdir -p ./usr/lib
-cp $shPath/../lib/libmasterkeymgr.so ./usr/lib
-
-mkdir -p ./usr/include
-cp $shPath/../src/masterkeymgr/masterkeymgr.h ./usr/include
-
-cd $shPath/../
-sudo dpkg -b dist $debName
-@endverbatim
-*/
-打包deb包;
-
-/**
-@verbatim
 1、运行缺少库，需要添加依赖库的路径，有两种办法。
 2、第一种办法：
 	export LD_LIBRARY_PATH = xxx
