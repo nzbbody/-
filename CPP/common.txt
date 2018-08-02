@@ -5,6 +5,95 @@
 
 /**
 @verbatim
+1、测试代码
+    #include <stdio.h>
+    #include <sys/time.h>
+    #include <string>
+    #include <map>
+    
+    using std::string;
+    using std::map;
+    #define MAPSIZE 1000000
+    
+    string GetSystemTime()
+    {
+            struct timeval tv;
+            gettimeofday(&tv,NULL);
+            struct tm* pTime;
+            pTime = localtime(&tv.tv_sec);
+    
+            char sTemp[30] = {0};
+            snprintf(sTemp, sizeof(sTemp), "[%04d%02d%02d %02d:%02d:%02d.%06lu]",
+                            pTime->tm_year+1900, pTime->tm_mon+1, pTime->tm_mday,
+                            pTime->tm_hour, pTime->tm_min, pTime->tm_sec, tv.tv_usec);
+            return (string)sTemp;
+    }
+    
+    void AddItem(map<int,string>& aMap)
+    {
+            for(int i =0; i<MAPSIZE; ++i)
+            {
+                    char tmp[64]={0};
+                    sprintf(tmp,"%s_%d", "Andy", i);
+                    aMap[i] = tmp;
+            }
+            printf("map size[%lu]\n", aMap.size());
+    }
+    
+    int main()
+    {
+            map<int,string> aMap;
+            AddItem(aMap);
+    
+            printf("begin %s\n", GetSystemTime().c_str());
+            for(int i=0; i<MAPSIZE; ++i)
+            {
+                    map<int,string>::iterator iter = aMap.find(i);
+            }
+            printf("end   %s\n", GetSystemTime().c_str());
+    
+            return 0;
+    }
+2、对照测试，是否带有调试信息
+    niuzibin@ubuntu:~/work/tmp$ g++ -o main main.cpp -g    
+    niuzibin@ubuntu:~/work/tmp$ readelf -S main |grep debug 
+    [28] .debug_aranges    PROGBITS         0000000000000000  0000414f
+    [29] .debug_info       PROGBITS         0000000000000000  000045ef
+    [30] .debug_abbrev     PROGBITS         0000000000000000  0000a3aa
+    [31] .debug_line       PROGBITS         0000000000000000  0000ab05
+    [32] .debug_str        PROGBITS         0000000000000000  0000b633
+    [33] .debug_ranges     PROGBITS         0000000000000000  00011463
+    niuzibin@ubuntu:~/work/tmp$ ./main
+    map size[1000000]
+    begin [20180802 00:12:05.668542]
+    end   [20180802 00:12:05.939832]
+    
+    niuzibin@ubuntu:~/work/tmp$ g++ -o main main.cpp
+    niuzibin@ubuntu:~/work/tmp$ readelf -S main |grep debug
+    niuzibin@ubuntu:~/work/tmp$ ./main
+    map size[1000000]
+    begin [20180802 00:12:42.144723]
+    end   [20180802 00:12:42.420988]
+3、对照测试，是否带有优化选项
+    niuzibin@ubuntu:~/work/tmp$ g++ -o main main.cpp -O0
+    niuzibin@ubuntu:~/work/tmp$ ./main
+    map size[1000000]
+    begin [20180802 00:14:16.254965]
+    end   [20180802 00:14:16.534845]
+    
+    niuzibin@ubuntu:~/work/tmp$ g++ -o main main.cpp -O3
+    niuzibin@ubuntu:~/work/tmp$ ./main
+    map size[1000000]
+    begin [20180802 00:14:21.340568]
+    end   [20180802 00:14:21.460473]
+4、-g会增加文件的大小，但是对性能影响不大；-O3可以大幅度提高性能。
+@endverbatim
+@see
+*/
+CPP性能测试;
+
+/**
+@verbatim
 1、不要使用using namespace std; 因为这会名称空间污染。
 2、接口要暴露，就写在头文件，接口不暴露，就写在cpp文件，并且定义为 static内部链接。
 @endverbatim

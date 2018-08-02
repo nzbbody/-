@@ -1,0 +1,18 @@
+/**
+* @defgroup Linux
+* @{
+*/
+
+/**
+@verbatim
+1、上传
+	curl -u uftp:hzflk1234 -T $DEBNAME  ftp://192.168.10.70/flksoft/dist/FLKCDP/all_debs/1404/ 
+2、下载
+	curl -u uftp:hzflk1234 ftp://192.168.10.70/flksoft/third_parties/java/jdk-8u162-linux-x64.tar.gz -O
+@endverbatim
+*/
+curl命令;
+
+
+
+/** @} */

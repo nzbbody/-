@@ -9,6 +9,14 @@
 */
 
 /**
+@verbatim
+1、git tag -a v1.0.0 -m"2018年上半年release版本v1.0.0"
+2、git push origin v1.0.0
+@endverbatim
+*/
+git的tag命令;
+
+/**
 @verbatim	
 1、push做的事情
 	a、修改本地的 origin/master
