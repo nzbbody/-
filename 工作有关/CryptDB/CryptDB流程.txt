@@ -10,6 +10,41 @@
 
 /**
 @verbatim
+1、proxy线程池中的4个线程，处理多个client的连接，每次client的请求，分配一个空闲的线程，然后这个线程转发给mysql
+2、flkcdp库，每次进来的rewrite或者next，是哪一个线程是不确定的，是有proxy的线程池调度分配一个。
+	怎么标识是哪一个client的连接呢，使用ip+port，这个ip+port是client连接proxy
+3、对于next要分为多步操作，每次线程做一部分，可能不是同一个线程，这就是协程。
+	代码段是只读的，不需要保护。数据段每个client对应一个专有的，因此不会冲突。
+	这就允许：这一次线程A修改数据，下一次线程B，接着来修改数据。
+4、根据threadId查找DB，这个threadID实际上，是proxy转发client连接，proxy连接mysql的连接Id
+@endverbatim
+*/
+代码逻辑的分析;
+
+/**
+@verbatim
+1、代理proxy通过--event-threads=4配置线程池线程的个数，来接收client的连接请求，并转发给mysql
+2、safeCreateEmbeddedTHD是为了自动管理内存，自动释放 new (current_thd->mem_root) Item_string分配的内存
+@endverbatim
+*/
+safeCreateEmbeddedTHD;
+
+/**
+@verbatim
+1、客户端连接proxy，对应proxy连接mysql，使用用户给的用户名和密码
+2、第一个客户端连接proxy，代理调用lua脚本，和mysql建立一个共享连接，这个共享连接使用的用户名和密码，
+	目前是写死的，也就是root/letmein，为什么？
+3、这个是共享连接，需要有足够的mysql读写权限，而且只建立一个。
+4、lua脚本除了和mysql建立共享连接，还会操作 embedded_db 嵌入式数据库。
+5、mysql -uroot -pletmein -P3307 与 mysql -uroot -pletmein -P3307 -h127.0.0.1的区别
+	mysql -uroot -pletmein -P3307是代理直接连接mysql，不经过lua和flkcdp
+	mysql -uroot -pletmein -P3307 -h127.0.0.1是代理和mysql建立一个连接，同时flkcdp和mysql建立共享连接
+@endverbatim
+*/
+代理连接的业务逻辑;
+
+/**
+@verbatim
 1、read_query
 	read_query --> read_query_real --> next_handler --> CryptDB.next
 	接收客户端的请求sql，进行转化，return proxy.PROXY_SEND_QUERY

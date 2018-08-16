@@ -1,0 +1,99 @@
+﻿/**
+* @defgroup Perl
+* @{
+*/
+
+/**
+@verbatim
+	$myfirst=123;		#数字123
+	$mysecond="123";    #字符串123
+	@arr=(1,2,3)		#数组
+	%h=('a'=>1,'b'=>2); #哈希
+@endverbatim
+*/
+Perl数据类型;
+
+/**
+@verbatim
+1、Perl代码的基准运行时间
+2、测试
+	#!/usr/bin/perl
+	use Benchmark;
+	
+	$begin_time=new Benchmark;
+	
+	sleep 3;
+	
+	$now=time();
+	while ( time()-$now < 5)
+	{
+	
+	}
+	
+	$end_time=new Benchmark;
+	
+	print "Time Consume", timestr(timediff($end_time, $begin_time),"all") , "\n\n";	
+3、输出
+	Time Consume 8 wallclock secs ( 4.83 usr  0.00 sys +  0.00 cusr  0.00 csys =  4.83 CPU)
+	分别表示 'wallclock'耗时，用户时间，系统时间，子进程的用户时间和子进程的系统时间
+	后面的时间是CPU忙的时间，特别注意，是指当前程序CPU忙的时间，和其他程序不搭嘎。
+@endverbatim
+*/
+Benchmark;
+
+/**
+@verbatim
+	#!/usr/bin/perl
+	
+	use Time::HiRes qw(gettimeofday);
+	use Time::HiRes qw(sleep);
+	
+	($start_sec, $start_usec) = gettimeofday;
+	
+	#for(1..1000000){}
+	sleep 0.003;
+	
+	($end_sec, $end_usec) = gettimeofday;
+	$time_used = ($end_sec - $start_sec) + ($end_usec - $start_usec)/1000000;
+	printf("time used  : %.6f\n", $time_used);
+@endverbatim
+*/
+perl获取微秒时间和sleep;
+
+/**
+@verbatim
+1、示例代码如下：
+	$example = 9;
+	
+	sub mm{
+		print "$example\n";#这里的值是9
+	}
+	sub gg_my{
+		my $example = 55;
+		print "call-my $example\n";#这里的值是55
+		mm;#这里的值是9
+	}
+	sub gg_local {
+		local $example = 20;
+		print "call-local $example\n";#这里的值是20
+		mm;#这里的值是20
+	}
+	mm;#这里的值是9
+	gg_my;
+	gg_local;
+	print $example;#这里的值是9
+2、输出结果：
+	9
+	call_my 55
+	9
+	call_local 20
+	20
+	9
+3、换句话说，local会传递给子程序
+@endverbatim
+*/
+local与my的区别;
+
+
+
+/** @} */

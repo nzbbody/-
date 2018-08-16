@@ -10,6 +10,13 @@
 
 /**
 @verbatim
+1、git branch niuzibin8 origin/develop
+@endverbatim
+*/
+根据已有分支创建分支;
+
+/**
+@verbatim
 1、git tag -a v1.0.0 -m"2018年上半年release版本v1.0.0"
 2、git push origin v1.0.0
 @endverbatim
