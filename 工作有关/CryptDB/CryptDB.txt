@@ -10,6 +10,14 @@
 
 /**
 @verbatim
+1、set @cryptdb='run', @sql='use embedded_db';
+@endverbatim
+*/
+对嵌入式MySQL执行SQL语句;
+
+
+/**
+@verbatim
 1、这里分为两个阶段，
 	第一个阶段写入到 generic_prefix_BleedingMetaObject
 	第二个阶段写入到 generic_prefix_MetaObject

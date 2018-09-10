@@ -12,5 +12,27 @@
 * @{
 */
 
+/**
+@verbatim
+1、安装DBI
+	cpan
+	install DBI
+	install DBD::mysql
+2、找到下载的DBD-mysql，sudo find / -iname "DBD-mysql*"
+	进入对应的目录，解压DBD-mysql
+	perl Makefile.PL -testuser=root -testpassword="letmein"
+	make install 
+	如果报错：Cannot find the file 'mysql_config'
+	执行 sudo apt-get install libmysqlclient-dev	
+2、转到 mysql-src/sql-bench
+	./run-all-tests.sh --server=mysql --host=127.0.0.1 --user=root --password=letmein
+	./test-select.sh --server=mysql --host=127.0.0.1 --user=root --password=letmein
+	./test-connect.sh --server=mysql --host=127.0.0.1 --user=root --password=letmein --connect-options=mysql_read_default_file=./my.cnf
+3、Benchmark
+	/usr/share/perl/5.18/Benchmark.pm
+@endverbatim
+*/
+sql-bench;
+
 
 /** @} */

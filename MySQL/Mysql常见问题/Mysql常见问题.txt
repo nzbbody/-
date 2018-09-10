@@ -10,6 +10,15 @@
 
 /**
 @verbatim
+1、当主机填写为localhost时mysql会采用 unix domain socket 连接
+2、当主机填写为127.0.0.1时mysql会采用tcp方式连接
+@endverbatim
+*/
+localhost与127;
+
+
+/**
+@verbatim
 1、一般情况下，我们通过CS模式，调用MySQL客户端mysqlclient和MySQL服务交互。
 2、但是这种C/S的数据服务不适合于一些轻量级的应用，可以使用MySQL的Embedded模式，相当于以库的方式调用。
 3、这两种方式的区别是：

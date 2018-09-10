@@ -10,10 +10,27 @@
 
 /**
 @verbatim
-1、git branch niuzibin8 origin/develop
+1、git clone https://niuzibin:ruanxiaopang@192.168.10.99/FLKDBEnc/jdbc5.1.git
+	报错如下：
+	server certificate verification failed. CAfile: /etc/ssl/certs/ca-certificates.crt CRLfile: none
+2、错误原因：
+	你的linux系统并不信任你所要git的网站，所以通不过系统安全认证。
+	解决方案有两个：第一，告诉系统这个网站是可信任的；第二，关闭系统的安全认证，这个有些极端了。
+3、第一种方案修改比较麻烦，使用第二种方案，在终端执行 export GIT_SSL_NO_VERIFY=1
 @endverbatim
 */
-根据已有分支创建分支;
+clone认证失败;
+
+/**
+@verbatim
+1、根据已有分支创建分支
+	git branch niuzibin8 origin/develop
+2、基于tag创建分支
+	git checkout -b tagv1.0.0 v1.0.0
+	基于v1.0.0创建新的分支 tagv1.0.0
+@endverbatim
+*/
+根据已有创建分支;
 
 /**
 @verbatim
